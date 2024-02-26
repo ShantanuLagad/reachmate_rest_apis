@@ -1,0 +1,305 @@
+const nodemailer = require('nodemailer')
+const mg = require('nodemailer-mailgun-transport')
+const i18n = require('i18n')
+const User = require('../models/user')
+const { itemAlreadyExists } = require('../middleware/utils')
+const { app } = require("../../config/emailer");
+const APP_NAME = process.env.APP_NAME;
+const { capitalizeFirstLetter } = require("../shared/helpers");
+
+var jwt = require("jsonwebtoken");
+
+const {
+  handleError,
+  getIP,
+  buildErrObject,
+  getCountryCode,
+  sendPushNotification,
+} = require("./utils");
+/**
+ * Sends email
+ * @param {Object} data - data
+ * @param {boolean} callback - callback
+ */
+const sendEmail = async (data, callback) => {
+  const auth = {
+    auth: {
+      // eslint-disable-next-line camelcase
+      api_key: process.env.EMAIL_SMTP_API_MAILGUN,
+      domain: process.env.EMAIL_SMTP_DOMAIN_MAILGUN
+    }
+  }
+  const transporter = nodemailer.createTransport(mg(auth))
+  const mailOptions = {
+    from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM_ADDRESS}>`,
+    to: `${data.user.name} <${data.user.email}>`,
+    subject: data.subject,
+    html: data.htmlMessage
+  }
+  transporter.sendMail(mailOptions, err => {
+    if (err) {
+      return callback(false)
+    }
+    return callback(true)
+  })
+}
+
+/**
+ * Prepares to send email
+ * @param {string} user - user object
+ * @param {string} subject - subject
+ * @param {string} htmlMessage - html message
+ */
+const prepareToSendEmail = (user, subject, htmlMessage) => {
+  user = {
+    name: user.name,
+    email: user.email,
+    verification: user.verification
+  }
+  const data = {
+    user,
+    subject,
+    htmlMessage
+  }
+  if (process.env.NODE_ENV === 'production') {
+    sendEmail(data, messageSent =>
+      messageSent
+        ? console.log(`Email SENT to: ${user.email}`)
+        : console.log(`Email FAILED to: ${user.email}`)
+    )
+  } else if (process.env.NODE_ENV === 'development') {
+    console.log(data)
+  }
+}
+
+module.exports = {
+  /**
+   * Checks User model if user with an specific email exists
+   * @param {string} email - user email
+   */
+  async emailExists(email) {
+    return new Promise((resolve, reject) => {
+      User.findOne(
+        {
+          email
+        },
+        (err, item) => {
+          itemAlreadyExists(err, item, reject, 'EMAIL_ALREADY_EXISTS')
+          resolve(false)
+        }
+      )
+    })
+  },
+
+  /**
+   * Checks User model if user with an specific email exists but excluding user id
+   * @param {string} id - user id
+   * @param {string} email - user email
+   */
+  async emailExistsExcludingMyself(id, email) {
+    return new Promise((resolve, reject) => {
+      User.findOne(
+        {
+          email,
+          _id: {
+            $ne: id
+          }
+        },
+        (err, item) => {
+          itemAlreadyExists(err, item, reject, 'EMAIL_ALREADY_EXISTS')
+          resolve(false)
+        }
+      )
+    })
+  },
+
+  /**
+   * Sends registration email
+   * @param {string} locale - locale
+   * @param {Object} user - user object
+   */
+  async sendRegistrationEmailMessage(locale, user) {
+    i18n.setLocale(locale)
+    const subject = i18n.__('registration.SUBJECT')
+    const htmlMessage = i18n.__(
+      'registration.MESSAGE',
+      user.name,
+      process.env.FRONTEND_URL,
+      user.verification
+    )
+    prepareToSendEmail(user, subject, htmlMessage)
+  },
+
+  /**
+   * Sends reset password email
+   * @param {string} locale - locale
+   * @param {Object} user - user object
+   */
+  async sendResetPasswordEmailMessage(locale, user) {
+    i18n.setLocale(locale)
+    const subject = i18n.__('forgotPassword.SUBJECT')
+    const htmlMessage = i18n.__(
+      'forgotPassword.MESSAGE',
+      user.email,
+      process.env.FRONTEND_URL,
+      user.verification
+    )
+    prepareToSendEmail(user, subject, htmlMessage)
+  },
+
+  async sendResetPasswordMail(locale, user) {
+    try {
+      i18n.setLocale(locale);
+      const subject = "Reset Password";
+
+      app.mailer.send(
+        "reset-password-admin.ejs",
+        {
+          to: 'promatics.rajkumar@gmail.com', //user.email, // REQUIRED. This can be a comma delimited string just like a normal email to field.
+          subject, // REQUIRED.
+          ...user,
+          verification: user.verification,
+          // social : await getSocialLinks(),
+          // token : token,
+        },
+        (err) => {
+          if (err) {
+            // handle error
+            console.log(err);
+          } else {
+            console.log("Email Sent");
+          }
+        }
+      );
+    } catch (err) {
+      console.log("err: ", err);
+    }
+  },
+
+
+  async sendOtpOnEmail(data, subject) {
+    var mailOptions = {
+      to: data.email,
+      subject,
+      otp: data.otp,
+      name:data.name
+    };
+    app.mailer.send(`otp`, mailOptions, function (err, message) {
+      if (err) {
+        console.log("There was an error sending the email" + err);
+      } else {        
+        console.log("Mail sent to user");
+      }
+    });
+  },
+  
+
+  async userExists(model, email, throwError = true) {
+    return new Promise((resolve, reject) => {
+      model.findOne({
+          email: email
+      })
+        .then((item) => {
+          var err = null;
+          if (throwError) {
+            itemAlreadyExists(err, item, reject, "EMAIL ALREADY EXISTS");
+          }
+          resolve(item ? item : false);
+        })
+        .catch((err) => {
+          var item = null;
+          itemAlreadyExists(err, item, reject, "ERROR");
+          resolve(false);
+        });
+    });
+  },
+
+  async socialIdExists(model,social_id, social_type, throwError = false) {
+    return new Promise((resolve, reject) => {
+      model.findOne({
+          social_id: social_id,
+          social_type: social_type,
+      })
+        .then((item) => {
+          var err = null;
+          if (throwError) {
+            itemAlreadyExists(err, item, reject, "USER ALREADY EXISTS");
+          }
+          resolve(item ? true : false);
+        })
+        .catch((err) => {
+          var item = null;
+          itemAlreadyExists(err, item, reject, "ERROR");
+          resolve(false);
+        });
+    });
+  },
+
+
+/**
+   * Sends reset password email
+   * @param {string} locale - locale
+   * @param {Object} user - user object
+   */
+
+// async sendResetPasswordEmailMessage(locale, user) {
+//   i18n.setLocale(locale);
+//   const subject = i18n.__("forgotPassword.SUBJECT");
+//   const htmlMessage = i18n.__(
+//     "forgotPassword.MESSAGE",
+//     user.email,
+//     process.env.FRONTEND_URL,
+//     user.verification
+//   );
+//   prepareToSendEmail(user, subject, htmlMessage);
+// },
+
+
+async sendForgetPasswordEmail(locale, user, template) {
+
+console.log("user",user)
+  return new Promise(async (resolve, reject) => {
+
+    try {
+      user = JSON.parse(JSON.stringify(user));
+      console.log(template);
+
+      console.log("Inside emailer");
+      if (!user.name) {
+        user.name = "user";
+      }
+
+
+console.log("user.url",user.url)
+      app.mailer.send(
+        `${locale}/${template}`,
+        {
+          to: user.email,
+          subject: `Forgot Password - ${process.env.APP_NAME}`,
+          name: capitalizeFirstLetter(user.name),
+          verification_code: "",
+          verification_link: user.url,
+          website_url: process.env.PRODUCTION_FRONTEND_URL,
+        },
+        function (err) {
+          if (err) {
+            console.log("There was an error sending the email" + err);
+            reject(buildErrObject(422, err.message));
+          } else {
+            console.log("VERIFICATION EMAIL SENT");
+            resolve("VERIFICATION EMAIL SENT");
+          }
+
+        }
+      );
+
+    } catch (err) {
+      reject(buildErrObject(422, err.message));
+    }
+
+  })
+
+
+
+},
+}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ITG: Signup</title>
+    <link href="http://fonts.googleapis.com/css?family=Raleway:400,100,200,300,500,600,800,700,900" rel="stylesheet" type="text/css">
+    <style>
+        body {
+            width: 100%;
+            font-family: 'Raleway';
+            height: 100%;
+            background: #F0F0F0;
+            margin: 50px 0;
+        }
+
+        table {
+            background-color: #fff;
+            padding: 0;
+            border-collapse: collapse;
+            margin: 0 auto;
+            width: 800px;
+        }
+
+        td {
+            padding: 10px 20px;
+        }
+
+        img {
+            width: 180px;
+            height: auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            color: #18364A;
+            font-weight: bold;
+            font-size: 30px;
+        }
+
+        .otp {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        .name {
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 20px;
+            color: #18364A;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .instructions {
+            padding: 20px;
+            color: #18364A;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #2b2b2b;
+            line-height: 28px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .signature {
+            padding: 20px;
+            font-size: 16px;
+            line-height: 28px;
+        }
+
+        .signature span {
+            font-weight: bold;
+            color: #18364A;
+        }
+
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td  class="header" colspan="2">
+                <img style="width: 200px; width: 200px;margin: auto;" src="https://production.promaticstechnologies.com/ITG_ADMIN/assets/images/logo/logo.png" alt="ITG Logo">
+            </td>
+        </tr>
+        <tr>
+            <td class="otp">
+                Hi <span class="name"><%=name%></span>,</td>
+            <td class="otp">
+                Here is your OTP: <span class="name"></span><%=otp%></span>
+            </td>
+        </tr>
+        <tr>
+            <td class="content" colspan="2">
+                Signup for your account!
+            </td>
+        </tr>
+        <tr>
+            <td class="instructions" colspan="2">
+                Here is what happens next:
+            </td>
+        </tr>
+        <tr>
+            <td class="footer" colspan="2">
+                Have any additional questions? Email us at <a href="mailto:itg@gmail.com" style="text-decoration: none; color: #DD1B3C;">itg@gmail.com</a> and we will get back to you.
+            </td>
+        </tr>
+        <tr>
+            <td class="signature" colspan="2">
+                <span>Thanks,</span><br>
+                The ITG Team
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
