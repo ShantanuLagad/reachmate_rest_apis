@@ -5,9 +5,9 @@ const mongoosePaginate = require('mongoose-paginate-v2')
 
 const supportSchema = new mongoose.Schema(
     {
-      email: {
-        type: String,
-        required : true,
+      user_id : {
+        type : mongoose.Schema.Types.ObjectId,
+        required : true
       },
       message: {
         type: String,

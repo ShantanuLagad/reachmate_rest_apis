@@ -39,6 +39,7 @@ const FAQ = require('../models/faq')
 const Feedback = require('../models/feedback')
 const CMS = require('../models/cms')
 const Reset = require("../models/reset_password")
+const Notification = require("../models/notification")
 const mongoose = require("mongoose")
 const jwt = require('jsonwebtoken')
 const { off } = require('process')
@@ -914,22 +915,97 @@ exports.getFeedbackList = async(req, res) => {
   try {
     const {limit = 10 , offset = 0 , sort = -1 } = req.query;
 
-    const feedback = await Feedback.find({}).sort({createdAt : +sort}).skip(+offset).limit(+limit);
+    // const feedback = await Feedback.find({}).sort({createdAt : +sort}).skip(+offset).limit(+limit);
+    
+    const count = await Feedback.count({})
+    const feedback = await Feedback.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          let : { user_id : "$user_id"},
+          pipeline : [
+            {
+              $match : {
+                $expr : {
+                  $eq : ["$_id" , "$$user_id"]
+                }
+              }
+            },
+            {
+              $project : {
+                first_name : 1,
+                last_name : 1,
+                full_name : 1,
+                email : 1
+              }
+            }
+          ],
+          as: "user",
+        },
+      },
+      {
+        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $sort : {
+          createdAt : +sort
+        }
+      },
+      {
+        $skip : +offset
+      },
+      {
+        $limit : +limit
+      }
+    ])
 
-    res.json({data : feedback , code : 200 })
+    res.json({data : feedback ,count, code : 200 })
   } catch (error) {
     utils.handleError(res, error);
   }
 }
 
-
 exports.getSingleFeedback = async (req , res) => {
   try {
     const id = req.params.id;
 
-    const feedback = await Feedback.findById(id)
+    // const feedback = await Feedback.findById(id)
+    const feedback = await Feedback.aggregate([
+      {
+        $match : {
+          _id : mongoose.Types.ObjectId(id)
+        }
+      },
+     {
+        $lookup: {
+          from: "users",
+          let : { user_id : "$user_id"},
+          pipeline : [
+            {
+              $match : {
+                $expr : {
+                  $eq : ["$_id" , "$$user_id"]
+                }
+              }
+            },
+            {
+              $project : {
+                first_name : 1,
+                last_name : 1,
+                full_name : 1,
+                email : 1
+              }
+            }
+          ],
+          as: "user",
+        },
+      },
+      {
+        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+      },
+    ])
     
-    res.json({data : feedback , code : 200})
+    res.json({data : feedback[0] , code : 200})
   } catch (error) {
     utils.handleError(res, error);
   }

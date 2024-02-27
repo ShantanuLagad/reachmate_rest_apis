@@ -959,9 +959,15 @@ exports.getFAQ = async (req, res) => {
 exports.helpsupport = async (req, res) => {
   try {
     const data = req.body;
+    const user_id = req.user._id;
+
     const add = await Support.create(
-      data
+      {
+        user_id : user_id,
+        message : data?.message
+      }
     );
+
     res.json({
       code: 200,
       message: add,
@@ -976,9 +982,14 @@ exports.feedback = async (req, res) => {
   try {
     const data = req.body;
     const user_id = req.user._id;
+
     const feedback = await Feedback.create(
-      data
+      {
+        user_id : user_id,
+        message : data?.message
+      }
     );
+
     res.json({
       code: 200,
       message: feedback,
@@ -1189,7 +1200,7 @@ exports.addNotificaiton = async (req ,res) => {
       title: "Card Shared",
       body: "Deepak has shared their card",
       is_seen :false,
-      is_admin:false
+      is_admin:true
     }
 
     const createNotification = new Notification(notificaiton);
