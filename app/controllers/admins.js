@@ -37,9 +37,11 @@ const Company = require("../models/company")
 const CardDetials = require('../models/cardDetials')
 const FAQ = require('../models/faq')
 const Feedback = require('../models/feedback')
+const Support = require('../models/support')
 const CMS = require('../models/cms')
 const Reset = require("../models/reset_password")
 const Notification = require("../models/notification")
+const NotificationByAdmin = require("../models/notification_by_admin")
 const mongoose = require("mongoose")
 const jwt = require('jsonwebtoken')
 const { off } = require('process')
@@ -69,6 +71,8 @@ const generateToken = (_id, role , remember_me) => {
 }
 
 
+
+
 const findUser = async email => {
     return new Promise((resolve, reject) => {
       Admin.findOne(
@@ -83,6 +87,8 @@ const findUser = async email => {
       )
     })
 }
+
+
 
 const setUserInfo = req => {
     let user = {
@@ -102,6 +108,7 @@ const setUserInfo = req => {
     }
     return user
   }
+
 
 function extractDomainFromEmail(email) {
     // Split the email address at the "@" symbol
@@ -174,7 +181,7 @@ exports.login = async (req, res) => {
       console.log("****DATA*****", data);
   
       const user = await findUser(data.email);
-  
+      if(!user)  return handleError(res, {message : "Invalid email and password" , code : 400})
       console.log("__----USER---", user);
   
       const isPasswordMatch = await auth.checkPassword(data.password, user)
@@ -182,12 +189,7 @@ exports.login = async (req, res) => {
       console.log(isPasswordMatch);
   
       if (!isPasswordMatch) {
-        return res.status(422).json({
-          code: 422,
-          errors: {
-            msg: "Wrong Password"
-          }
-        })
+        return handleError(res, {message : "Invalid email and password" , code : 400})
       }
   
   
@@ -281,14 +283,14 @@ exports.resetPassword = async (req, res) => {
     console.log(reset)
     // Check if the reset token exists and if it's flagged as used
     if (!reset || !reset.used) {
-      return res.status(400).json({ message: 'Invalid or expired reset password token'  , code : 400});
+      return handleError(res, { message: 'Invalid or expired reset password token', code: 400 })
     }
 
     // Check if the token has expired
     const currentTime = new Date();
     const tokenExpiryTime = new Date(reset.time);
     if (currentTime > tokenExpiryTime) {
-      return res.status(400).json({ message: 'Reset password token has expired'  , code : 400});
+      return handleError(res, { message: 'Reset password token has expired', code: 400 })
     }
 
     // Find the user associated with the reset token
@@ -308,7 +310,32 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: 'Password reset successful'  , code : 200});
   } catch (err) {
     console.error(err);
-    res.status(500).send('Internal Server Error');
+    utils.handleError(res, err)
+  }
+};
+
+
+
+exports.changePassword = async (req, res) => {
+  try {
+    const user = req.user;
+
+    const { old_password, new_password } = req.body;
+
+    const admin = await Admin.findById(user._id , "+password")
+    const isPasswordMatch = await auth.checkPassword(old_password, admin)
+
+    if(!isPasswordMatch) return handleError(res, {message : "Incorrect Old Password" , code : 400});
+
+    // Update the user's password
+    user.password = new_password;
+    // Save the changes
+    await user.save();
+
+    res.json({ message: 'Password changed successfully'  , code : 200});
+  } catch (err) {
+    console.error(err);
+    handleError(res, err);
   }
 };
 
@@ -543,7 +570,6 @@ exports.getCorporateUser = async (req , res) => {
         ]
     }
 
-
     const count =  await CardDetials.aggregate([
       {
         $match : {
@@ -656,27 +682,38 @@ exports.addCompany = async (req ,res) => {
 
     const data = req.body;
 
+    const isEmailExist = await Company.findOne({email : data.email});
+    if(isEmailExist) return  handleError(res, {message : "Email already Exists" , code : 400})
+
+    const emailDomain = extractDomainFromEmail(data.email);
+
+    const isDomainExists = await Company.findOne({email_domain : emailDomain});
+    if(isDomainExists) return  handleError(res, {message : "Domain name already Exists" , code : 400})
+
     var password = generator.generate({
       length: 10,
       numbers: true
     });
+
+    const access_code = generator.generate({
+      length: 8,
+    });
     
-    const emailDomain = extractDomainFromEmail(data.email);
     const dataForCompany = {
       email : data.email,
-      access_code : data.access_code,
+      access_code : access_code,
       password : password,
       decoded_password : password,
       email_domain : emailDomain,
       company_name : data.company_name,
-      business_logo : data.business_logo,
-      text_color : data.text_color,
-      card_color : data.card_color,
-      gst_no : data.gst_no,
+      // business_logo : data.business_logo,
+      // text_color : data.text_color,
+      // card_color : data.card_color,
+      // gst_no : data.gst_no,
       contact_details : {
-        mobile_number : data.contact_details.mobile_number,
-        office_landline : data.contact_details.office_landline,
-        email :  data.contact_details.email,
+        // mobile_number : data.contact_details.mobile_number,
+        // office_landline : data.contact_details.office_landline,
+        // email :  data.contact_details.email,
         website: data.contact_details.website,
       },
       address : {
@@ -687,19 +724,29 @@ exports.addCompany = async (req ,res) => {
         address_line_2 : data.address.address_line_2,
         pin_code : data.address.pin_code,
       },
-      social_links : {
-        linkedin : data.social_links.linkedin,
-        x : data.social_links.x,
-        instagram :data.social_links.instagram,
-        youtube : data.social_links.youtube,
-      }
+      // social_links : {
+      //   linkedin : data.social_links.linkedin,
+      //   x : data.social_links.x,
+      //   instagram :data.social_links.instagram,
+      //   youtube : data.social_links.youtube,
+      // }
     }
     
     const company = new Company(dataForCompany);
     await company.save();
 
-    res.json({message : "Company registered successfully" , code : 200})
-    
+
+    const locale = req.getLocale()
+    const dataForMail = {
+      company_name : data.company_name,
+      email : data.email,
+      password : password,
+      access_code : access_code
+    }
+   
+    emailer.sendAccountCreationEmail( locale , dataForMail, 'account-created');
+
+    res.json({message : "Company registered successfully" , code : 200})    
   } catch (error) {
     console.log(error)
     handleError(res, error)
@@ -725,7 +772,7 @@ exports.getCompanyList =async (req, res) => {
       condition["createdAt"] = {$gte : new Date(start_date) , $lt : new Date(end_date)}
     }
 
-    const count = await Company.count(condition)
+    const count = await Company.countDocuments(condition)
     
     const offsetCondtion = []
 
@@ -797,7 +844,7 @@ exports.dashBoardCard = async (req , res) => {
         $unwind : "$card"
       }
     ]);
-    const totalComany = await Company.count({})
+    const totalComany = await Company.countDocuments({})
     const totalRevenue = 0
 
     res.json({data : {users : totalUser.length , company : totalComany,  revenue : totalRevenue}  , code : 200})
@@ -823,7 +870,9 @@ exports.addFaq = async (req , res) => {
 
 exports.getFaqList = async (req , res) => {
   try {
-    const faqs = await FAQ.find({}).sort({createdAt : -1});
+    const {sort = -1} = req.query;
+
+    const faqs = await FAQ.find({}).sort({createdAt : +sort});
 
     res.json({data : faqs , code : 200})
   } catch (error) {
@@ -917,7 +966,7 @@ exports.getFeedbackList = async(req, res) => {
 
     // const feedback = await Feedback.find({}).sort({createdAt : +sort}).skip(+offset).limit(+limit);
     
-    const count = await Feedback.count({})
+    const count = await Feedback.countDocuments({})
     const feedback = await Feedback.aggregate([
       {
         $lookup: {
@@ -1012,19 +1061,172 @@ exports.getSingleFeedback = async (req , res) => {
 }
 
 
-exports.getNotification = async (req, res) => {
+exports.getSupportList = async(req, res) => {
   try {
-    const { limit = Number.MAX_SAFE_INTEGER, offset = 0 } = req.body;
+    const {limit = 10 , offset = 0 , sort = -1 } = req.query;
 
-    const count = await Notification.count({
-      is_admin : true ,
+    // const feedback = await Feedback.find({}).sort({createdAt : +sort}).skip(+offset).limit(+limit);
+    
+    const count = await Support.countDocuments({})
+    const feedback = await Support.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          let : { user_id : "$user_id"},
+          pipeline : [
+            {
+              $match : {
+                $expr : {
+                  $eq : ["$_id" , "$$user_id"]
+                }
+              }
+            },
+            {
+              $project : {
+                first_name : 1,
+                last_name : 1,
+                full_name : 1,
+                email : 1
+              }
+            }
+          ],
+          as: "user",
+        },
+      },
+      {
+        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $sort : {
+          createdAt : +sort
+        }
+      },
+      {
+        $skip : +offset
+      },
+      {
+        $limit : +limit
+      }
+    ])
+
+    res.json({data : feedback ,count, code : 200 })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+exports.getSingleSupport = async (req , res) => {
+  try {
+    const id = req.params.id;
+
+    // const feedback = await Feedback.findById(id)
+    const feedback = await Support.aggregate([
+      {
+        $match : {
+          _id : mongoose.Types.ObjectId(id)
+        }
+      },
+     {
+        $lookup: {
+          from: "users",
+          let : { user_id : "$user_id"},
+          pipeline : [
+            {
+              $match : {
+                $expr : {
+                  $eq : ["$_id" , "$$user_id"]
+                }
+              }
+            },
+            {
+              $project : {
+                first_name : 1,
+                last_name : 1,
+                full_name : 1,
+                email : 1
+              }
+            }
+          ],
+          as: "user",
+        },
+      },
+      {
+        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+      },
+    ])
+    
+    res.json({data : feedback[0] , code : 200})
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+
+exports.reply = async (req ,res) => {
+  try {
+    const {support_id , reply} = req.body;
+    const locale = req.getLocale()
+
+    const support = await Support.findById(support_id);
+    if(!support) return  utils.handleError(res, {message : "Question not found" , code : 404});
+
+    const user = await User.findById(support.user_id);
+    if(!user) return  utils.handleError(res, {message : "User not found" , code : 404});
+
+    // if(support.replied === true) return  utils.handleError(res, {message : "User not found" , code : 404});
+
+    support.reply = reply ;
+    support.replied = true;
+    support.save()
+
+    const emailData = {
+      email : user.email,
+      full_name: user.full_name,
+      question : support.message,
+      reply  : reply
+    }
+
+    console.log("emailData",emailData)
+    const item = await emailer.sendReplyEmail(locale, emailData, 'support-reply');
+    
+
+
+    return res.status(200).json({
+      code: 200,
+      message: item,
     });
+
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.getNotification = async (req, res) => {
+  
+  try {
+    const { limit = Number.MAX_SAFE_INTEGER, offset = 0 , search = "" } = req.query;
+
+    const condition = {
+      is_admin : true ,
+    }
+
+    if(search){
+      condition["$or"] = [
+        {  title : { $regex: new RegExp(search, 'i') } },
+        {  body : { $regex: new RegExp(search, 'i') } },
+        ]
+    }
+
+    
+    const count = await Notification.countDocuments(condition);
+
+    console.log("condition",condition)
 
     const notification = await Notification.aggregate([
       {
-        $match: {
-          is_admin : true ,
-        },
+        $match: condition
       },
       {
         $lookup: {
@@ -1068,6 +1270,367 @@ exports.getNotification = async (req, res) => {
   }
 };
 
+
+exports.deleteNotification = async (req, res) => {
+  try {
+    const ids = req.body.ids;
+
+    const convertedToObjectIds = ids.map(element => mongoose.Types.ObjectId(element))
+
+    const deleteNotification = await Notification.deleteMany({_id : {$in : convertedToObjectIds}})
+    
+    res.json({message : "Selected notification are deleted successfully" , code : 200})
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.deleteAdminNotification = async (req, res) => {
+  try {
+    const ids = req.body.ids;
+
+    const convertedToObjectIds = ids.map(element => mongoose.Types.ObjectId(element))
+
+    const deleteNotification = await NotificationByAdmin.deleteMany({_id : {$in : convertedToObjectIds}})
+    
+    res.json({message : "Selected notification are deleted successfully" , code : 200})
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+
+
+
+
+exports.deletePersonalCardHolders = async (req , res) => {
+  try {
+
+    const user_id = req.params.user_id;
+
+    await User.deleteOne({_id :  mongoose.Types.ObjectId(user_id)});
+    await CardDetials.deleteOne({owner_id : mongoose.Types.ObjectId(user_id)})
+
+    res.json({message : "Account is deleted successfully" , code : 200});
+    
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+exports.deleteCompany = async (req , res) => {
+  try {
+
+    const company_id = req.params.company_id;
+    console.log("company_id",company_id)
+
+    await Company.deleteOne({_id : mongoose.Types.ObjectId(company_id)})
+    await CardDetials.deleteOne({company_id : mongoose.Types.ObjectId(company_id)})
+
+    res.json({message : "Company and all related Card are deleted successfully" , code : 200});
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+
+
+
+exports.sendNotification = async (req , res) => {
+  try {
+    const admin_id = req.user._id;
+    const {sent_to , title , body } = req.body;
+
+    const user_type = []
+
+    if(sent_to.includes("personal")){
+      user_type.push("personal")
+    }
+
+    if(sent_to.includes("corporate")){
+      user_type.push("corporate")
+    }
+
+    const users  = await User.aggregate([
+      {
+        $match :{
+          user_type : {$in : user_type}
+        }
+      },
+      {
+        $lookup : {
+          from :"fcmdevices",
+          localField : "_id",
+          foreignField : "user_id",
+          as : "device_token"
+        }
+      },
+      {
+        $unwind: {
+          path: "$device_token",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ])
+
+    const device_tokens = [];
+
+    const notificationToCreate = []
+
+    for (let index = 0; index < users.length; index++) {
+
+        const element = users[index];
+        const notificationData = {
+          sender_id : admin_id,
+          receiver_id : element._id,
+          type : "by_admin",
+          title : title,
+          body : body
+        }
+
+        notificationToCreate.push(notificationData);
+
+        if(element?.device_token){
+          device_tokens.push(element?.device_token?.token)
+        }
+
+    }
+
+    if(sent_to.includes("company")){
+
+      const companies  = await Company.aggregate([
+        {
+          $lookup : {
+            from :"fcmdevices",
+            localField : "_id",
+            foreignField : "user_id",
+            as : "device_token"
+          }
+        },
+        {
+          $unwind: {
+            path: "$device_token",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+      ])
+  
+      for (let index = 0; index < companies.length; index++) {
+
+        const element = companies[index];
+        const notificationData = {
+          sender_id : admin_id,
+          receiver_id : element._id,
+          type : "by_admin",
+          title : title,
+          body : body
+        }
+
+        notificationToCreate.push(notificationData);
+
+        if(element?.device_token){
+          device_tokens.push(element?.device_token?.token)
+        }
+
+    }
+
+    }
+
+
+    const notificaitons = await Notification.insertMany(notificationToCreate);
+    console.log("notificaitons",notificaitons.length)
+
+    const dataForAdmin = {
+      sent_to,
+      title,
+      body
+    }
+
+    const notificationByAdmin = new NotificationByAdmin(dataForAdmin);
+    console.log("notificationByAdmin",notificationByAdmin)
+    await notificationByAdmin.save()
+
+
+    //todo push notification
+
+    utils.sendPushNotification(  device_tokens,
+      title,
+      body)
+
+    res.json({message : "Notification sent successfully" , code : 200})
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+
+exports.getAdminNotification = async (req , res) => {
+
+  try {
+    
+    const { limit = Number.MAX_SAFE_INTEGER, offset = 0 , search = "" } = req.query;
+    
+    const condition = {}
+
+    if(search){
+      condition["$or"] = [
+        {  title : { $regex: new RegExp(search, 'i') } },
+        {  body : { $regex: new RegExp(search, 'i') } },
+        ]
+    }
+
+
+    const count = await NotificationByAdmin.countDocuments(condition);
+
+
+    console.log("condition",condition)
+
+    const notification = await NotificationByAdmin.aggregate([
+      {
+        $match: condition
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: +offset,
+      },
+      {
+        $limit: +limit,
+      },
+    ]);
+
+    res.json({ data: notification, count, code: 200 });
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+
+}
+
+
+
+exports.exportCorporateUser = async (req ,res) => {
+  try {
+    const {company_id, sort , start_date , end_date} = req.query;
+
+    const condition = {
+      card_type : "corporate"
+    };
+
+    if(company_id !== "all"){
+      condition["company_id"] = mongoose.Types.ObjectId(company_id);
+    }
+
+    if(start_date && end_date){
+      condition["users.createdAt"] = {$gte : new Date(start_date) , $lt : new Date(end_date)}
+    }
+
+    // const users = await CardDetials.aggregate([
+    //   {
+    //     $lookup: {
+    //       from: "users",
+    //       localField: "owner_id",
+    //       foreignField: "_id",
+    //       as: "users",
+    //     },
+    //   },
+    //   {
+    //     $unwind: {
+    //       path: "$users",
+    //       preserveNullAndEmptyArrays: true,
+    //     },
+    //   },
+    //   {
+    //     $match : condition
+    //   },
+    //   {
+    //     $sort : {
+    //       "user.createdAt" : +sort
+    //     }
+    //   },
+    // ])
+
+    const users = await CardDetials.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "owner_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match : condition
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "company_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields : {
+          'bio.business_name': '$company.company_name',
+          'card_color' :'$company.card_color',
+          'text_color' : '$company.text_color',
+          "business_logo" : '$company.business_logo',
+          "address" : '$company.address',
+          "contact_details.website" : '$company.contact_details.website',
+        }
+      },
+      {
+        $sort : {
+          "users.createdAt" : +sort
+        }
+      },
+      {
+        $project : {
+          "users.password" : 0,
+          "users.confirm_password" : 0,
+        }
+      }
+    ])
+
+    res.json({data : users , code : 200})
+    
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+
+exports.companyList = async (req , res) => {
+  try {
+
+    const companies = await Company.find({} , {company_name : 1})
+    
+    res.json({data : companies , code : 200})
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
 
 
 exports.addNewKey = async (req, res) => {

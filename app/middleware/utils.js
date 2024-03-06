@@ -4,7 +4,7 @@ const { validationResult } = require('express-validator')
 const { POST } = require('./axios') 
 const jwt = require('jsonwebtoken')
 const auth = require('../middleware/auth')
-
+const { admin } = require("./../../config/firebase");
 /**
  * Removes extension from file
  * @param {string} file - filename
@@ -246,3 +246,58 @@ exports.titleToolBoxAuth = async (req, res, next) => {
 }
 
 
+
+/**
+ * Notification
+ */
+
+exports.sendPushNotification = async (
+  tokens,
+  title,
+  body,
+) => {
+  try {
+
+    const notification = {
+      title: title,
+      body: body,
+      // image: notificationData.icon
+      //   ? notificationData.icon
+      //   : `${process.env.NOTIFICATION_ICONS_PATH}/default.ico`,
+    };
+
+    var message = {
+      notification: notification,
+      tokens: tokens,
+    };
+
+
+    console.log("final message", message);
+
+
+    admin
+      .messaging()
+      .sendMulticast(message)
+      .then((response) => {
+        console.log("response", response.responses);
+        if (response.failureCount > 0) {
+          const failedTokens = [];
+          response.responses.forEach((resp, idx) => {
+            // console.log("resp-->", resp);
+            // console.log("idx-->", idx);
+            if (!resp.success) {
+              failedTokens.push(tokens[idx]);
+            }
+          });
+          console.log("List of tokens that caused failures: " + failedTokens);
+        }
+      })
+      .catch((error) => {
+        console.log("Error sending message:", error);
+      });
+    
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
+};

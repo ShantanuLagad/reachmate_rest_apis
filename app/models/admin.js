@@ -111,9 +111,12 @@ AdminSchema.pre('save', function(next) {
 })
 
 AdminSchema.methods.comparePassword = function(passwordAttempt, cb) {
+  console.log(passwordAttempt)
+  console.log(this.password)
   bcrypt.compare(passwordAttempt, this.password, (err, isMatch) =>
     err ? cb(err) : cb(null, isMatch)
   )
 }
+
 AdminSchema.plugin(mongoosePaginate)
 module.exports = mongoose.model('Admin', AdminSchema)

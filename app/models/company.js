@@ -94,6 +94,10 @@ const CompanySchema = new mongoose.Schema(
             default :""
         }
     },
+    is_profile_completed : {
+      type : Boolean,
+      default : false
+    }
 },
 {
     versionKey: false,

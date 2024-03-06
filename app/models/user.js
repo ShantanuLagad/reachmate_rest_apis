@@ -60,6 +60,11 @@ const UserSchema = new mongoose.Schema(
       type : Boolean,
       default : true,
     },
+    status : {
+      type : String,
+      enum : ["active" , "inactive"],
+      default : "active"
+    },
     verification: {
       type: String
     },

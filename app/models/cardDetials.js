@@ -30,6 +30,10 @@ const CardDetials = new mongoose.Schema(
         type :[String],
         default :""
     },
+    business_and_logo_status : {
+        type : String,
+        enum : ["both" , "name" , "logo"],
+    },
     contact_details : {
         country_code : {
             type : String,

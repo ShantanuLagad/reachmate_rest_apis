@@ -270,7 +270,7 @@ console.log("user",user)
       }
 
 
-console.log("user.url",user.url)
+      console.log("user.url",user.url)
       app.mailer.send(
         `${locale}/${template}`,
         {
@@ -302,4 +302,93 @@ console.log("user.url",user.url)
 
 
 },
+
+async sendReplyEmail(locale, user, template) {
+
+  console.log("user",user)
+    return new Promise(async (resolve, reject) => {
+  
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+  
+        console.log("Inside emailer");
+        if (!user.full_name) {
+          user.full_name = "user";
+        }
+  
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Reply from - ${process.env.APP_NAME}`,
+            full_name: capitalizeFirstLetter(user.full_name),
+            question : user.question,
+            reply  : user.reply,
+            website_url: process.env.PRODUCTION_FRONTEND_URL,
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Reply has been sent");
+              resolve("Reply has been sent");
+            }
+  
+          }
+        );
+  
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+  
+    })
+  },
+
+
+  async sendAccountCreationEmail(locale, user, template) {
+
+    console.log("user",user)
+      return new Promise(async (resolve, reject) => {
+    
+        try {
+          user = JSON.parse(JSON.stringify(user));
+          console.log(template);
+    
+          console.log("Inside emailer");
+          if (!user.company_name) {
+            user.company_name = "User";
+          }
+    
+          app.mailer.send(
+            `${locale}/${template}`,
+            {
+              to: user.email,
+              subject: `Company Account Credentials - ${process.env.APP_NAME}`,
+              company_name: capitalizeFirstLetter(user.company_name),
+              password : user.password,
+              email : user.email,
+              access_code  : user.access_code,
+              website_url: process.env.PRODUCTION_COMPANY_URL,
+            },
+            function (err) {
+              if (err) {
+                console.log("There was an error sending the email" + err);
+                reject(buildErrObject(422, err.message));
+              } else {
+                console.log("Email has been sent");
+                resolve("Email has been sent");
+              }
+    
+            }
+          );
+    
+        } catch (err) {
+          reject(buildErrObject(422, err.message));
+        }
+    
+      })
+    },
+
 }

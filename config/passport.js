@@ -1,6 +1,7 @@
 const passport = require('passport')
 const User = require('../app/models/user')
 const Admin = require('../app/models/admin')
+const Company = require("../app/models/company")
 const auth = require('../app/middleware/auth')
 const JwtStrategy = require('passport-jwt').Strategy
 
@@ -40,8 +41,17 @@ const jwtOptions = {
 const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
 
   console.log("payload" , payload)
+
   if(payload.data.role == "admin"){
     Admin.findById(payload.data._id, (err, user) => {
+      if (err) {
+        return done(err, false)
+      }
+      return !user ? done(null, false) : done(null, user)
+    })
+  }else if (payload.data.role == "company"){
+    console.log("if else if")
+    Company.findById(payload.data._id, (err, user) => {
       if (err) {
         return done(err, false)
       }
@@ -52,8 +62,6 @@ const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
       if (err) {
         return done(err, false)
       }
-      
-      console.log("user",user)
       return !user ? done(null, false) : done(null, user)
     })
   }

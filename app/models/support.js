@@ -12,6 +12,13 @@ const supportSchema = new mongoose.Schema(
       message: {
         type: String,
         required : true,
+      },
+      reply : {
+        type: String
+      },
+      replied : {
+        type : Boolean,
+        default : false
       }
     },
     {

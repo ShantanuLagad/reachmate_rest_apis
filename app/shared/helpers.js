@@ -3,18 +3,16 @@ var mongoose = require("mongoose");
 const querystring = require('querystring');
 
 const AWS = require("aws-sdk");
-const ACCESS_KEY ="AKIAZJDEDGCCRE7GP7TP"; //process.env.ACCESS_KEY
-const SECRET_KEY ="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";//process.env.SECRET_KEY
-// const Bucket ="uatgetreat";  //process.env.Bucket
-const REGION ="ap-south-1";  //process.env.REGION
+const ACCESS_KEY = process.env.ACCESS_KEY
+const SECRET_KEY = process.env.SECRET_KEY
+const Bucket = process.env.BUCKET
+const REGION = process.env.REGION
 
-
-
-// var bucket = new AWS.S3({
-//   accessKeyId: ACCESS_KEY,
-//   secretAccessKey: SECRET_KEY,
-//   region: REGION,
-// });
+var bucket = new AWS.S3({
+  accessKeyId: ACCESS_KEY,
+  secretAccessKey: SECRET_KEY,
+  region: REGION,
+});
 
 module.exports = {
 
@@ -41,23 +39,50 @@ module.exports = {
    * @param {Object} object - binary file with path
   */
 
-  async uploadFile(object) {
-    console.log("object" , object)
-    return new Promise((resolve, reject) => {
-      var obj = object.file;
-      var name = Date.now() + obj.name;
-      obj.mv(object.path + "/" + name, function (err) {
-        if (err) {
-          reject(buildErrObject(422, err.message));
-        }
-        resolve(name);
-      });
+  // async uploadFile(object) {
+  //   console.log("object" , object)
+  //   return new Promise((resolve, reject) => {
+  //     var obj = object.file;
+  //     var name = Date.now() + obj.name;
+  //     obj.mv(object.path + "/" + name, function (err) {
+  //       if (err) {
+  //         reject(buildErrObject(422, err.message));
+  //       }
+  //       resolve(name);
+  //     });
+  //   });
+  // },
+
+
+
+// S3 BUCKET
+async uploadFile(object){
+  return new Promise(async (resolve, reject) => {
+    var file = object.file;
+    console.log("OBJ in upload file is here---", file);
+
+    var filename = Date.now() + file.name;
+    const params = {
+      Bucket: Bucket,
+      Key: object.path + "/" + filename,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+    return bucket.upload(params, function (err, data) {
+      if (err) {
+        console.log("----err----",err);
+        reject(buildErrObject(422, err.message));
+      }
+      console.log("data",data)
+      resolve(filename);
     });
-  },
+  });
+}, 
+
 
 
 //S3 BUCKET
-/* async uploadFile(object){
+async uploadFilefromPath(object){
   return new Promise(async (resolve, reject) => {
     var file = object.image_data;
     console.log("OBJ in upload file is here---", file);
@@ -77,7 +102,7 @@ module.exports = {
       resolve({ success: true, data: data });
     });
   });
-}, */
+}, 
 
   /**
    * capitalize first letter of string

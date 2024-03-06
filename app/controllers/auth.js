@@ -734,6 +734,12 @@ exports.verifyotpemailNew = async (req, res) => {
     // if (!user) {
     //   return res.status(404).json({ errors: { msg: 'User not found.' } });
     // }
+    const doesEmailExist = await UserModel.findOne({ email: email });
+
+    if (doesEmailExist) {
+      return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+    }
+
     data.full_name = `${data.first_name} ${data.last_name}`
     const otpData = await OtpModel.findOne({ email: email, otp: otp }).sort({createdAt:-1});
     if (!otpData) {
@@ -882,6 +888,7 @@ exports.socialLogin = async (req, res) => {
     
     if (!userExists && !doesSocialIdExists) {
       const item = await registerUser(data);
+      console.log("item",item)
       const userInfo = setUserInfo(item);
       const response = returnRegisterToken(item, userInfo);
 
@@ -898,6 +905,7 @@ exports.socialLogin = async (req, res) => {
       );
     }
   } catch (error) {
+    console.log(error)
     utils.handleError(res, error);
   }
 };

@@ -3,6 +3,7 @@ const uuid = require('uuid')
 const {
   getUserIdFromToken,
   uploadFile,
+  uploadFilefromPath,
   capitalizeFirstLetter,
   validateFileSize,
   objectToQueryString,
@@ -25,8 +26,11 @@ const SharedCards = require("../models/sharedCards")
 const FCMDevice = require("../models/fcm_devices");
 const Notification = require("../models/notification");
 const { getCode, getName } = require('country-list');
-
+const nodemailer = require('nodemailer');
+const XLSX = require('xlsx');
 var mongoose = require("mongoose");
+const ejs = require("ejs");
+
 const {
 
   getItemThroughId,
@@ -87,6 +91,45 @@ function extractDomainFromEmail(email) {
   return domain;
 }
 
+
+function sendInvoiceEmail(mailOptions) {
+
+  const transporter = nodemailer.createTransport({
+  from: "nodeteamemail@gmail.com",
+  host: "smtp.gmail.com", 
+  secureConnection: true, 
+  port: 465, 
+  transportMethod: "SMTP", 
+  auth: {
+    user: process.env.EMAIL_ID,
+    pass: process.env.EMAIL_PASS,
+  },
+  });
+  
+
+  return new Promise(async (resolve, reject) => {
+    try {
+      var ejsFile = "./views/invoiceEmail.ejs";
+
+      const emailBody = await ejs.renderFile(ejsFile, mailOptions);
+
+      mailOptions.html = emailBody;
+
+      transporter.sendMail(mailOptions, function (err, message) {
+        if (err) {
+          console.error("There was an error sending the email", err);
+          reject(err);
+        } else {
+          console.log("Mail sent");
+          resolve();
+        }
+      });
+    } catch (error) {
+      console.error("Error in sending invoice email:", error);
+      reject(error);
+    }
+  });
+}
 
 /********************
  * Public functions *
@@ -168,6 +211,8 @@ exports.createItem = async (req, res) => {
  * @param {Object} req - request object
  * @param {Object} res - response object
  */
+
+
 exports.deleteItem = async (req, res) => {
   try {
     req = matchedData(req)
@@ -188,7 +233,6 @@ exports.uploadUserMedia = async (req, res) => {
       });
     }
 
-    console.log("env", process.env.STORAGE_PATH)
     let media = await uploadFile({
       file: req.files.media,
       path: `${process.env.STORAGE_PATH}/${req.body.path}`,
@@ -300,7 +344,6 @@ exports.changePassword = async (req, res) => {
       
     } else {
 
-   
 
     // Update the password with the new one
     user.password = newPassword;
@@ -524,6 +567,7 @@ exports.addPersonalCard = async ( req , res) => {
       business_logo :data.business_logo,
       card_color :data.card_color,
       text_color:data.text_color,
+      business_and_logo_status : data.business_and_logo_status,
       bio: {
         first_name : data.bio.first_name,
         last_name : data.bio.last_name,
@@ -601,6 +645,7 @@ exports.addCorporateCard = async (req , res) => {
       card_type : 'corporate',
       company_id : company_id,
       card_color :data.card_color,
+      business_and_logo_status : data.business_and_logo_status,
       bio: {
         first_name : data.bio.first_name,
         last_name : data.bio.last_name,
@@ -1156,6 +1201,157 @@ exports.getNotification = async (req, res) => {
     utils.handleError(res, error)
   }
 };
+
+
+exports.exportCardToExcel = async (req , res) => {
+  try {
+    const user_id = req.user._id;
+    const email = req.user.email;
+
+
+    const query = {
+      user_id: mongoose.Types.ObjectId(user_id)
+    };
+
+    const sharedCards = await SharedCards.aggregate([
+      {
+        $match : query
+      },
+      {
+        $lookup: {
+          from: "card_details", // Collection name for CardDetails
+          localField: "card_id",
+          foreignField: "_id",
+          as: "cardDetails"
+        }
+      },
+      {
+        $unwind: "$cardDetails"
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "cardDetails.company_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields : {
+          'cardDetails.bio.business_name': {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.company_name',
+              else: '$cardDetails.bio.business_name'
+            }
+          },
+          'cardDetails.card_color' : {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.card_color',
+              else: '$cardDetails.card_color'
+            }
+          },
+          'cardDetails.text_color' : {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.text_color',
+              else: '$cardDetails.text_color'
+            }
+          },
+          "cardDetails.business_logo" :  {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.business_logo',
+              else: '$cardDetails.business_logo'
+            }
+          },
+          "cardDetails.address" :  {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.address',
+              else: '$cardDetails.address'
+            }
+          },
+          "cardDetails.contact_details.website" : {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$cardDetails.contact_details.website'
+            }
+          },
+        }
+      },
+      {
+        $project: {
+          _id: 0, // Exclude the default _id field
+          "First Name"  : "$cardDetails.bio.first_name",
+          "Last Name"  : "$cardDetails.bio.last_name",
+          "Business Name" : "$cardDetails.bio.business_name",
+          "Business Logo" : {$concat : [process.env.STORAGE_PATH_HTTP , "/" , "$cardDetails.business_logo"]},
+          "Phone Number" : "$cardDetails.contact_details.mobile_number",
+          "Office Landline" : "$cardDetails.contact_details.office_landline",
+          "Designation" : "$cardDetails.bio.designation",
+          "Email" : "$cardDetails.bio.email",
+          "Address Line No 1" : "$cardDetails.address.address_line_1",
+          "Address Line No 2" : "$cardDetails.address.address_line_2",
+          "City" : "$cardDetails.address.city",
+          "State" :"$cardDetails.address.state",
+          "Country" : "$cardDetails.address.country",
+          "Pin Code" : "$cardDetails.address.pin_code",
+          "Instagram" : "$cardDetails.social_links.instagram",
+          "Linkedin" : "$cardDetails.social_links.linkedin",
+          "Youtube" : "$cardDetails.social_links.youtube",
+          "X" : "$cardDetails.social_links.x"
+        }
+      }
+    ]);
+    
+    // Convert JSON to Excel
+    const ws = XLSX.utils.json_to_sheet(sharedCards);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
+    
+    // Specify the server folder path and Excel file name
+    const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
+    const excelFileName = Date.now() + 'cards.xlsx';
+    const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
+    
+    // Save the Excel file to the server folder
+    XLSX.writeFile(wb, excelFilePath, { bookSST: true });
+
+
+    // const media = await uploadFilefromPath(excelFilePath)
+    
+    const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
+
+    console.log(email)
+    let mailOptions = {
+      to: email,
+      subject: `Exported Card from ${process.env.APP_NAME}`,
+      name : req.user.full_name , 
+      attachments: [],
+    };
+
+    mailOptions.attachments.push({
+      filename: `business_cards.xlsx`,
+      path: path,
+    });
+
+    await sendInvoiceEmail(mailOptions);
+
+    res.json({data : "Mail send to you email with excel sheet", code : 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
 
 exports.seenNotification = async (req, res) => {
   try {

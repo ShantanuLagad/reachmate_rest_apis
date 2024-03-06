@@ -48,6 +48,13 @@ router.post(
 )
 
 router.post(
+  '/changePassword',
+  trimRequest.all,
+  requireAuth,
+  controller.changePassword
+)
+
+router.post(
   "/uploadAdminMedia",
   trimRequest.all,
   // requireAuth,
@@ -165,10 +172,90 @@ router.get(
 )
 
 router.get(
+  "/getSupportList",
+  requireAuth,
+  trimRequest.all,
+  controller.getSupportList
+)
+
+router.get(
+  "/getSingleSupport/:id",
+  requireAuth,
+  trimRequest.all,
+  controller.getSingleSupport
+)
+
+router.get(
   "/getNotification",
   requireAuth,
   trimRequest.all,
   controller.getNotification
+)
+
+router.post(
+  "/deleteNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteNotification
+)
+
+router.post(
+  "/deleteAdminNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteAdminNotification
+)
+
+
+router.delete(
+  "/deletePersonalCardHolders/:user_id",
+  requireAuth,
+  trimRequest.all,
+  controller.deletePersonalCardHolders
+)
+
+router.delete(
+  "/deleteCompany/:company_id",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteCompany
+)
+
+
+router.post(
+  "/reply",
+  requireAuth,
+  trimRequest.all,
+  controller.reply
+)
+
+router.post(
+  "/sendNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.sendNotification
+)
+
+router.get(
+  "/getAdminNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.getAdminNotification
+)
+
+
+router.get(
+  "/exportCorporateUser",
+  requireAuth,
+  trimRequest.all,
+  controller.exportCorporateUser
+)
+
+router.get(
+  "/companyList",
+  requireAuth,
+  trimRequest.all,
+  controller.companyList
 )
 
 

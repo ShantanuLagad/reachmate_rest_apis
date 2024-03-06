@@ -6,18 +6,17 @@ const NotificationSchema = new mongoose.Schema(
     {
         sender_id: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
         },
         receiver_id: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
         },
         type:{
             type: String,
             enum : [
                 "user",
                 "company",
-                "card_shared"
+                "card_shared",
+                "by_admin"
             ],
             required: true,
         },

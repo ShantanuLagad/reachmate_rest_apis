@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const algorithm = 'aes-256-ecb'
 const secret = process.env.JWT_SECRET
+const utils = require("./utils")
 
 module.exports = {
   /**
@@ -10,10 +11,13 @@ module.exports = {
    * @returns {boolean}
    */
   async checkPassword(password, user) {
+    console.log("password",password)
+    console.log("user",user)
     return new Promise((resolve, reject) => {
       user.comparePassword(password, (err, isMatch) => {
+        console.log("err",err)
         if (err) {
-          reject(this.buildErrObject(422, err.message))
+          reject(utils.buildErrObject(422, err.message))
         }
         if (!isMatch) {
           resolve(false)
@@ -22,6 +26,7 @@ module.exports = {
       })
     })
   },
+
 
   /**
    * Encrypts text

@@ -269,4 +269,10 @@ router.post(
   controller.getNotificationSetting
 )
 
+router.post(
+  "/exportCardToExcel",
+  requireAuth,
+  trimRequest.all,
+  controller.exportCardToExcel
+)
 module.exports = router

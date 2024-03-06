@@ -85,8 +85,8 @@ if (process.env.NODE_ENV == 'development') {
     app.listen(app.get('port'))
   } else {
     var options = {
-      key: fs.readFileSync('/etc/letsencrypt/live/betazone.promaticstechnologies.com/privkey.pem', 'utf8'),
-      cert: fs.readFileSync('/etc/letsencrypt/live/betazone.promaticstechnologies.com/fullchain.pem', 'utf8')
+      key: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/privkey.pem', 'utf8'),
+      cert: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/fullchain.pem', 'utf8')
     };
 
     const httpsServer = https.createServer(options, app)
