@@ -163,3 +163,34 @@ exports.deleteItem = [
     validationResult(req, res, next)
   }
 ]
+
+
+exports.deleteItem = [
+  check('id')
+    .exists()
+    .withMessage('MISSING')
+    .not()
+    .isEmpty()
+    .withMessage('IS_EMPTY'),
+  (req, res, next) => {
+    validationResult(req, res, next)
+  }
+]
+
+exports.addCorporateCard = [
+  check('company_id')
+    .exists()
+    .withMessage('MISSING')
+    .not()
+    .isEmpty()
+    .withMessage('IS_EMPTY'),
+    // check('paid_by_company')
+    // .exists()
+    // .withMessage('MISSING')
+    // .not()
+    // .isEmpty()
+    // .withMessage('IS_EMPTY'),
+  (req, res, next) => {
+    validationResult(req, res, next)
+  }
+]

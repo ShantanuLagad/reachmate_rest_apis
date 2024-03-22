@@ -39,19 +39,19 @@ module.exports = {
    * @param {Object} object - binary file with path
   */
 
-  // async uploadFile(object) {
-  //   console.log("object" , object)
-  //   return new Promise((resolve, reject) => {
-  //     var obj = object.file;
-  //     var name = Date.now() + obj.name;
-  //     obj.mv(object.path + "/" + name, function (err) {
-  //       if (err) {
-  //         reject(buildErrObject(422, err.message));
-  //       }
-  //       resolve(name);
-  //     });
-  //   });
-  // },
+  async uploadFileToLocal(object) {
+    console.log("object" , object)
+    return new Promise((resolve, reject) => {
+      var obj = object.file;
+      var name = Date.now() + obj.name;
+      obj.mv(object.path + "/" + name, function (err) {
+        if (err) {
+          reject(buildErrObject(422, err.message));
+        }
+        resolve(name);
+      });
+    });
+  },
 
 
 

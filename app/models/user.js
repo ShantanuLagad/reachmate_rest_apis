@@ -68,7 +68,9 @@ const UserSchema = new mongoose.Schema(
     verification: {
       type: String
     },
-  
+    customer_id : {
+      type : String
+    }
   },
   {
     versionKey: false,

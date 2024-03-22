@@ -97,7 +97,130 @@ router.get(
   controller.getStates
 )
 
+router.patch(
+  "/completeProfile",
+  requireAuth,
+  trimRequest.all,
+  controller.completeProfile
+)
 
 
+router.patch(
+  "/updateAccount",
+  requireAuth,
+  trimRequest.all,
+  controller.updateAccount
+)
+
+
+router.get(
+  "/dashboardData",
+  requireAuth,
+  trimRequest.all,
+  controller.dashboardData
+)
+
+router.get(
+  "/dashboardData",
+  requireAuth,
+  trimRequest.all,
+  controller.dashboardData
+)
+
+
+router.get(
+  "/getNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.getNotification
+)
+
+router.delete(
+  "/deleteNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteNotification
+)
+
+router.delete(
+  "/deleteAllNotification",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteAllNotification
+)
+
+
+router.get(
+  "/corporateCardHolder",
+  requireAuth,
+  trimRequest.all,
+  controller.corporateCardHolder
+)
+
+router.delete(
+  "/deleteCorporateCardHolders",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteCorporateCardHolders
+)
+
+
+router.post(
+  "/addEmailInPiadByCompany",
+  requireAuth,
+  trimRequest.all,
+  controller.addEmailInPiadByCompany
+)
+
+router.post(
+  "/bulkUploadEmail",
+  requireAuth,
+  trimRequest.all,
+  controller.bulkUploadEmail
+)
+
+router.delete(
+  "/removeEmailfromPiadByCompany",
+  requireAuth,
+  trimRequest.all,
+  controller.removeEmailfromPiadByCompany
+)
+
+
+router.get(
+  "/getListOfPaidByComapny",
+  requireAuth,
+  trimRequest.all,
+  controller.getListOfPaidByComapny
+)
+
+router.get(
+  "/transactionHistory",
+  requireAuth,
+  trimRequest.all,
+  controller.transactionHistory
+)
+
+router.get(
+  "/plansList",
+  requireAuth,
+  trimRequest.all,
+  controller.plansList
+)
+
+router.get(
+  "/activeSubcription",
+  requireAuth,
+  trimRequest.all,
+  controller.activeSubscription
+)
+
+
+router.post(
+  "/createSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.createSubscription
+)
 
 module.exports = router

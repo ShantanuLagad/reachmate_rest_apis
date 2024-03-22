@@ -136,8 +136,16 @@ router.post(
 )
 
 router.post(
+  "/isPaidByCompany",
+  requireAuth,
+  trimRequest.all,
+  controller.isPaidByCompany
+)
+
+router.post(
   '/addCorporateCard',
   requireAuth,
+  validate.addCorporateCard,
   trimRequest.all,
   controller.addCorporateCard
 )
@@ -188,7 +196,6 @@ router.post(
 )
 router.post(
   '/getFAQ',
-  requireAuth,
   trimRequest.all,
   controller.getFAQ
 )
@@ -275,4 +282,45 @@ router.post(
   trimRequest.all,
   controller.exportCardToExcel
 )
+
+router.post(
+  "/isSubscriptionActive",
+  requireAuth,
+  trimRequest.all,
+  controller.isSubscriptionActive
+)
+
+router.post(
+  "/removeLogo",
+  requireAuth,
+  trimRequest.all,
+  controller.removeLogo
+)
+
+router.post(
+  "/createSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.createSubscription
+)
+
+router.post("/webhook", controller.webhook)
+
+
+router.post(
+  "/plansList",
+  requireAuth,
+  trimRequest.all,
+  controller.plansList
+)
+
+
+router.post(
+  "/saveCard",
+  requireAuth,
+  trimRequest.all,
+  controller.saveCard
+)
+
+
 module.exports = router

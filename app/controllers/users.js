@@ -22,15 +22,26 @@ const Support = require('../models/support')
 const { Country, State, City } = require('country-state-city');
 const Company = require("../models/company")
 const CardDetials = require('../models/cardDetials')
+const SavedCard = require("../models/saved_card")
 const SharedCards = require("../models/sharedCards")
 const FCMDevice = require("../models/fcm_devices");
 const Notification = require("../models/notification");
+const Subscription = require("../models/subscription");
+const PaidByCompany = require("../models/paid_by_company")
 const { getCode, getName } = require('country-list');
+const Transaction = require("../models/transaction");
 const nodemailer = require('nodemailer');
 const XLSX = require('xlsx');
 var mongoose = require("mongoose");
 const ejs = require("ejs");
-
+const Plan = require("../models/plan")
+const Razorpay = require('razorpay');
+const moment = require("moment")
+var instance = new Razorpay({
+  key_id: process.env.RAZORPAY_ID,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
+const crypto = require('crypto');
 const {
 
   getItemThroughId,
@@ -82,8 +93,8 @@ function extractDomainFromEmail(email) {
 
   // Check if the email has the correct format
   if (parts.length !== 2) {
-      console.error('Invalid email address format');
-      return null;
+    console.error('Invalid email address format');
+    return null;
   }
 
   // Extract and return the domain part
@@ -95,17 +106,17 @@ function extractDomainFromEmail(email) {
 function sendInvoiceEmail(mailOptions) {
 
   const transporter = nodemailer.createTransport({
-  from: "nodeteamemail@gmail.com",
-  host: "smtp.gmail.com", 
-  secureConnection: true, 
-  port: 465, 
-  transportMethod: "SMTP", 
-  auth: {
-    user: process.env.EMAIL_ID,
-    pass: process.env.EMAIL_PASS,
-  },
+    from: "nodeteamemail@gmail.com",
+    host: "smtp.gmail.com",
+    secureConnection: true,
+    port: 465,
+    transportMethod: "SMTP",
+    auth: {
+      user: process.env.EMAIL_ID,
+      pass: process.env.EMAIL_PASS,
+    },
   });
-  
+
 
   return new Promise(async (resolve, reject) => {
     try {
@@ -130,6 +141,17 @@ function sendInvoiceEmail(mailOptions) {
     }
   });
 }
+
+
+async function checkSusbcriptionIsActive(user_id) {
+  const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+  if (!subcription) return false
+  if (!subcription.status === "created") return false
+  if (subcription.end_at < new Date()) return false
+  return true
+}
+
 
 /********************
  * Public functions *
@@ -254,14 +276,14 @@ exports.updateProfile = async (req, res) => {
   try {
     const data = req.body;
 
-    const user = await User.findOne({ email:data.email });
+    const user = await User.findOne({ email: data.email });
 
     if (!user) {
       return res.status(404).json({ message: 'Email does not exist.' });
     }
 
-    
-  
+
+
     await user.save();
 
     res.status(200).json({ message: 'Password change successfully.' });
@@ -311,7 +333,7 @@ exports.editCardDetails = async (req, res) => {
       await existingCard.save();
       res.json({ code: 200, message: "Card updated successfully" });
     } else {
-      
+
       res.json({ code: 404, message: "Card not found" });
     }
   } catch (error) {
@@ -340,62 +362,63 @@ exports.changePassword = async (req, res) => {
     // Validate the old password
     const isPasswordMatch = await auth.checkPassword(oldPassword, user)
     if (!isPasswordMatch) {
-        return res.status(401).json({ code: 401, message: "Old password is incorrect." });
-      
+      return res.status(401).json({ code: 401, message: "Old password is incorrect." });
+
     } else {
 
 
-    // Update the password with the new one
-    user.password = newPassword;
-    await user.save();
-    res.json({ code: 200, message: "Password changed successfully." });
+      // Update the password with the new one
+      user.password = newPassword;
+      await user.save();
+      res.json({ code: 200, message: "Password changed successfully." });
     }
 
-    
+
   } catch (error) {
     console.log("error occurred here in change password: ", error);
     utils.handleError(res, error);
   }
 };
- 
+
 exports.addSharedCard = async (req, res) => {
   try {
     const { card_id } = req.body;
-    const user_id = req.user._id; // Assuming user_id is obtained from authentication
+    const user_id = req.user._id;
 
-
+    const user1 = await User.findById(user_id);
     //chech the user have a card and get user card id
-    const userCard = await CardDetials.findOne({owner_id :user_id })
+    const userCard = await CardDetials.findOne({ owner_id: user_id })
     if (!userCard) {
-      return utils.handleError(res, {message : "Your card not found" , code : 404});
+      return utils.handleError(res, { message: "Your card not found", code: 404 });
     }
 
     const your_card_id = userCard._id;
 
     // Fetch card details to get the owner_id
     const carddetails = await getItemThroughId(CardDetials, card_id);
-    console.log("Card details are---",carddetails.data)
+    console.log("Card details are---", carddetails.data)
 
     if (!carddetails) {
-      return utils.handleError(res, {message : "Shared card not found" , code : 404});
+      return utils.handleError(res, { message: "Shared card not found", code: 404 });
     }
 
     const card_owner_id = carddetails.data.owner_id;
+    const user2 = await User.findById(card_owner_id);
 
     // Check if user is trying to add their own card
     if (user_id.equals(card_owner_id)) {
       return res.status(400).json({ code: 400, message: "You cannot add your own card." });
     }
 
-     // Check if shared card already exists
+    // Check if shared card already exists
     const existingSharedCard = await SharedCards.findOne({ card_id, user_id, card_owner_id });
 
-     if (existingSharedCard) {
-       return res.status(400).json({ code: 400, message: "Shared card already exists." });
-     }
+    if (existingSharedCard) {
+      return res.status(400).json({ code: 400, message: "Shared card already exists." });
+    }
 
     // Save shared card
-    
+
     const sharedCard = new SharedCards({
       card_id,
       user_id,
@@ -406,14 +429,55 @@ exports.addSharedCard = async (req, res) => {
 
 
     //share card to opposite side
-    
+
     const shareCardToOppositeSide = new SharedCards({
-      card_id : your_card_id,
-      user_id : card_owner_id ,
-      card_owner_id : user_id,
+      card_id: your_card_id,
+      user_id: card_owner_id,
+      card_owner_id: user_id,
     })
 
     await shareCardToOppositeSide.save();
+
+
+
+    const notificationUser1 = {
+      sender_id: card_owner_id,
+      receiver_id: user_id,
+      type: "card_shared",
+      title: "Business Card Shared",
+      body: `${carddetails?.bio?.full_name} has shared their business card`
+    }
+
+    const saveNotificationForUser1 = new Notification(notificationUser1)
+    await saveNotificationForUser1.save()
+
+
+    if (user1.notification) {
+      const device_token = await FCMDevice.findOne({ user_id: user1._id })
+      if (!device_token) return
+      utils.sendPushNotification(device_token.token, notificationUser1.title, notificationUser1.body)
+    }
+
+
+    const notificationUser2 = {
+      sender_id: user_id,
+      receiver_id: card_owner_id,
+      type: "card_shared",
+      title: "Business Card Shared",
+      body: `${userCard?.bio?.full_name} has shared their business card`
+    }
+
+    const saveNotificationForUser2 = new Notification(notificationUser2)
+    await saveNotificationForUser2.save()
+
+
+    if (user2.notification) {
+      const device_token = await FCMDevice.findOne({ user_id: user2._id })
+      if (!device_token) return
+      utils.sendPushNotification(device_token.token, notificationUser2.title, notificationUser2.body)
+    }
+
+
     res.json({ code: 200, message: "Shared card added successfully." });
   } catch (error) {
     console.log("error is---", error);
@@ -477,7 +541,7 @@ exports.getSharedCardsForUser = async (req, res) => {
         },
       },
       {
-        $addFields : {
+        $addFields: {
           'cardDetails.bio.business_name': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
@@ -485,35 +549,35 @@ exports.getSharedCardsForUser = async (req, res) => {
               else: '$cardDetails.bio.business_name'
             }
           },
-          'cardDetails.card_color' : {
+          'cardDetails.card_color': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.card_color',
               else: '$cardDetails.card_color'
             }
           },
-          'cardDetails.text_color' : {
+          'cardDetails.text_color': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.text_color',
               else: '$cardDetails.text_color'
             }
           },
-          "cardDetails.business_logo" :  {
+          "cardDetails.business_logo": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.business_logo',
               else: '$cardDetails.business_logo'
             }
           },
-          "cardDetails.address" :  {
+          "cardDetails.address": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.address',
               else: '$cardDetails.address'
             }
           },
-          "cardDetails.contact_details.website" : {
+          "cardDetails.contact_details.website": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.contact_details.website',
@@ -551,140 +615,181 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 /*******APIs by Gagan ends here*********/
 
-exports.addPersonalCard = async ( req , res) => {
+exports.addPersonalCard = async (req, res) => {
   try {
     const owner_id = req.user._id;
     // const owner_id = req.body.owner_id
 
-    const isCardExist = await CardDetials.findOne({owner_id : owner_id});
+    const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
 
-    if(isCardExist) return utils.handleError(res, {message : "Card already create" , code : 400})
-     
+    if (isCardExist) return utils.handleError(res, { message: "Card already create", code: 400 })
+
     const data = req.body;
     const card = {
       owner_id,
-      card_type : 'personal',
-      business_logo :data.business_logo,
-      card_color :data.card_color,
-      text_color:data.text_color,
-      business_and_logo_status : data.business_and_logo_status,
+      card_type: 'personal',
+      business_logo: data.business_logo,
+      card_color: data.card_color,
+      text_color: data.text_color,
+      business_and_logo_status: data.business_and_logo_status,
       bio: {
-        first_name : data.bio.first_name,
-        last_name : data.bio.last_name,
-        full_name : `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
-        business_name :  data.bio.business_name,
-        designation :data.bio.designation,
+        first_name: data.bio.first_name,
+        last_name: data.bio.last_name,
+        full_name: `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
+        business_name: data.bio.business_name,
+        designation: data.bio.designation,
       },
-      contact_details : {
-        country_code : data.contact_details.country_code,
-        mobile_number : data.contact_details.mobile_number,
-        office_landline : data.contact_details.office_landline,
-        email :   data.contact_details.email,
-        website:  data.contact_details.website,
+      contact_details: {
+        country_code: data.contact_details.country_code,
+        mobile_number: data.contact_details.mobile_number,
+        office_landline: data.contact_details.office_landline,
+        email: data.contact_details.email,
+        website: data.contact_details.website,
       },
-      address : {
+      address: {
         country: data.address.country,
         state: data.address.state,
         city: data.address.city,
-        address_line_1 : data.address.address_line_1,
-        address_line_2 : data.address.address_line_2,
-        pin_code : data.address.pin_code,
+        address_line_1: data.address.address_line_1,
+        address_line_2: data.address.address_line_2,
+        pin_code: data.address.pin_code,
       },
-      social_links : {
-        linkedin : data.social_links.linkedin,
-        x : data.social_links.x,
-        instagram :data.social_links.instagram,
-        youtube : data.social_links.youtube,
+      social_links: {
+        linkedin: data.social_links.linkedin,
+        x: data.social_links.x,
+        instagram: data.social_links.instagram,
+        youtube: data.social_links.youtube,
       }
     }
 
     const cardData = new CardDetials(card)
     await cardData.save()
 
-    await User.findByIdAndUpdate(owner_id , {is_card_created : true , user_type : "personal",text_color:data.text_color })
-    
-    res.json({code : 200 , message : "Card Save successfully"})
+    await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "personal", text_color: data.text_color })
+
+    await SavedCard.deleteOne({ owner_id: owner_id })
+
+    res.json({ code: 200, message: "Card Save successfully" })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
 }
 
-exports.matchAccessCode = async (req , res) => {
+exports.matchAccessCode = async (req, res) => {
   try {
-    const {email , access_code} = req.body;
+    const { email, access_code } = req.body;
 
     const email_domain = extractDomainFromEmail(email);
+    const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
+    if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+    if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
 
-    const company = await Company.findOne({email_domain} , {password : 0 , decoded_password : 0})
-    if(!company) return  utils.handleError(res, {message : "Company not found" , code : 404});
-    if(company.access_code !==  access_code) return utils.handleError(res, {message : "Invalid Access Code" , code : 400});
 
-    res.json({code : 200 , data : company})
+
+    res.json({ code: 200, data: company })
   } catch (error) {
     utils.handleError(res, error)
   }
 }
 
-exports.addCorporateCard = async (req , res) => {
+exports.isPaidByCompany = async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    const email_domain = extractDomainFromEmail(email);
+    const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
+    if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+
+    var paid_by_company = false;
+    const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company._id, email: email });
+    console.log("isSubscriptionPaidByCompany", isSubscriptionPaidByCompany)
+    if (isSubscriptionPaidByCompany) {
+      const isCompanyHaveSubscription = await checkSusbcriptionIsActive(company._id);
+      if (isCompanyHaveSubscription === true) {
+        paid_by_company = true
+      } else {
+        return res.json({ data: paid_by_company, message: "Company does not have any active subscription", code: 200 })
+      }
+    }
+
+    res.json({ data: paid_by_company, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+exports.addCorporateCard = async (req, res) => {
   try {
     const owner_id = req.user._id;
-    const {company_id} = req.body
+    const { company_id, paid_by_company } = req.body
     const data = req.body;
 
-    if(company_id){
-      const company = await Company.findById(company_id);
-      if(!company) return utils.handleError(res, {message : "Company not found" , code : 404});
+    const company = await Company.findById(company_id);
+    if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+
+
+    if (paid_by_company === true) {
+      const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company._id, email: data?.contact_details?.email });
+      if (!isSubscriptionPaidByCompany) return utils.handleError(res, { message: "You account is not reimbursed by the company", code: 400 });
+      isSubscriptionPaidByCompany.is_card_created = true
+      await isSubscriptionPaidByCompany.save()
     }
 
-    //chech this user i have a card or not 
 
-    const isCardExist = await CardDetials.findOne({owner_id : owner_id});
-    
+    //check this user have a card or not 
+
+    const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
+
     const card = {
-      card_type : 'corporate',
-      company_id : company_id,
-      card_color :data.card_color,
-      business_and_logo_status : data.business_and_logo_status,
+      card_type: 'corporate',
+      company_id: company_id,
+      card_color: data?.card_color,
+      business_and_logo_status: data?.business_and_logo_status,
       bio: {
-        first_name : data.bio.first_name,
-        last_name : data.bio.last_name,
-        full_name : `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
-        designation :data.bio.designation,
+        first_name: data?.bio?.first_name,
+        last_name: data?.bio?.last_name,
+        full_name: `${data?.bio?.first_name}${data?.bio?.last_name ? ` ${data?.bio?.last_name}` : ""}`,
+        designation: data?.bio?.designation,
       },
-      contact_details : {
-        country_code : data.contact_details.country_code,
-        mobile_number : data.contact_details.mobile_number,
-        office_landline : data.contact_details.office_landline,
-        email :   data.contact_details.email,
-        website:  data.contact_details.website,
+      contact_details: {
+        country_code: data?.contact_details?.country_code,
+        mobile_number: data?.contact_details?.mobile_number,
+        office_landline: data?.contact_details?.office_landline,
+        email: data?.contact_details?.email,
+        website: data?.contact_details?.website,
       },
-      address : {
-        country: data.address.country,
-        state: data.address.state,
-        city: data.address.city,
-        address_line_1 : data.address.address_line_1,
-        address_line_2 : data.address.address_line_2,
-        pin_code : data.address.pin_code,
+      address: {
+        country: data?.address?.country,
+        state: data?.address?.state,
+        city: data?.address?.city,
+        address_line_1: data?.address?.address_line_1,
+        address_line_2: data?.address?.address_line_2,
+        pin_code: data?.address?.pin_code,
       },
-      social_links : {
-        linkedin : data.social_links.linkedin,
-        x : data.social_links.x,
-        instagram :data.social_links.instagram,
-        youtube : data.social_links.youtube,
+      social_links: {
+        linkedin: data?.social_links?.linkedin,
+        x: data?.social_links?.x,
+        instagram: data?.social_links?.instagram,
+        youtube: data?.social_links?.youtube,
       },
     }
 
 
-    if(isCardExist){
-      await CardDetials.updateOne({owner_id : owner_id} , card),
-      res.json({code : 200 , message : "Company change successfully"})
-    }else {
-      const cardData = new CardDetials({owner_id,...card})
+    if (isCardExist) {
+      await CardDetials.updateOne({ owner_id: owner_id }, card);
+      await SavedCard.deleteOne({ owner_id: owner_id })
+
+      res.json({ code: 200, message: "Company change successfully" })
+    } else {
+      const cardData = new CardDetials({ owner_id, ...card })
       await cardData.save()
-      await User.findByIdAndUpdate(owner_id , {is_card_created : true , user_type : "corporate" })
-      res.json({code : 200 , message : "Card Save successfully"})
+      await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "corporate" })
+      await SavedCard.deleteOne({ owner_id: owner_id })
+      res.json({ code: 200, message: "Card Save successfully" })
     }
+
 
   } catch (error) {
     console.log(error)
@@ -693,15 +798,15 @@ exports.addCorporateCard = async (req , res) => {
 }
 
 
-exports.getProfile = async (req ,res) => {
+exports.getProfile = async (req, res) => {
   try {
     const user_id = req.user._id;
-    console.log("==========user_id",user_id)
-    
+    console.log("==========user_id", user_id)
+
     const profile = await User.aggregate([
       {
-        $match : {
-          _id : user_id
+        $match: {
+          _id: user_id
         }
       },
       {
@@ -733,7 +838,7 @@ exports.getProfile = async (req ,res) => {
         },
       },
       {
-        $addFields : {
+        $addFields: {
           'card_details.bio.business_name': {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
@@ -741,18 +846,32 @@ exports.getProfile = async (req ,res) => {
               else: '$card_details.bio.business_name'
             }
           },
-          'card_details.card_color' : {
+          'card_details.card_color': {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.card_color',
               else: '$card_details.card_color'
             }
           },
-          "card_details.business_logo" :  {
+          "card_details.business_logo": {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.business_logo',
               else: '$card_details.business_logo'
+            }
+          },
+          "card_details.address": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.address',
+              else: '$card_details.address'
+            }
+          },
+          "card_details.contact_details.website": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$card_details.contact_details.website'
             }
           },
         }
@@ -766,91 +885,93 @@ exports.getProfile = async (req ,res) => {
         }
       },
       {
-        $project : {
-          password : 0,
-          confirm_password :0 ,
-          company : 0
+        $project: {
+          password: 0,
+          confirm_password: 0,
+          company: 0
         }
       },
     ])
 
-    res.json({data : profile[0] , code : 200})
+    res.json({ data: profile[0], code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
 }
 
-exports.accountPrivacy = async (req , res) => {
+exports.accountPrivacy = async (req, res) => {
   try {
     const owner_id = req.user._id;
-    const card = await CardDetials.findOne({owner_id : owner_id});
-  
-    if(!card) return res.status(404).json({ code: 404, message: "Card not found." });
+    const card = await CardDetials.findOne({ owner_id: owner_id });
+
+    if (!card) return utils.handleError(res, { message: "Card not found", code: 404 })
+
+    // return res.status(404).json({ code: 404, message: "Card not found." });
 
     const data = {
-      linkedin : card?.social_links?.linkedin_enabled ?? true,
+      linkedin: card?.social_links?.linkedin_enabled ?? true,
       x: card?.social_links?.x_enabled ?? true,
-      instagram : card?.social_links?.instagram_enabled ?? true,
-      youtube : card?.social_links?.youtube_enabled ?? true,
-      mobile_number : card?.contact_details?.mobile_number_enabled ?? true
+      instagram: card?.social_links?.instagram_enabled ?? true,
+      youtube: card?.social_links?.youtube_enabled ?? true,
+      mobile_number: card?.contact_details?.mobile_number_enabled ?? true
     }
 
-    res.json({data : data, code : 200})
-  
+    res.json({ data: data, code: 200 })
+
   } catch (error) {
     utils.handleError(res, error)
   }
 }
 
-exports.enableOrDisableLink = async (req , res) => {
+exports.enableOrDisableLink = async (req, res) => {
 
   try {
     const link_type = req.body.type;
     const owner_id = req.user._id;
-    const card = await CardDetials.findOne({owner_id : owner_id});
-  
-    if(!card) return res.status(404).json({ code: 404, message: "Card not found." });
-  
+    const card = await CardDetials.findOne({ owner_id: owner_id });
+
+    if (!card) return res.status(404).json({ code: 404, message: "Card not found." });
+
     const dataToUpdate = {}
-    if(link_type === "linkedin"){
+    if (link_type === "linkedin") {
       const link_status = !(card?.social_links?.linkedin_enabled ?? true);
       dataToUpdate["social_links.linkedin_enabled"] = link_status
-    }else if (link_type === "x"){
+    } else if (link_type === "x") {
       const link_status = !(card?.social_links?.x_enabled ?? true);
       dataToUpdate["social_links.x_enabled"] = link_status
-    }else if (link_type === "instagram"){
+    } else if (link_type === "instagram") {
       const link_status = !(card?.social_links?.instagram_enabled ?? true);
       dataToUpdate["social_links.instagram_enabled"] = link_status
-    }else if (link_type === "youtube"){
+    } else if (link_type === "youtube") {
       const link_status = !(card?.social_links?.youtube_enabled ?? true);
       dataToUpdate["social_links.youtube_enabled"] = link_status
-    }else if (link_type === "mobile"){
+    } else if (link_type === "mobile") {
       const link_status = !(card?.contact_details?.mobile_number_enabled ?? true);
       dataToUpdate["contact_details.mobile_number_enabled"] = link_status
     }
-    
-    await CardDetials.updateOne({owner_id : owner_id} , dataToUpdate);
-  
-    res.json({code : 200 ,message : "Link status changed successfully"})
+
+    await CardDetials.updateOne({ owner_id: owner_id }, dataToUpdate);
+
+    res.json({ code: 200, message: "Link status changed successfully" })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
- 
+
 }
 
 
-exports.getCard = async (req ,res) => {
+exports.getCard = async (req, res) => {
   try {
     const user_id = req.user._id;
-    
+
     // const profile = await CardDetials.findOne({owner_id : user_id});
-    
+
     const profile = await CardDetials.aggregate([
       {
-        $match : {
-          owner_id : user_id
+        $match: {
+          owner_id: user_id
         }
       },
       {
@@ -868,7 +989,7 @@ exports.getCard = async (req ,res) => {
         },
       },
       {
-        $addFields : {
+        $addFields: {
           'bio.business_name': {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
@@ -876,35 +997,35 @@ exports.getCard = async (req ,res) => {
               else: '$bio.business_name'
             }
           },
-          'card_color' : {
+          'card_color': {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.card_color',
               else: '$card_color'
             }
           },
-          'text_color' : {
+          'text_color': {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.text_color',
               else: '$text_color'
             }
           },
-          "business_logo" :  {
+          "business_logo": {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.business_logo',
               else: '$business_logo'
             }
           },
-          "address" :  {
+          "address": {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.address',
               else: '$address'
             }
           },
-          "website" : {
+          "website": {
             $cond: {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.contact_details.website',
@@ -914,40 +1035,40 @@ exports.getCard = async (req ,res) => {
         }
       },
       {
-        $project : {
-          company : 0
+        $project: {
+          company: 0
         }
       }
     ])
-    res.json({data : profile[0] , code : 200})
+    res.json({ data: profile[0], code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
 }
 
 
-exports.getCountries = async (req ,res ) => {
+exports.getCountries = async (req, res) => {
   try {
     const data = Country.getAllCountries();
-    res.json({data : data , code : 200})
+    res.json({ data: data, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
 }
 
-exports.getStates = async (req ,res ) => {
+exports.getStates = async (req, res) => {
   try {
-    console.log("req.query" , req.query)
+    console.log("req.query", req.query)
     var countryCode = req.query.countryCode;
 
-    if(!countryCode){
+    if (!countryCode) {
       const countryName = req.query.countryName
-      countryCode  = getCode(countryName)
+      countryCode = getCode(countryName)
     }
 
     const data = State.getStatesOfCountry(countryCode)
-    res.json({data : data , code : 200})
+    res.json({ data: data, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -957,7 +1078,7 @@ exports.getStates = async (req ,res ) => {
 exports.getCMS = async (req, res) => {
   try {
     const { type } = req.query;
-   
+
     const cmsResp = await CMS.findOne({ type });
 
     if (!cmsResp) {
@@ -972,7 +1093,7 @@ exports.getCMS = async (req, res) => {
       content: cmsResp,
     });
   } catch (error) {
-    console.log("================error",error)
+    console.log("================error", error)
     utils.handleError(res, error);
   }
 };
@@ -981,8 +1102,8 @@ exports.getCMS = async (req, res) => {
 exports.getFAQ = async (req, res) => {
   try {
     const { type } = req.query;
-   
-    const faqResp = await FAQ.find();
+
+    const faqResp = await FAQ.find().sort({ createdAt: 1 });
 
     if (!faqResp) {
       return res.status(404).json({
@@ -996,7 +1117,7 @@ exports.getFAQ = async (req, res) => {
       content: faqResp,
     });
   } catch (error) {
-    console.log("================error",error)
+    console.log("================error", error)
     utils.handleError(res, error);
   }
 };
@@ -1008,8 +1129,8 @@ exports.helpsupport = async (req, res) => {
 
     const add = await Support.create(
       {
-        user_id : user_id,
-        message : data?.message
+        user_id: user_id,
+        message: data?.message
       }
     );
 
@@ -1018,7 +1139,7 @@ exports.helpsupport = async (req, res) => {
       message: add,
     });
   } catch (error) {
-    console.log("================error",error)
+    console.log("================error", error)
     utils.handleError(res, error);
   }
 };
@@ -1030,8 +1151,8 @@ exports.feedback = async (req, res) => {
 
     const feedback = await Feedback.create(
       {
-        user_id : user_id,
-        message : data?.message
+        user_id: user_id,
+        message: data?.message
       }
     );
 
@@ -1040,22 +1161,22 @@ exports.feedback = async (req, res) => {
       message: feedback,
     });
   } catch (error) {
-    console.log("================error",error)
+    console.log("================error", error)
     utils.handleError(res, error);
   }
 };
 
 
-exports.deleteAccount = async (req , res) => {
+exports.deleteAccount = async (req, res) => {
   try {
     const user_id = req.user._id;
 
-    await User.deleteOne({_id : user_id});
-    await CardDetials.deleteOne({owner_id : user_id})
+    await User.deleteOne({ _id: user_id });
+    await CardDetials.deleteOne({ owner_id: user_id })
 
-    res.json({message : "Your account is deleted successfully"});
+    res.json({ message: "Your account is deleted successfully" });
   } catch (error) {
-    console.log("================error",error)
+    console.log("================error", error)
     utils.handleError(res, error);
   }
 }
@@ -1063,27 +1184,27 @@ exports.deleteAccount = async (req , res) => {
 
 exports.addFCMDevice = async (req, res) => {
   try {
-    const {device_id ,device_type , token } = req.body;
+    const { device_id, device_type, token } = req.body;
     const user_id = req.user._id;
 
-    const isDeviceExist = await FCMDevice.findOne({user_id : req.user._id})
-    
+    const isDeviceExist = await FCMDevice.findOne({ user_id: user_id })
+
     if (isDeviceExist) {
       isDeviceExist.token = token;
       await isDeviceExist.save();
     } else {
       const data = {
-        user_id : user_id,
-        device_id : device_id,
-        device_type : device_type,
-        token : token,
+        user_id: user_id,
+        device_id: device_id,
+        device_type: device_type,
+        token: token,
       }
       const item = new FCMDevice(data);
       await item.save()
     }
 
     res.json({
-      message : "Token added successfully",
+      message: "Token added successfully",
       code: 200,
     });
   } catch (error) {
@@ -1094,17 +1215,17 @@ exports.addFCMDevice = async (req, res) => {
 
 exports.deleteFCMDevice = async (req, res) => {
   try {
-    const {token} = req.body;
+    const { token } = req.body;
     const user_id = req.user._id;
 
-    const fcmToken = await FCMDevice.findOne({user_id : user_id , token : token })
+    const fcmToken = await FCMDevice.findOne({ user_id: user_id, token: token })
 
-    if(!fcmToken) return utils.handleError(res, {message : "Token not found" , code : 404});
+    if (!fcmToken) return utils.handleError(res, { message: "Token not found", code: 404 });
 
-    await FCMDevice.deleteOne({user_id : user_id , token : token })
+    await FCMDevice.deleteOne({ user_id: user_id, token: token })
 
     res.json({
-      message : "Token deleted successfully",
+      message: "Token deleted successfully",
       code: 200
     });
 
@@ -1115,7 +1236,7 @@ exports.deleteFCMDevice = async (req, res) => {
 };
 
 
-exports.changeNotificaitonSetting = async (req , res) => {
+exports.changeNotificaitonSetting = async (req, res) => {
   try {
     const user_id = req.user._id;
 
@@ -1123,7 +1244,7 @@ exports.changeNotificaitonSetting = async (req , res) => {
     user.notification = !user.notification;
     await user.save()
 
-    res.json({message : `Notificaton ${user.notification ? "enabled" : "disabled"} successfully`, code : 200} )
+    res.json({ message: `Notificaton ${user.notification ? "enabled" : "disabled"} successfully`, code: 200 })
   } catch (error) {
     utils.handleError(res, error);
   }
@@ -1136,7 +1257,7 @@ exports.getNotificationSetting = async (req, res) => {
     console.log("running")
     const user = await User.findById(user_id);
 
-    res.json({data :user.notification , code : 200 });
+    res.json({ data: user.notification, code: 200 });
   } catch (error) {
     utils.handleError(res, error);
   }
@@ -1147,7 +1268,7 @@ exports.getNotification = async (req, res) => {
   try {
     const { limit = Number.MAX_SAFE_INTEGER, offset = 0 } = req.body;
 
-    console.log("req.body",req.body)
+    console.log("req.body", req.body)
     var reciever_id = req.user._id;
 
     const count = await Notification.count({
@@ -1172,8 +1293,8 @@ exports.getNotification = async (req, res) => {
             },
             {
               $project: {
-                password : 0,
-                confirm_password : 0
+                password: 0,
+                confirm_password: 0
               },
             },
           ],
@@ -1203,7 +1324,7 @@ exports.getNotification = async (req, res) => {
 };
 
 
-exports.exportCardToExcel = async (req , res) => {
+exports.exportCardToExcel = async (req, res) => {
   try {
     const user_id = req.user._id;
     const email = req.user.email;
@@ -1215,7 +1336,7 @@ exports.exportCardToExcel = async (req , res) => {
 
     const sharedCards = await SharedCards.aggregate([
       {
-        $match : query
+        $match: query
       },
       {
         $lookup: {
@@ -1243,7 +1364,7 @@ exports.exportCardToExcel = async (req , res) => {
         },
       },
       {
-        $addFields : {
+        $addFields: {
           'cardDetails.bio.business_name': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
@@ -1251,35 +1372,35 @@ exports.exportCardToExcel = async (req , res) => {
               else: '$cardDetails.bio.business_name'
             }
           },
-          'cardDetails.card_color' : {
+          'cardDetails.card_color': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.card_color',
               else: '$cardDetails.card_color'
             }
           },
-          'cardDetails.text_color' : {
+          'cardDetails.text_color': {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.text_color',
               else: '$cardDetails.text_color'
             }
           },
-          "cardDetails.business_logo" :  {
+          "cardDetails.business_logo": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.business_logo',
               else: '$cardDetails.business_logo'
             }
           },
-          "cardDetails.address" :  {
+          "cardDetails.address": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.address',
               else: '$cardDetails.address'
             }
           },
-          "cardDetails.contact_details.website" : {
+          "cardDetails.contact_details.website": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
               then: '$company.contact_details.website',
@@ -1291,51 +1412,52 @@ exports.exportCardToExcel = async (req , res) => {
       {
         $project: {
           _id: 0, // Exclude the default _id field
-          "First Name"  : "$cardDetails.bio.first_name",
-          "Last Name"  : "$cardDetails.bio.last_name",
-          "Business Name" : "$cardDetails.bio.business_name",
-          "Business Logo" : {$concat : [process.env.STORAGE_PATH_HTTP , "/" , "$cardDetails.business_logo"]},
-          "Phone Number" : "$cardDetails.contact_details.mobile_number",
-          "Office Landline" : "$cardDetails.contact_details.office_landline",
-          "Designation" : "$cardDetails.bio.designation",
-          "Email" : "$cardDetails.bio.email",
-          "Address Line No 1" : "$cardDetails.address.address_line_1",
-          "Address Line No 2" : "$cardDetails.address.address_line_2",
-          "City" : "$cardDetails.address.city",
-          "State" :"$cardDetails.address.state",
-          "Country" : "$cardDetails.address.country",
-          "Pin Code" : "$cardDetails.address.pin_code",
-          "Instagram" : "$cardDetails.social_links.instagram",
-          "Linkedin" : "$cardDetails.social_links.linkedin",
-          "Youtube" : "$cardDetails.social_links.youtube",
-          "X" : "$cardDetails.social_links.x"
+          "First Name": "$cardDetails.bio.first_name",
+          "Last Name": "$cardDetails.bio.last_name",
+          "Business Name": "$cardDetails.bio.business_name",
+          "Business Logo": { $concat: [process.env.STORAGE_PATH_HTTP, "/", "$cardDetails.business_logo"] },
+          "Phone Number": "$cardDetails.contact_details.mobile_number",
+          "Office Landline": "$cardDetails.contact_details.office_landline",
+          "Designation": "$cardDetails.bio.designation",
+          "Email": "$cardDetails.bio.email",
+          "Address Line No 1": "$cardDetails.address.address_line_1",
+          "Address Line No 2": "$cardDetails.address.address_line_2",
+          "City": "$cardDetails.address.city",
+          "State": "$cardDetails.address.state",
+          "Country": "$cardDetails.address.country",
+          "Pin Code": "$cardDetails.address.pin_code",
+          "Instagram": "$cardDetails.social_links.instagram",
+          "Linkedin": "$cardDetails.social_links.linkedin",
+          "Youtube": "$cardDetails.social_links.youtube",
+          "X": "$cardDetails.social_links.x"
         }
       }
     ]);
-    
+
     // Convert JSON to Excel
     const ws = XLSX.utils.json_to_sheet(sharedCards);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
-    
+
     // Specify the server folder path and Excel file name
     const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
-    
+
     // Save the Excel file to the server folder
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
 
     // const media = await uploadFilefromPath(excelFilePath)
-    
+
     const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
 
     console.log(email)
     let mailOptions = {
       to: email,
       subject: `Exported Card from ${process.env.APP_NAME}`,
-      name : req.user.full_name , 
+      name: req.user.full_name,
+      logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
       attachments: [],
     };
 
@@ -1346,7 +1468,7 @@ exports.exportCardToExcel = async (req , res) => {
 
     await sendInvoiceEmail(mailOptions);
 
-    res.json({data : "Mail send to you email with excel sheet", code : 200 })
+    res.json({ data: "Mail send to you email with excel sheet", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1371,7 +1493,7 @@ exports.seenNotification = async (req, res) => {
 exports.unseenNotificationCount = async (req, res) => {
   try {
     var reciever_id = req.user._id;
-    
+
     const unseenCount = await Notification.count({
       receiver_id: mongoose.Types.ObjectId(reciever_id),
       is_seen: false,
@@ -1386,25 +1508,428 @@ exports.unseenNotificationCount = async (req, res) => {
 
 //just of adding tst notificaiton
 
-exports.addNotificaiton = async (req ,res) => {
+exports.addNotificaiton = async (req, res) => {
   try {
     const notificaiton = {
-      sender_id : "65d06e7484dbf901a036503d",
-      receiver_id : "65d0555ad423a9ee3d97078c",
-      type : "card_shared",
-      related_to : "65d2f663ca96f633ce13ec82",
+      sender_id: "65d06e7484dbf901a036503d",
+      receiver_id: "65d0555ad423a9ee3d97078c",
+      type: "card_shared",
+      related_to: "65d2f663ca96f633ce13ec82",
       title: "Card Shared",
       body: "Deepak has shared their card",
-      is_seen :false,
-      is_admin:true
+      is_seen: false,
+      is_admin: true
     }
 
     const createNotification = new Notification(notificaiton);
     await createNotification.save()
-    
-    res.json({message :"notification saved"})
+
+    res.json({ message: "notification saved" })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
-} 
+}
+
+
+async function isSubscriptionActiveOrNot(user) {
+  try {
+    const user_id = user._id;
+    var subcriptionActive = false
+    if (user.user_type === "personal") {
+      subcriptionActive = await checkSusbcriptionIsActive(user_id)
+    } else if (user.user_type === "corporate") {
+      const card = await CardDetials.findOne({ owner_id: user_id });
+      if (!card) return false
+      const company_id = card.company_id;
+      const email = card?.contact_details?.email;
+      if (!email) return false
+      const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+      if (isSubscriptionPaidByCompany) {
+        //Employee is subcription is paid by company
+        subcriptionActive = await checkSusbcriptionIsActive(company_id)
+      } else {
+        //Employee is subcription is not paid by company
+        //check for waiting period 
+        const waiting_end_time = card.waiting_end_time;
+        if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+          subcriptionActive = true
+        } else {
+          subcriptionActive = await checkSusbcriptionIsActive(user_id)
+        }
+      }
+    }
+
+    return subcriptionActive
+  } catch (error) {
+    console.log(error)
+    return false
+  }
+}
+
+
+exports.isSubscriptionActive = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const user = req.user;
+
+    if (!user.is_card_created) utils.handleError(res, { message: "Card not created yet", code: 400 });
+    var isSubscriptionActive = await isSubscriptionActiveOrNot(user);
+
+
+    // var isSubscriptionActive = false;
+    // if (user.user_type === "personal") {
+    //   isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
+    // } else if (user.user_type === "corporate") {
+    //   const card = await CardDetials.findOne({ owner_id: user_id });
+    //   if (!card) utils.handleError(res, { message: "Card not found", code: 400 });
+
+    //   const company_id = card.company_id;
+    //   const email = card?.contact_details?.email;
+    //   if (!email) return utils.handleError(res, { message: "Work email not found", code: 400 });
+
+    //   const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+    //   if (isSubscriptionPaidByCompany) {
+    //     //Employee is subcription is paid by company
+    //     isSubscriptionActive = await checkSusbcriptionIsActive(company_id)
+    //   } else {
+    //     //Employee is subcription is not paid by company
+    //     //check for waiting period 
+
+    //     const waiting_end_time = card.waiting_end_time;
+    //     if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+    //       isSubscriptionActive = true
+    //     } else {
+    //       isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
+    //     }
+    //   }
+
+    // }
+
+    res.json({ data: isSubscriptionActive, code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+exports.removeLogo = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const card = await CardDetials.findOne({ owner_id: mongoose.Types.ObjectId(user_id) })
+    if (!card) return utils.handleError(res, { message: "Card not found", code: 404 })
+
+    card.business_logo = ""
+    await card.save();
+
+    res.json({ message: "Business logo is removed successfully", code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+async function isTrailNeedToBeGiven(user_id) {
+  try {
+    const isSubcriptionExist = await Subscription.findOne({ user_id: mongoose.Types.ObjectId(user_id), status: { $nin: ["created"] } });
+    if (isSubcriptionExist) {
+      return false
+    } else {
+      return true
+    }
+  } catch (error) {
+    throw new Error(error)
+  }
+
+}
+
+exports.createSubscription = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const { plan_id } = req.body;
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+    if (isSubcriptionExist && ["authenticated", "active", "paused", "pending"].includes(isSubcriptionExist.status)) {
+      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
+    }
+
+    if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
+      return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 200 })
+    }
+    console.log(isSubcriptionExist)
+    console.log(plan_id)
+    if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
+      return res.json({ message: "Please wait some time to swith the plan", code: 400 });
+    }
+
+
+    if (isSubcriptionExist && isSubcriptionExist.status === "created") {
+      await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+    }
+
+
+    const plan = await await Plan.findOne({ plan_id: plan_id });
+    if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
+
+    if (plan.plan_type !== "individual") return utils.handleError(res, { message: "This plan is not for individiual", code: 400 });
+
+    const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
+    let trail = {}
+
+    const currentDate = moment();
+    const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
+    if (trailToBeGiven === true) {
+      const timestamp = Math.floor(futureDate.valueOf() / 1000)
+      trail = { start_at: timestamp }
+    }
+
+    console.log("trail",trail)
+    const subcription = await instance.subscriptions.create({
+      "plan_id": plan.plan_id,
+      "total_count": 1,
+      "quantity": 1,
+      "customer_notify": 1,
+      ...trail,
+      "notes": {
+        "user_id": user_id.toString(),
+        "user_type": "individual"
+      }
+    })
+
+    console.log("futureDate" ,futureDate)
+    console.log("futureDate.valueOf" ,futureDate.valueOf())
+    const now = new Date()
+    const dataForDatabase = {
+      user_id: user_id,
+      subscription_id: subcription.id,
+      plan_id: plan.plan_id,
+      start_at: now,
+      end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
+      status: subcription.status
+    }
+
+    const saveToDB = new Subscription(dataForDatabase);
+    await saveToDB.save()
+
+    res.json({ data: subcription, code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.webhook = async (req, res) => {
+  const payload = JSON.stringify(req.body);
+  const signature = req.get('X-Razorpay-Signature');
+
+  console.log("signature", signature)
+  // Verify signature
+  const expectedSignature = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)
+    .update(payload)
+    .digest('hex');
+
+
+  if (signature === expectedSignature) {
+    var event = req.body.event;
+    const subscription = req.body.payload.subscription.entity
+    const user_id = subscription.notes.user_id;
+    const user_type = subscription.notes.user_type;
+
+
+    var user_country = ""
+
+    if (user_type === "individual") {
+      const user = await CardDetials.findOne({ owner_id: mongoose.Types.ObjectId(user_id) });
+      if (user?.card_type === "corporate") {
+        const company = await Company.findById(user?.company_id);
+        user_country = company?.address?.country
+      } else {
+        user_country = user?.address?.country
+      }
+    } else {
+      const company = await Company.findById(user_id);
+      user_country = company?.address?.country
+    }
+
+    console.log("user_country", user_country)
+
+    const plan_id = subscription.plan_id;
+    const plan = await instance.plans.fetch(plan_id)
+
+    
+    console.log('Subscription :', subscription);
+    switch (event) {
+      case 'subscription.authenticated':
+        await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
+        break;
+      case 'subscription.paused':
+        break;
+      case 'subscription.resumed':
+        break;
+      case 'subscription.activated':
+        break;
+      case 'subscription.pending':
+        break;
+      case 'subscription.halted':
+
+        break;
+      case 'subscription.charged':
+        await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status  , start_at : new Date(subscription.current_start * 1000) , end_at : new Date(subscription.current_end * 1000)})
+        const transactionData = {
+          user_id: user_id,
+          user_type: user_type,
+          country: user_country,
+          plan_id: plan_id,
+          subcription_id: subscription.id,
+          amount: Number(plan?.item?.amount ?? 0) / 100
+        }
+
+        const transaction = new Transaction(transactionData);
+        await transaction.save();
+
+        break;
+      case 'subscription.cancelled':
+        break;
+      case 'subscription.completed':
+        break;
+      case 'subscription.updated':
+        break;
+      default:
+        console.log('Unhandled event:', event);
+    }
+
+    res.sendStatus(200);
+  } else {
+    // Signature verification failed
+    console.error('Invalid webhook signature');
+    res.sendStatus(403);
+  }
+}
+
+
+exports.plansList = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const plans = await Plan.find({ plan_type: "individual" })
+    const activeSubscription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 })
+
+    res.json({ data: plans, active: activeSubscription, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.saveCard = async (req, res) => {
+  try {
+
+    const { card_type } = req.body;
+    const owner_id = req.user._id;
+    const data = req.body;
+
+    const isCardExist = await SavedCard.findOne({ owner_id: owner_id });
+    if (card_type !== "personal" && card_type !== "corporate") return utils.handleError(res, { message: "Invalid card type", code: 400 })
+
+    if (card_type == "personal") {
+      const card = {
+        owner_id,
+        card_type: card_type,
+        business_logo: data.business_logo,
+        card_color: data.card_color,
+        text_color: data.text_color,
+        business_and_logo_status: data.business_and_logo_status,
+        bio: {
+          first_name: data.bio.first_name,
+          last_name: data.bio.last_name,
+          full_name: `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
+          business_name: data.bio.business_name,
+          designation: data.bio.designation,
+        },
+        contact_details: {
+          country_code: data.contact_details.country_code,
+          mobile_number: data.contact_details.mobile_number,
+          office_landline: data.contact_details.office_landline,
+          email: data.contact_details.email,
+          website: data.contact_details.website,
+        },
+        address: {
+          country: data.address.country,
+          state: data.address.state,
+          city: data.address.city,
+          address_line_1: data.address.address_line_1,
+          address_line_2: data.address.address_line_2,
+          pin_code: data.address.pin_code,
+        },
+        social_links: {
+          linkedin: data.social_links.linkedin,
+          x: data.social_links.x,
+          instagram: data.social_links.instagram,
+          youtube: data.social_links.youtube,
+        }
+      }
+      if (isCardExist) {
+        //updating the saved card
+        await SavedCard.updateOne({ owner_id: owner_id }, card);
+      } else {
+        //creating the existing card
+        const savedcard = new SavedCard(card)
+        await savedcard.save()
+      }
+
+    } else if (card_type == "corporate") {
+
+      const card = {
+        owner_id: owner_id,
+        card_type: card_type,
+        company_id: data.company_id,
+        card_color: data?.card_color,
+        text_color: data?.text_color,
+        business_logo: data?.business_logo,
+        business_and_logo_status: data?.business_and_logo_status,
+        bio: {
+          first_name: data?.bio?.first_name,
+          last_name: data?.bio?.last_name,
+          full_name: `${data?.bio?.first_name}${data?.bio?.last_name ? ` ${data?.bio?.last_name}` : ""}`,
+          designation: data?.bio?.designation,
+          business_name: data?.bio?.business_name,
+        },
+        contact_details: {
+          country_code: data?.contact_details?.country_code,
+          mobile_number: data?.contact_details?.mobile_number,
+          office_landline: data?.contact_details?.office_landline,
+          email: data?.contact_details?.email,
+          website: data?.contact_details?.website,
+        },
+        address: {
+          country: data?.address?.country,
+          state: data?.address?.state,
+          city: data?.address?.city,
+          address_line_1: data?.address?.address_line_1,
+          address_line_2: data?.address?.address_line_2,
+          pin_code: data?.address?.pin_code,
+        },
+        social_links: {
+          linkedin: data?.social_links?.linkedin,
+          x: data?.social_links?.x,
+          instagram: data?.social_links?.instagram,
+          youtube: data?.social_links?.youtube,
+        },
+      }
+
+      if (isCardExist) {
+        //updating the existing card
+        await SavedCard.updateOne({ owner_id: owner_id }, card);
+      } else {
+        //need to create
+        const savedcard = new SavedCard(card);
+        await savedcard.save();
+      }
+
+    }
+
+    res.json({ message: "Card saved successfully", code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}

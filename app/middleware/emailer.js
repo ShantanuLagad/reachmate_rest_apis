@@ -182,7 +182,8 @@ module.exports = {
       to: data.email,
       subject,
       otp: data.otp,
-      name:data.name
+      name:data.name,
+      logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
     };
     app.mailer.send(`otp`, mailOptions, function (err, message) {
       if (err) {
@@ -280,6 +281,7 @@ console.log("user",user)
           verification_code: "",
           verification_link: user.url,
           website_url: process.env.PRODUCTION_FRONTEND_URL,
+          logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
         },
         function (err) {
           if (err) {
@@ -326,6 +328,7 @@ async sendReplyEmail(locale, user, template) {
             question : user.question,
             reply  : user.reply,
             website_url: process.env.PRODUCTION_FRONTEND_URL,
+            logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
           function (err) {
             if (err) {
@@ -371,6 +374,7 @@ async sendReplyEmail(locale, user, template) {
               email : user.email,
               access_code  : user.access_code,
               website_url: process.env.PRODUCTION_COMPANY_URL,
+              logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
             },
             function (err) {
               if (err) {

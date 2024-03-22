@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt-nodejs')
 const validator = require('validator')
 const mongoosePaginate = require('mongoose-paginate-v2')
 
-const CardDetials = new mongoose.Schema(
+const saveCardSchema = new mongoose.Schema(
   {
     owner_id : {
         type : mongoose.Schema.Types.ObjectId,
@@ -13,10 +13,6 @@ const CardDetials = new mongoose.Schema(
     company_id :  {
         type : mongoose.Schema.Types.ObjectId,
         ref : "company"
-    },
-    paid_by_company : {
-        type : Boolean,
-        default : false
     },
     card_type : {
         type : String,
@@ -32,7 +28,7 @@ const CardDetials = new mongoose.Schema(
     },
     card_color : {
         type :[String],
-        default :""
+        default :[]
     },
     business_and_logo_status : {
         type : String,
@@ -134,13 +130,6 @@ const CardDetials = new mongoose.Schema(
             default : true
         }
     },
-    // reimbursed_by_company : {
-    //     type : String,
-    //     enum : ["Yes" , 'No']
-    // },
-    waiting_end_time :{
-        type : Date,
-    }
   },
   {
     versionKey: false,
@@ -148,8 +137,6 @@ const CardDetials = new mongoose.Schema(
   }
 )
 
+saveCardSchema.plugin(mongoosePaginate)
 
-CardDetials.plugin(mongoosePaginate)
-
-
-module.exports = mongoose.model('card_details', CardDetials)
+module.exports = mongoose.model('saved_card', saveCardSchema)

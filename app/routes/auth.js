@@ -77,9 +77,9 @@ router.post(
 /*
  * Verify route
  */
-router.post('/verify', trimRequest.all, 
-// validate.verify,
- controller.verify)
+router.post('/verify', trimRequest.all,
+  // validate.verify,
+  controller.verify)
 
 /*
  * Forgot password route
@@ -90,6 +90,14 @@ router.post(
   // validate.forgotPassword,
   controller.forgotPassword
 )
+
+router.post(
+  '/resetpassword/web',
+  trimRequest.all,
+  // validate.forgotPassword,
+  controller.resetPasswordWeb
+)
+
 
 router.post(
   '/admin/forgot',
@@ -134,29 +142,44 @@ router.get(
  */
 router.post(
   '/login',
-   trimRequest.all, 
+  trimRequest.all,
   //  validate.login,
-    controller.login)
+  controller.login)
 
 /*
  * Admin Login route
  */
 router.post('/admin/login', trimRequest.all,
-//  validate.login,
+  //  validate.login,
   controller.adminLogin)
 
 
-  router.patch(
-    '/updateProfile',
-    requireAuth,
-    // AuthController.roleAuthorization(['admin']),
-    trimRequest.all,
-    // validate.updateItem,
-    controller.updateProfile
-  )
+router.patch(
+  '/updateProfile',
+  requireAuth,
+  // AuthController.roleAuthorization(['admin']),
+  trimRequest.all,
+  // validate.updateItem,
+  controller.updateProfile
+)
 
 
-  router.post('/verifyotpemailNew', trimRequest.all,
-//  validate.login,
+router.post('/verifyotpemailNew', trimRequest.all,
+  //  validate.login,
   controller.verifyotpemailNew)
+
+
+router.post('/sendOTP', trimRequest.all,
+  //  validate.login,
+  controller.sendOTP)
+
+router.post('/verifyOTP', trimRequest.all,
+  //  validate.login,
+  controller.verifyOTP)
+
+router.post("/token",
+  requireAuth,
+  controller.token
+)
+
 module.exports = router

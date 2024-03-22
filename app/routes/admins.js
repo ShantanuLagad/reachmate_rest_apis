@@ -258,6 +258,32 @@ router.get(
   controller.companyList
 )
 
+router.get(
+  "/transactionHistoryofUsers",
+  requireAuth,
+  trimRequest.all,
+  controller.transactionHistoryofUsers
+)
+
+router.get(
+  "/transactionHistoryOfCompany",
+  requireAuth,
+  trimRequest.all,
+  controller.transactionHistoryOfCompany
+)
+
+
+router.get(
+  "/getCountries",
+  trimRequest.all,
+  controller.getCountries
+)
+
+router.get(
+  "/getStates",
+  trimRequest.all,
+  controller.getStates
+)
 
 /*
  * API Key
@@ -298,6 +324,13 @@ router.get(
   trimRequest.all,
   requireAuth,
   controller.addKeyDetails
+)
+
+
+router.post(
+  "/createPlan",
+  trimRequest.all,
+  controller.createPlan
 )
 
 module.exports = router

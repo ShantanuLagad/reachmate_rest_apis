@@ -13,6 +13,8 @@ const { matchedData } = require('express-validator')
 const auth = require('../middleware/auth')
 const emailer = require('../middleware/emailer')
 const APIKey = require('../models/api_keys')
+const SavedCard = require("../models/saved_card")
+const mongoose = require("mongoose")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -24,7 +26,7 @@ const bcrypt = require('bcrypt');
  * Generates a token
  * @param {Object} user - user object
  */
-const generateToken = (user, role='user') => {
+const generateToken = (user, role = 'user') => {
   // Gets expiration time
   const expiration =
     Math.floor(Date.now() / 1000) + 60 * process.env.JWT_EXPIRATION_IN_MINUTES
@@ -72,7 +74,13 @@ const setUserInfo = req => {
  */
 const saveUserAccessAndReturnToken = async (req, user) => {
 
-  console.log("users" , user)
+  console.log("users", user)
+  user = user.toJSON()
+  delete user.password;
+  delete user.confirm_password;
+
+
+  
   return new Promise((resolve, reject) => {
     const userAccess = new UserAccess({
       email: user.email,
@@ -80,16 +88,20 @@ const saveUserAccessAndReturnToken = async (req, user) => {
       browser: utils.getBrowserInfo(req),
       country: utils.getCountry(req)
     })
-    userAccess.save(err => {
+    userAccess.save( async err => {
       if (err) {
         reject(utils.buildErrObject(422, err.message))
       }
       const userInfo = setUserInfo(user)
       // Returns data with access token
+      const savedCard = await getPreviewCard(user._id)
+
+
       resolve({
         token: generateToken(user._id, user.role),
         userInfo: user,
-        code : 200
+        previewCard : savedCard ? savedCard : null,
+        code: 200
       })
     })
   })
@@ -130,6 +142,91 @@ const saveLoginAttemptsToDB = async user => {
   })
 }
 
+
+
+const getPreviewCard = async (owner_id) => {
+  try {
+    const saveCard = await SavedCard.aggregate([
+      {
+        $match: {
+          owner_id: mongoose.Types.ObjectId(owner_id)
+        }
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "company_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          'bio.business_name': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.company_name',
+              else: '$bio.business_name'
+            }
+          },
+          'card_color': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.card_color',
+              else: '$card_color'
+            }
+          },
+          'text_color': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.text_color',
+              else: '$text_color'
+            }
+          },
+          "business_logo": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.business_logo',
+              else: '$business_logo'
+            }
+          },
+          "address": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.address',
+              else: '$address'
+            }
+          },
+          "contact_details.website": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$contact_details.website'
+            }
+          },
+        }
+      },
+      {
+        $project: {
+          company: 0
+        }
+      }
+    ])
+
+    console.log("saveCard" ,saveCard)
+
+
+    return saveCard[0] ? saveCard[0] : null
+  } catch (error) {
+    console.log(error)
+  }
+}
 /**
  * Checks that login attempts are greater than specified in constant and also that blockexpires is less than now
  * @param {Object} user - user object
@@ -259,13 +356,13 @@ const registerUser = async req => {
     const user = new User({
       first_name: req.first_name,
       last_name: req.last_name,
-      full_name : `${req.first_name}${req.last_name ? ` ${req.last_name}` : ""}`,
+      full_name: `${req.first_name}${req.last_name ? ` ${req.last_name}` : ""}`,
       email: req.email,
-      social_id : req.social_id,
-      social_type : req.social_type,
+      social_id: req.social_id,
+      social_type: req.social_type,
       password: req.password,
       confirm_password: req.confirm_password,
-      email_verified : true
+      email_verified: true
     })
     user.save((err, item) => {
       if (err) {
@@ -447,7 +544,8 @@ const saveForgotPassword = async req => {
 const forgotPasswordResponse = item => {
   let data = {
     msg: 'RESET_EMAIL_SENT',
-    email: item.email
+    email: item.email,
+    code : 200
   }
   if (process.env.NODE_ENV !== 'production') {
     data = {
@@ -586,8 +684,8 @@ exports.registerUser = async (req, res) => {
   try {
     let newOtpforget;
     const userData = req.body;
-    console.log("userData============",userData)
-   
+    console.log("userData============", userData)
+
     const doesEmailExist = await UserModel.exists({ email: userData.email });
     if (doesEmailExist) {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
@@ -608,10 +706,10 @@ exports.registerUser = async (req, res) => {
     };
 
 
-  
+
     // emailer.sendRegistrationEmailMessage(locale, item)
 
-    res.status(201).json({ userInfo:userInfo, token: generateToken(userInfo._id),message: 'User registered successfully.' });
+    res.status(201).json({ userInfo: userInfo, token: generateToken(userInfo._id), message: 'User registered successfully.' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -623,9 +721,9 @@ exports.sendotpnew = async (req, res) => {
     const data = req.body;
     const email = data.email;
     let newOtpforget = generateNumericOTP();
-    
+
     const savedUser = await OtpModel.findOne({ email: email });
-    
+
     if (savedUser) {
       await OtpModel.updateOne({ email: email }, { otp: newOtpforget });
     } else {
@@ -668,7 +766,7 @@ exports.sendotpnew = async (req, res) => {
 //       otp: newOtpforget,
 //     });
 //     await otpData.save();
-    
+
 //     emailer.sendOtpOnEmail({
 //       email:savedUser.email,
 //       otp: newOtpforget,
@@ -676,9 +774,9 @@ exports.sendotpnew = async (req, res) => {
 //     },
 //       "OTP"
 //     )
-    
+
 //     console.log("otp is",newOtpforget)
-    
+
 
 //     res.status(200).json({ message: 'please check the mail.' });
 //   } catch (error) {
@@ -693,8 +791,8 @@ exports.verifyotpemail = async (req, res) => {
   try {
 
     const data = req.body;
-    const email = data.email 
-    const otp = data.otp 
+    const email = data.email
+    const otp = data.otp
 
     const user = await UserModel.findOne({ email: email });
     if (!user) {
@@ -704,16 +802,16 @@ exports.verifyotpemail = async (req, res) => {
     const otpData = await OtpModel.findOne({ email: email, otp: otp });
     if (!otpData) {
       return res.status(400).json({ errors: { msg: 'Invalid OTP.' } });
-    } 
+    }
     // else {
     //   const newUser = new UserModel(data);
     //   const savedUser = await newUser.save();
     // }
 
-    user.email_verified = true; 
+    user.email_verified = true;
     await user.save();
 
-    res.status(200).json({ message: 'OTP verified and user activated successfully.' });
+    res.status(200).json({ message: 'OTP verified and user activated successfully.' , code : 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -723,12 +821,13 @@ exports.verifyotpemail = async (req, res) => {
 
 
 
+
 exports.verifyotpemailNew = async (req, res) => {
   try {
 
     const data = req.body;
-    const email = data.email 
-    const otp = data.otp 
+    const email = data.email
+    const otp = data.otp
 
     // const user = await UserModel.findOne({ email: email });
     // if (!user) {
@@ -741,10 +840,10 @@ exports.verifyotpemailNew = async (req, res) => {
     }
 
     data.full_name = `${data.first_name} ${data.last_name}`
-    const otpData = await OtpModel.findOne({ email: email, otp: otp }).sort({createdAt:-1});
+    const otpData = await OtpModel.findOne({ email: email, otp: otp }).sort({ createdAt: -1 });
     if (!otpData) {
       return res.status(400).json({ errors: { msg: 'Invalid OTP.' } });
-    } 
+    }
     else {
       const newUser = new UserModel(data);
       const savedUser = await newUser.save();
@@ -772,23 +871,33 @@ const verifyPassword = async (plainPassword, hashedPassword) => {
 };
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, login_from } = req.body;
 
-    const user = await UserModel.findOne({ email: email });
+    var user = await UserModel.findOne({ email: email  });
     if (!user) {
-      return res.status(404).json({ errors: { msg: 'User not found.' } });
+      return res.status(404).json({ errors: { msg: 'Invalid credentials' } });
+    }
+
+
+    const isPasswordValid = await verifyPassword(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ errors: { msg: 'Invalid credentials' } });
     }
 
     if (!user.email_verified) {
       return res.status(400).json({ errors: { msg: 'Your email is not verified.' } });
     }
 
-    const isPasswordValid = await verifyPassword(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ errors: { msg: 'Invalid password.' } });
-    }
+    user = user.toJSON()
+    delete user.password;
+    delete user.confirm_password;
 
-    res.status(200).json({ userInfo: user, token: generateToken(user._id), message: 'Login successful.' });
+    const savedCard = await getPreviewCard(user._id)
+
+
+    if (login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
+
+    res.status(200).json({ userInfo: user, token: generateToken(user._id),  previewCard : savedCard ? savedCard : null,  message: 'Login successful.', code: 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -799,8 +908,8 @@ exports.loginUser = async (req, res) => {
 exports.emailexist = async (req, res) => {
   try {
     const userData = req.body;
-    console.log("userData============",userData.email)
-   
+    console.log("userData============", userData.email)
+
     const doesEmailExist = await UserModel.exists({ email: userData.email });
     if (doesEmailExist) {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
@@ -885,18 +994,23 @@ exports.socialLogin = async (req, res) => {
     );
     data.password = "12345678";
     data.confirm_password = "12345678";
-    
+
     if (!userExists && !doesSocialIdExists) {
       const item = await registerUser(data);
-      console.log("item",item)
+      console.log("item", item)
       const userInfo = setUserInfo(item);
       const response = returnRegisterToken(item, userInfo);
-
-      res.status(201).json({ code: 200, data:  await saveUserAccessAndReturnToken(req, item)});
-    } else {
       
-      const user = await User.findOne({email : data.email})
+
+      if(data.login_from === "web" && item.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } })
+      res.status(201).json({ code: 200, data: await saveUserAccessAndReturnToken(req, item) });
+    } else {
+
+      const user = await User.findOne({ email: data.email })
       userExists.last_sign_in = new Date();
+
+      if(data.login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
+      
       return res.status(200).json(
         {
           code: 200,
@@ -961,30 +1075,33 @@ exports.forgotPassword = async (req, res) => {
     const locale = req.getLocale()
     const data = req.body
     //  matchedData(req)
-    const user =  await findUser(data.email)
+    const user = await findUser(data.email)
     const item = await saveForgotPassword(req)
     const newOtpforget = generateNumericOTP();
-    
-    const otpData = await OtpModel.findOne({ email: data.email});
+
+    const otpData = await OtpModel.findOne({ email: data.email });
     if (!otpData) {
 
       const otp = new OtpModel({
         email: data.email,
         otp: newOtpforget,
       });
-      
+
       await otp.save();
-    }else{
+    } else {
 
       otpData.otp = newOtpforget
+      otpData.used = false
+      otpData.expired = new Date(Date.now() + (5 * 60 * 1000))
+
       await otpData.save()
     }
 
 
     emailer.sendOtpOnEmail({
-      email:data.email,
+      email: data.email,
       otp: newOtpforget,
-      name:user.first_name
+      name: user.first_name
     },
       "OTP"
     )
@@ -996,6 +1113,34 @@ exports.forgotPassword = async (req, res) => {
   }
 }
 
+
+exports.resetPasswordWeb = async (req , res) => {
+  try {
+    const {otp , password} = req.body;
+    const otpData = await OtpModel.findOne({ otp: otp });
+
+    if(!otpData) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+
+    if(otpData.used === true) return utils.handleError(res , {message :"OTP is already used" , code : 400})
+    if(otpData.expired < new Date()) return utils.handleError(res , {message :"OTP Expired" , code : 400})
+    if(otpData.otp !== otp) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+
+
+    const user = await User.findOne({email : otpData.email});
+    if(!user) return utils.handleError(res , {message :"User not found" , code : 404});
+
+    user.password = password;
+    await user.save()
+
+    otpData.used = true;
+    await otpData.save()
+
+    res.json({message : "Password reset successfully" , code : 200})
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
 /**
  * Admin Forgot password function called by route
  * @param {Object} req - request object
@@ -1011,7 +1156,7 @@ exports.forgotAdminPassword = async (req, res) => {
     // emailer.sendResetPasswordEmailMessage(locale, item)
     emailer.sendResetPasswordMail(locale, {
       email: admin.email,
-      link: process.env.ADMIN_URL+'auth/reset-password/'+item.verification
+      link: process.env.ADMIN_URL + 'auth/reset-password/' + item.verification
     })
     res.status(200).json(forgotPasswordResponse(item))
   } catch (error) {
@@ -1099,14 +1244,14 @@ exports.updateProfile = async (req, res) => {
   try {
     const data = req.body;
 
-    const user = await User.findOne({ email:data.email });
+    const user = await User.findOne({ email: data.email });
 
     if (!user) {
       return res.status(404).json({ message: 'Email does not exist.' });
     }
 
-    
-  
+
+
     await user.save();
 
     res.status(200).json({ message: user });
@@ -1115,3 +1260,77 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
+
+exports.sendOTP = async (req, res) => {
+  try {
+    // Gets locale from header 'Accept-Language'
+    const locale = req.getLocale()
+    const data = req.body
+    //  matchedData(req)
+    const item = await saveForgotPassword(req)
+    const newOtpforget = generateNumericOTP();
+
+    const otpData = await OtpModel.findOne({ email: data.email });
+    if (!otpData) {
+
+      const otp = new OtpModel({
+        email: data.email,
+        otp: newOtpforget,
+        expired : new Date(Date.now() + (5 * 60 * 1000))
+      });
+
+      await otp.save();
+    } else {
+
+      otpData.otp = newOtpforget
+      otpData.used = false
+      otpData.expired = new Date(Date.now() + (5 * 60 * 1000))
+
+      await otpData.save()
+    }
+
+
+    emailer.sendOtpOnEmail({
+      email: data.email,
+      otp: newOtpforget,
+      
+    },
+      "OTP"
+    )
+
+    // emailer.sendResetPasswordEmailMessage(locale, item)
+    res.status(200).json(forgotPasswordResponse(item))
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+exports.verifyOTP = async (req, res) => {
+  try {
+    const {email , otp} = req.body;
+
+    const data = await OtpModel.findOne({email : email})
+
+    if(!data) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+
+    if(data.used === true) return utils.handleError(res , {message :"OTP is already used" , code : 400})
+    if(data.expired < new Date()) return utils.handleError(res , {message :"OTP Expired" , code : 400})
+    if(data.otp !== otp) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+
+    data.used = true;
+    await data.save();
+    res.json({data : true , code : 200})
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.token = async (req , res) => {
+  try {
+    res.json({data : true})
+  } catch (error) {
+    res.json({data : false})
+  }
+}
