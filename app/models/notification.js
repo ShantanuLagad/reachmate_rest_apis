@@ -16,7 +16,8 @@ const NotificationSchema = new mongoose.Schema(
                 "user",
                 "company",
                 "card_shared",
-                "by_admin"
+                "by_admin",
+                "removed_from_paid"
             ],
             required: true,
         },

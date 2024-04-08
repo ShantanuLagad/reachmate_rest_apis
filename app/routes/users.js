@@ -143,6 +143,13 @@ router.post(
 )
 
 router.post(
+  "/haveSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.haveSubscription
+)
+
+router.post(
   '/addCorporateCard',
   requireAuth,
   validate.addCorporateCard,
@@ -320,6 +327,75 @@ router.post(
   requireAuth,
   trimRequest.all,
   controller.saveCard
+)
+
+router.post(
+  "/getSavedCard",
+  requireAuth,
+  trimRequest.all,
+  controller.getSavedCard
+)
+
+
+router.post(
+  "/isPaymentDone" ,
+  requireAuth,
+  trimRequest.all,
+  controller.isPaymentDone
+)
+
+
+router.post(
+  "/cancelSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.cancelSubscription
+)
+
+router.post(
+  "/updateSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.updateSubscription
+)
+
+router.post(
+  "/cancelScheduledUpdate",
+  requireAuth,
+  trimRequest.all,
+  controller.cancelScheduledUpdate
+)
+
+router.post(
+  "/registration",
+  trimRequest.all,
+  controller.registration
+)
+router.post(
+  "/contactUs",
+  trimRequest.all,
+  controller.contactUs
+)
+
+// router.get(
+//   "/sendMail",
+//   trimRequest.all,
+//   controller.sendMail
+// )
+
+router.post(
+  '/sendMail/:user_id',
+  //requireAuth,
+  trimRequest.all,
+  controller.sendMail
+)
+
+
+router.post(
+  '/deleteCard',
+  requireAuth,
+  trimRequest.all,
+  controller.deleteCard
 )
 
 

@@ -8,6 +8,8 @@ var generator = require('generate-password');
 const Transaction = require("../models/transaction");
 const { Country, State, City } = require('country-state-city');
 const Plan = require("../models/plan")
+const Registration = require("../models/registration")
+const ContactUs = require("../models/contactUs")
 const moment = require("moment")
 const {
   INTERNAL_SERVER_ERROR
@@ -58,6 +60,7 @@ const mongoose = require("mongoose")
 const jwt = require('jsonwebtoken')
 const { off } = require('process')
 const { json } = require('stream/consumers')
+const { count } = require('console')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -634,7 +637,7 @@ exports.getCorporateUser = async (req, res) => {
       },
       {
         $sort: {
-          "user.createdAt": +sort
+          createdAt: +sort
         }
       },
       {
@@ -861,15 +864,20 @@ exports.dashBoardCard = async (req, res) => {
 
     const revenue = await Transaction.aggregate([
       {
-        $group : {
-          _id : null,
-          amount : {$sum : "$amount"}
+        $group: {
+          _id: null,
+          amount: {
+            $sum: {
+              $toInt
+                : "$amount"
+            }
+          }
         }
       },
-      
+
     ])
 
-    console.log("revenue" ,revenue)
+    console.log("revenue", revenue)
     const totalRevenue = revenue[0]?.amount ?? 0
 
     res.json({ data: { users: totalUser.length, company: totalComany, revenue: totalRevenue }, code: 200 })
@@ -1228,6 +1236,35 @@ exports.reply = async (req, res) => {
 }
 
 
+exports.getContactUsList = async (req, res) => {
+  try {
+    const { limit = 10, offset = 0, sort = -1 } = req.query;
+
+    const count = await ContactUs.countDocuments({})
+    const contactUs = await ContactUs.find({}).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
+
+
+    res.json({ data: contactUs, count, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+exports.getRegistrationList = async (req, res) => {
+  try {
+    const { limit = 10, offset = 0, sort = -1 } = req.query;
+
+    const count = await Registration.countDocuments({})
+    const registration = await Registration.find({}).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
+
+
+    res.json({ data: registration, count, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+
 exports.getNotification = async (req, res) => {
 
   try {
@@ -1414,6 +1451,7 @@ exports.sendNotification = async (req, res) => {
         body: body
       }
 
+
       notificationToCreate.push(notificationData);
 
       if (element.notification === true && element?.device_token) {
@@ -1422,6 +1460,7 @@ exports.sendNotification = async (req, res) => {
 
     }
 
+    console.log("device_token", device_tokens)
     if (sent_to.includes("company")) {
 
       const companies = await Company.aggregate([
@@ -1464,7 +1503,6 @@ exports.sendNotification = async (req, res) => {
 
 
     const notificaitons = await Notification.insertMany(notificationToCreate);
-    console.log("notificaitons", notificaitons.length)
 
     const dataForAdmin = {
       sent_to,
@@ -1473,11 +1511,13 @@ exports.sendNotification = async (req, res) => {
     }
 
     const notificationByAdmin = new NotificationByAdmin(dataForAdmin);
-    console.log("notificationByAdmin", notificationByAdmin)
+
     await notificationByAdmin.save()
 
     //push notification
-    utils.sendPushNotification(device_tokens, title, body)
+    if (device_tokens.length !== 0) {
+      utils.sendPushNotification(device_tokens, title, body)
+    }
 
     res.json({ message: "Notification sent successfully", code: 200 })
   } catch (error) {
@@ -1782,9 +1822,9 @@ exports.transactionHistoryofUsers = async (req, res) => {
         }
       },
       {
-        $addFields : {
-          amount : {
-            $toString : "$amount"
+        $addFields: {
+          amount: {
+            $toString: "$amount"
           }
         }
       },
@@ -1843,7 +1883,7 @@ exports.transactionHistoryofUsers = async (req, res) => {
 
 exports.transactionHistoryOfCompany = async (req, res) => {
   try {
-    const { search = "" ,sort = -1, limit = 10, offset = 0 } = req.query;
+    const { search = "", sort = -1, limit = 10, offset = 0 } = req.query;
 
     const searchCondition = []
     if (search) {
@@ -1868,9 +1908,9 @@ exports.transactionHistoryOfCompany = async (req, res) => {
         }
       },
       {
-        $addFields : {
-          amount : {
-            $toString : "$amount"
+        $addFields: {
+          amount: {
+            $toString: "$amount"
           }
         }
       },
@@ -1959,7 +1999,7 @@ exports.getStates = async (req, res) => {
 
 exports.createPlan = async (req, res) => {
   try {
-    const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user ,amount_without_discount} = req.body
+    const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user, amount_without_discount } = req.body
 
     const plan = await instance.plans.create({
       "period": period,
@@ -1968,17 +2008,17 @@ exports.createPlan = async (req, res) => {
         "name": name,
         "amount": Number(amount) * 100,
         "currency": "INR",
-        "description": description
+        // "description": description
       },
       "notes": {
         "plan_type": plan_type,
         "allowed_user": allowed_user,
         "trial_period_days": trial_period_days,
-        "amount_without_discount" : amount_without_discount
+        "amount_without_discount": amount_without_discount
       }
     })
 
-    console.log("plan" , plan)
+    console.log("plan", plan)
     const data = {
       plan_id: plan.id,
       period: plan.period,
@@ -1987,21 +2027,106 @@ exports.createPlan = async (req, res) => {
         name: plan.item.name,
         amount: plan.item.amount,
         currency: plan.item.currency,
-        description: plan.item.description,
+        // description: plan.item.description,
       },
       amount_without_discount: plan.notes.amount_without_discount,
       trial_period_days: plan.notes.trial_period_days,
       plan_type: plan.notes.plan_type,
       allowed_user: plan.notes.allowed_user,
     }
-    console.log('data' ,data)
+    console.log('data', data)
 
     const planForDatabase = new Plan(data);
     await planForDatabase.save()
 
-    res.json({message : "Plan create successfully" , data : plan , code : 200})
+    res.json({ message: "Plan create successfully", data: plan, code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
 }
 
+exports.chartData = async (req, res) => {
+  try {
+    const country = req.query.country;
+    const startDate = moment().subtract(11, 'months').startOf('month');
+    const endDate = moment();
+
+    const start = startDate.toDate()
+    const end = endDate.toDate()
+
+    const monthsInRange = [];
+
+    let currentMonth = moment(start);
+
+    while (currentMonth.isSameOrBefore(endDate)) {
+      monthsInRange.push({
+        month: currentMonth.month() + 1, // Month is zero-indexed, so adding 1
+        year: currentMonth.year()
+      });
+
+      currentMonth.add(1, 'month');
+    }
+
+    const condition = {
+      createdAt: {
+        $gte: start,
+        $lte: end
+      },
+    }
+
+
+    if (country) {
+      condition.country = country
+    }
+
+    const transaction = await Transaction.aggregate([
+      {
+        $match: condition
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" }
+          },
+          amount: {
+            $sum: {
+              $toInt
+                : "$amount"
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          month: "$_id.month",
+          amount: 1,
+        }
+      },
+    ])
+
+    const data = []
+
+    for (let index = 0; index < monthsInRange.length; index++) {
+      const element = monthsInRange[index];
+
+      const monthData = transaction.find(ele => ele.year === element.year && ele.month === element.month);
+
+      if (monthData) {
+        data.push(monthData)
+      } else {
+        data.push({
+          year: element.year,
+          month: element.month,
+          amount: 0,
+        })
+      }
+    }
+
+    res.json({ data: data, code: 200 })
+  } catch (error) {
+    handleError(res, error);
+  }
+}

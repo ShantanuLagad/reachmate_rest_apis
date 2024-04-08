@@ -15,6 +15,9 @@ const emailer = require('../middleware/emailer')
 const APIKey = require('../models/api_keys')
 const SavedCard = require("../models/saved_card")
 const mongoose = require("mongoose")
+const Subscription = require("../models/subscription");
+const CardDetials = require('../models/cardDetials')
+const PaidByCompany = require("../models/paid_by_company")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -38,13 +41,55 @@ const generateToken = (user, role = 'user') => {
         data: {
           _id: user,
         },
-        exp: expiration
       },
       process.env.JWT_SECRET
     )
   )
 }
 
+async function checkSusbcriptionIsActive(user_id) {
+  const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+  if (!subcription) return false
+  if (subcription.status === "created") return false
+  if (subcription.end_at < new Date()) return false
+  return true
+}
+
+async function isSubscriptionActiveOrNot(user) {
+  try {
+    const user_id = user._id;
+    var subcriptionActive = false
+    if (user.user_type === "corporate") {
+      const card = await CardDetials.findOne({ owner_id: user_id });
+      if (!card) return false
+      const company_id = card.company_id;
+      const email = card?.contact_details?.email;
+      if (!email) return false
+      const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+      if (isSubscriptionPaidByCompany) {
+        //Employee is subcription is paid by company
+        subcriptionActive = await checkSusbcriptionIsActive(company_id)
+      } else {
+        //Employee is subcription is not paid by company
+        //check for waiting period 
+        const waiting_end_time = card.waiting_end_time;
+        if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+          subcriptionActive = true
+        } else {
+          subcriptionActive = await checkSusbcriptionIsActive(user_id)
+        }
+      }
+    } else {
+      subcriptionActive = await checkSusbcriptionIsActive(user_id)
+    }
+
+    return subcriptionActive
+  } catch (error) {
+    console.log(error)
+    return false
+  }
+}
 /**
  * Creates an object with user info
  * @param {Object} req - request object
@@ -76,11 +121,13 @@ const saveUserAccessAndReturnToken = async (req, user) => {
 
   console.log("users", user)
   user = user.toJSON()
+  let haveSubscription = await isSubscriptionActiveOrNot(user)
+
   delete user.password;
   delete user.confirm_password;
 
 
-  
+
   return new Promise((resolve, reject) => {
     const userAccess = new UserAccess({
       email: user.email,
@@ -88,19 +135,20 @@ const saveUserAccessAndReturnToken = async (req, user) => {
       browser: utils.getBrowserInfo(req),
       country: utils.getCountry(req)
     })
-    userAccess.save( async err => {
+    userAccess.save(async err => {
       if (err) {
         reject(utils.buildErrObject(422, err.message))
       }
       const userInfo = setUserInfo(user)
       // Returns data with access token
       const savedCard = await getPreviewCard(user._id)
-
+     
 
       resolve({
         token: generateToken(user._id, user.role),
         userInfo: user,
-        previewCard : savedCard ? savedCard : null,
+        previewCard: savedCard ? savedCard : null,
+        haveSubscription,
         code: 200
       })
     })
@@ -219,7 +267,7 @@ const getPreviewCard = async (owner_id) => {
       }
     ])
 
-    console.log("saveCard" ,saveCard)
+    console.log("saveCard", saveCard)
 
 
     return saveCard[0] ? saveCard[0] : null
@@ -545,7 +593,7 @@ const forgotPasswordResponse = item => {
   let data = {
     msg: 'RESET_EMAIL_SENT',
     email: item.email,
-    code : 200
+    code: 200
   }
   if (process.env.NODE_ENV !== 'production') {
     data = {
@@ -811,7 +859,7 @@ exports.verifyotpemail = async (req, res) => {
     user.email_verified = true;
     await user.save();
 
-    res.status(200).json({ message: 'OTP verified and user activated successfully.' , code : 200 });
+    res.status(200).json({ message: 'OTP verified and user activated successfully.', code: 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -873,7 +921,7 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password, login_from } = req.body;
 
-    var user = await UserModel.findOne({ email: email  });
+    var user = await UserModel.findOne({ email: email });
     if (!user) {
       return res.status(404).json({ errors: { msg: 'Invalid credentials' } });
     }
@@ -889,15 +937,20 @@ exports.loginUser = async (req, res) => {
     }
 
     user = user.toJSON()
+
+    console.log("user" ,user);
+    let haveSubscription = await isSubscriptionActiveOrNot(user)
+    console.log("haveSubscription" ,haveSubscription);
+
     delete user.password;
     delete user.confirm_password;
 
     const savedCard = await getPreviewCard(user._id)
 
 
-    if (login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
+    // if (login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
 
-    res.status(200).json({ userInfo: user, token: generateToken(user._id),  previewCard : savedCard ? savedCard : null,  message: 'Login successful.', code: 200 });
+    res.status(200).json({ userInfo: user, token: generateToken(user._id), previewCard: savedCard ? savedCard : null, haveSubscription, message: 'Login successful.', code: 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -1000,17 +1053,17 @@ exports.socialLogin = async (req, res) => {
       console.log("item", item)
       const userInfo = setUserInfo(item);
       const response = returnRegisterToken(item, userInfo);
-      
 
-      if(data.login_from === "web" && item.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } })
+
+      // if(data.login_from === "web" && item.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } })
       res.status(201).json({ code: 200, data: await saveUserAccessAndReturnToken(req, item) });
     } else {
 
       const user = await User.findOne({ email: data.email })
       userExists.last_sign_in = new Date();
 
-      if(data.login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
-      
+      // if(data.login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
+
       return res.status(200).json(
         {
           code: 200,
@@ -1114,20 +1167,20 @@ exports.forgotPassword = async (req, res) => {
 }
 
 
-exports.resetPasswordWeb = async (req , res) => {
+exports.resetPasswordWeb = async (req, res) => {
   try {
-    const {otp , password} = req.body;
+    const { otp, password } = req.body;
     const otpData = await OtpModel.findOne({ otp: otp });
 
-    if(!otpData) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+    if (!otpData) return utils.handleError(res, { message: "Invalid OTP", code: 400 })
 
-    if(otpData.used === true) return utils.handleError(res , {message :"OTP is already used" , code : 400})
-    if(otpData.expired < new Date()) return utils.handleError(res , {message :"OTP Expired" , code : 400})
-    if(otpData.otp !== otp) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+    if (otpData.used === true) return utils.handleError(res, { message: "OTP is already used", code: 400 })
+    if (otpData.expired < new Date()) return utils.handleError(res, { message: "OTP Expired", code: 400 })
+    if (otpData.otp !== otp) return utils.handleError(res, { message: "Invalid OTP", code: 400 })
 
 
-    const user = await User.findOne({email : otpData.email});
-    if(!user) return utils.handleError(res , {message :"User not found" , code : 404});
+    const user = await User.findOne({ email: otpData.email });
+    if (!user) return utils.handleError(res, { message: "User not found", code: 404 });
 
     user.password = password;
     await user.save()
@@ -1135,7 +1188,7 @@ exports.resetPasswordWeb = async (req , res) => {
     otpData.used = true;
     await otpData.save()
 
-    res.json({message : "Password reset successfully" , code : 200})
+    res.json({ message: "Password reset successfully", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1277,7 +1330,7 @@ exports.sendOTP = async (req, res) => {
       const otp = new OtpModel({
         email: data.email,
         otp: newOtpforget,
-        expired : new Date(Date.now() + (5 * 60 * 1000))
+        expired: new Date(Date.now() + (5 * 60 * 1000))
       });
 
       await otp.save();
@@ -1294,7 +1347,7 @@ exports.sendOTP = async (req, res) => {
     emailer.sendOtpOnEmail({
       email: data.email,
       otp: newOtpforget,
-      
+
     },
       "OTP"
     )
@@ -1308,29 +1361,29 @@ exports.sendOTP = async (req, res) => {
 
 exports.verifyOTP = async (req, res) => {
   try {
-    const {email , otp} = req.body;
+    const { email, otp } = req.body;
 
-    const data = await OtpModel.findOne({email : email})
+    const data = await OtpModel.findOne({ email: email })
 
-    if(!data) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+    if (!data) return utils.handleError(res, { message: "Invalid OTP", code: 400 })
 
-    if(data.used === true) return utils.handleError(res , {message :"OTP is already used" , code : 400})
-    if(data.expired < new Date()) return utils.handleError(res , {message :"OTP Expired" , code : 400})
-    if(data.otp !== otp) return utils.handleError(res , {message :"Invalid OTP" , code : 400})
+    if (data.used === true) return utils.handleError(res, { message: "OTP is already used", code: 400 })
+    if (data.expired < new Date()) return utils.handleError(res, { message: "OTP Expired", code: 400 })
+    if (data.otp !== otp) return utils.handleError(res, { message: "Invalid OTP", code: 400 })
 
     data.used = true;
     await data.save();
-    res.json({data : true , code : 200})
+    res.json({ data: true, code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
 }
 
 
-exports.token = async (req , res) => {
+exports.token = async (req, res) => {
   try {
-    res.json({data : true})
+    res.json({ data: true })
   } catch (error) {
-    res.json({data : false})
+    res.json({ data: false })
   }
 }

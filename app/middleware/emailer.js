@@ -182,23 +182,23 @@ module.exports = {
       to: data.email,
       subject,
       otp: data.otp,
-      name:data.name,
-      logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+      name: data.name,
+      logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
     };
     app.mailer.send(`otp`, mailOptions, function (err, message) {
       if (err) {
         console.log("There was an error sending the email" + err);
-      } else {        
+      } else {
         console.log("Mail sent to user");
       }
     });
   },
-  
+
 
   async userExists(model, email, throwError = true) {
     return new Promise((resolve, reject) => {
       model.findOne({
-          email: email
+        email: email
       })
         .then((item) => {
           var err = null;
@@ -215,11 +215,11 @@ module.exports = {
     });
   },
 
-  async socialIdExists(model,social_id, social_type, throwError = false) {
+  async socialIdExists(model, social_id, social_type, throwError = false) {
     return new Promise((resolve, reject) => {
       model.findOne({
-          social_id: social_id,
-          social_type: social_type,
+        social_id: social_id,
+        social_type: social_type,
       })
         .then((item) => {
           var err = null;
@@ -237,98 +237,98 @@ module.exports = {
   },
 
 
-/**
-   * Sends reset password email
-   * @param {string} locale - locale
-   * @param {Object} user - user object
-   */
+  /**
+     * Sends reset password email
+     * @param {string} locale - locale
+     * @param {Object} user - user object
+     */
 
-// async sendResetPasswordEmailMessage(locale, user) {
-//   i18n.setLocale(locale);
-//   const subject = i18n.__("forgotPassword.SUBJECT");
-//   const htmlMessage = i18n.__(
-//     "forgotPassword.MESSAGE",
-//     user.email,
-//     process.env.FRONTEND_URL,
-//     user.verification
-//   );
-//   prepareToSendEmail(user, subject, htmlMessage);
-// },
-
-
-async sendForgetPasswordEmail(locale, user, template) {
-
-console.log("user",user)
-  return new Promise(async (resolve, reject) => {
-
-    try {
-      user = JSON.parse(JSON.stringify(user));
-      console.log(template);
-
-      console.log("Inside emailer");
-      if (!user.name) {
-        user.name = "user";
-      }
+  // async sendResetPasswordEmailMessage(locale, user) {
+  //   i18n.setLocale(locale);
+  //   const subject = i18n.__("forgotPassword.SUBJECT");
+  //   const htmlMessage = i18n.__(
+  //     "forgotPassword.MESSAGE",
+  //     user.email,
+  //     process.env.FRONTEND_URL,
+  //     user.verification
+  //   );
+  //   prepareToSendEmail(user, subject, htmlMessage);
+  // },
 
 
-      console.log("user.url",user.url)
-      app.mailer.send(
-        `${locale}/${template}`,
-        {
-          to: user.email,
-          subject: `Forgot Password - ${process.env.APP_NAME}`,
-          name: capitalizeFirstLetter(user.name),
-          verification_code: "",
-          verification_link: user.url,
-          website_url: process.env.PRODUCTION_FRONTEND_URL,
-          logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
-        },
-        function (err) {
-          if (err) {
-            console.log("There was an error sending the email" + err);
-            reject(buildErrObject(422, err.message));
-          } else {
-            console.log("VERIFICATION EMAIL SENT");
-            resolve("VERIFICATION EMAIL SENT");
-          }
+  async sendForgetPasswordEmail(locale, user, template) {
 
-        }
-      );
-
-    } catch (err) {
-      reject(buildErrObject(422, err.message));
-    }
-
-  })
-
-
-
-},
-
-async sendReplyEmail(locale, user, template) {
-
-  console.log("user",user)
+    console.log("user", user)
     return new Promise(async (resolve, reject) => {
-  
+
       try {
         user = JSON.parse(JSON.stringify(user));
         console.log(template);
-  
+
+        console.log("Inside emailer");
+        if (!user.name) {
+          user.name = "user";
+        }
+
+
+        console.log("user.url", user.url)
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Forgot Password - ${process.env.APP_NAME}`,
+            name: capitalizeFirstLetter(user.name),
+            verification_code: "",
+            verification_link: user.url,
+            website_url: process.env.PRODUCTION_FRONTEND_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("VERIFICATION EMAIL SENT");
+              resolve("VERIFICATION EMAIL SENT");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+
+
+
+  },
+
+  async sendReplyEmail(locale, user, template) {
+
+    console.log("user", user)
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
         console.log("Inside emailer");
         if (!user.full_name) {
           user.full_name = "user";
         }
-  
+
         app.mailer.send(
           `${locale}/${template}`,
           {
             to: user.email,
             subject: `Reply from - ${process.env.APP_NAME}`,
             full_name: capitalizeFirstLetter(user.full_name),
-            question : user.question,
-            reply  : user.reply,
+            question: user.question,
+            reply: user.reply,
             website_url: process.env.PRODUCTION_FRONTEND_URL,
-            logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
           function (err) {
             if (err) {
@@ -338,61 +338,108 @@ async sendReplyEmail(locale, user, template) {
               console.log("Reply has been sent");
               resolve("Reply has been sent");
             }
-  
+
           }
         );
-  
+
       } catch (err) {
         reject(buildErrObject(422, err.message));
       }
-  
+
     })
   },
 
 
   async sendAccountCreationEmail(locale, user, template) {
 
-    console.log("user",user)
-      return new Promise(async (resolve, reject) => {
-    
-        try {
-          user = JSON.parse(JSON.stringify(user));
-          console.log(template);
-    
-          console.log("Inside emailer");
-          if (!user.company_name) {
-            user.company_name = "User";
-          }
-    
-          app.mailer.send(
-            `${locale}/${template}`,
-            {
-              to: user.email,
-              subject: `Company Account Credentials - ${process.env.APP_NAME}`,
-              company_name: capitalizeFirstLetter(user.company_name),
-              password : user.password,
-              email : user.email,
-              access_code  : user.access_code,
-              website_url: process.env.PRODUCTION_COMPANY_URL,
-              logo : `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
-            },
-            function (err) {
-              if (err) {
-                console.log("There was an error sending the email" + err);
-                reject(buildErrObject(422, err.message));
-              } else {
-                console.log("Email has been sent");
-                resolve("Email has been sent");
-              }
-    
-            }
-          );
-    
-        } catch (err) {
-          reject(buildErrObject(422, err.message));
-        }
-    
-      })
-    },
+    console.log("user", user)
+    return new Promise(async (resolve, reject) => {
 
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
+        console.log("Inside emailer");
+        if (!user.company_name) {
+          user.company_name = "User";
+        }
+
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Company Account Credentials - ${process.env.APP_NAME}`,
+            company_name: capitalizeFirstLetter(user.company_name),
+            password: user.password,
+            email: user.email,
+            access_code: user.access_code,
+            website_url: process.env.PRODUCTION_COMPANY_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Email has been sent");
+              resolve("Email has been sent");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+  },
+
+
+  async sendBuySubscriptionEmail(locale, user, template) {
+
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
+        if (!user.full_name) {
+          user.full_name = "User";
+        }
+
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Subscription Purchased: - ${process.env.APP_NAME}`,
+            full_name: capitalizeFirstLetter(user.full_name),
+            email: user.email,
+            app_name : process.env.APP_NAME,
+            subscription_name : user.subscription_name,
+            purchased_date :user.purchased_date,
+            price : user.price,
+            start_date : user.start_date,
+            website_url: process.env.PRODUCTION_WEBSITE_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
+            year : new Date().getFullYear()
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Email has been sent");
+              resolve("Email has been sent");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+  },
 }

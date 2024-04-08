@@ -14,10 +14,7 @@ const CardDetials = new mongoose.Schema(
         type : mongoose.Schema.Types.ObjectId,
         ref : "company"
     },
-    paid_by_company : {
-        type : Boolean,
-        default : false
-    },
+
     card_type : {
         type : String,
         enum : ["personal" , "corporate"]
@@ -134,13 +131,13 @@ const CardDetials = new mongoose.Schema(
             default : true
         }
     },
-    // reimbursed_by_company : {
-    //     type : String,
-    //     enum : ["Yes" , 'No']
-    // },
     waiting_end_time :{
         type : Date,
-    }
+    },
+    paid_by_company : {
+        type : Boolean,
+        default : false
+    },
   },
   {
     versionKey: false,

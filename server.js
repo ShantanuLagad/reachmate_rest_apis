@@ -45,6 +45,11 @@ app.get('/ping', (req, res) => {
   }, 2000);
 });
 
+// app.get('/payment-redirect', (req, res) => {
+//   res.redirect("https://reachmate.app/Dashboard?tab=3");
+// });
+
+
 // for parsing json
 app.use(
   bodyParser.json({

@@ -229,6 +229,18 @@ router.post(
   controller.reply
 )
 
+router.get(
+  "/getContactUsList",
+  trimRequest.all,
+  controller.getContactUsList
+)
+
+router.get(
+  "/getRegistrationList",
+  trimRequest.all,
+  controller.getRegistrationList
+)
+
 router.post(
   "/sendNotification",
   requireAuth,
@@ -332,5 +344,14 @@ router.post(
   trimRequest.all,
   controller.createPlan
 )
+
+router.get(
+  "/chartData",
+  trimRequest.all,
+  requireAuth,
+  controller.chartData
+)
+
+
 
 module.exports = router

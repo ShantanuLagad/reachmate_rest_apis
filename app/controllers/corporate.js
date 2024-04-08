@@ -38,6 +38,31 @@ var instance = new Razorpay({
  * Private functions *
  *********************/
 
+async function checkSusbcriptionIsActive(user_id) {
+  const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+  if (!subcription) return false
+  if (!subcription.status === "created") return false
+  if (subcription.end_at < new Date()) return false
+  return true
+}
+
+
+function extractDomainFromEmail(email) {
+  // Split the email address at the "@" symbol
+  const parts = email.split('@');
+
+  // Check if the email has the correct format
+  if (parts.length !== 2) {
+    console.error('Invalid email address format');
+    return null;
+  }
+
+  // Extract and return the domain part
+  const domain = parts[1];
+  return domain;
+}
+
 const generateToken = (_id, role, remember_me) => {
   // Gets expiration time
 
@@ -525,7 +550,7 @@ exports.corporateCardHolder = async (req, res) => {
       },
       {
         $sort: {
-          "user.createdAt": +sort
+          createdAt: +sort
         }
       },
       {
@@ -718,25 +743,48 @@ exports.deleteAllNotification = async (req, res) => {
 }
 
 
+
 exports.addEmailInPiadByCompany = async (req, res) => {
   try {
+
     const { email } = req.body;
     const company_id = req.user._id;
 
+    const emailDomain = extractDomainFromEmail(email);
+    if (req.user.email_domain !== emailDomain) return utils.handleError(res, { message: "Domain name not matched", code: 400 });
+
     const isEmailAlreadyExist = await PaidByCompany.findOne({ company_id: mongoose.Types.ObjectId(company_id), email: email });
-    if (isEmailAlreadyExist) return utils.handleError(res, { message: "Email is already added in the list", code: 400 });
+    if (isEmailAlreadyExist) return utils.handleError(res, { message: "Email is already in the list", code: 400 });
+
+    const isSubcriptionActive = await checkSusbcriptionIsActive(company_id)
+    if (!isSubcriptionActive) return utils.handleError(res, { message: "You do not have any active subscription", code: 400 });
+
+    //check is the users already have an active subscription
+    const card = await CardDetials.findOne({ "contact_details.email": email });
+    if (card) {
+      const isSubcriptionActiveForUser = await checkSusbcriptionIsActive(card.owner_id)
+      if (isSubcriptionActiveForUser) return utils.handleError(res, { message: "You can not add user who have active subcription", code: 400 });
+    }
+
+    const subcription = await Subscription.findOne({ user_id: company_id }).sort({ createdAt: -1 });
+    const plan = await Plan.findOne({ plan_id: subcription.plan_id });
 
     const count = await PaidByCompany.countDocuments({ company_id: mongoose.Types.ObjectId(company_id) });
-
-    if (count >= 50) return utils.handleError(res, { message: "You have already reached the limit of 50 paid users", code: 400 });
+    if (count >= plan.allowed_user) return utils.handleError(res, { message: `You have already reached the limit of ${plan.allowed_user} paid users`, code: 400 });
 
     const data = {
       company_id: company_id,
-      email: email
+      email: email,
+      is_card_created: card ? true : false
     }
 
     const addNewEmail = new PaidByCompany(data);
     await addNewEmail.save();
+
+    if (data.is_card_created === true) {
+      card.paid_by_company = true
+      await card.save()
+    }
 
     res.json({ message: "Email added successfully", code: 200 })
   } catch (error) {
@@ -752,7 +800,13 @@ exports.bulkUploadEmail = async (req, res) => {
     const type = req.body.type;
     const company_id = req.user._id;
 
-    const limit = 50 //need to get from active subscription
+    const isSubcriptionActive = await checkSusbcriptionIsActive(company_id)
+    if (!isSubcriptionActive) return utils.handleError(res, { message: "You do not have any active subscription", code: 400 });
+
+    const subcription = await Subscription.findOne({ user_id: company_id }).sort({ createdAt: -1 });
+    const plan = await Plan.findOne({ plan_id: subcription.plan_id });
+    const limit = plan.allowed_user;
+
     if (!req.files.media || !req.body.type) {
       // check if image and path missing
       return res.status(422).json({
@@ -769,8 +823,6 @@ exports.bulkUploadEmail = async (req, res) => {
 
     media = `${process.env.STORAGE_PATH_FOR_EXCEL}/bulkUpload/${media}`
 
-
-    console.log("media", media)
     var Email = [];
 
     if (type === "excel") {
@@ -813,13 +865,20 @@ exports.bulkUploadEmail = async (req, res) => {
       // Read CSV file
     }
 
-    console.log("Email", Email)
-
     if (Email.length === 0) return utils.handleError(res, { message: "Email field should cantain atleast one row", code: 400 });
+
+
+    //to check all the email contain company domain name
+    for (let index = 0; index < Email.length; index++) {
+      const email = Email[index].email;
+      const emailDomain = extractDomainFromEmail(email);
+      if (req.user.email_domain !== emailDomain) { return utils.handleError(res, { message: `Domain name not matched at row ${index + 2}`, code: 400 }) };
+    }
+
+    console.log("Email", Email)
 
     const findAllExistingEmail = await PaidByCompany.find({ company_id: company_id })
     if (findAllExistingEmail.length >= limit) return utils.handleError(res, { message: `You have already reach the limit of ${limit} emails`, code: 400 });
-
 
     const emailInDatabase = findAllExistingEmail.map(element => element.email);
 
@@ -827,22 +886,56 @@ exports.bulkUploadEmail = async (req, res) => {
     const notIntheList = [];
 
     Email.forEach(email => {
-
-      if (emailInDatabase.includes(email)) {
-        alreadyInTheList.push(email)
+      if (emailInDatabase.includes(email.email)) {
+        alreadyInTheList.push(email.email)
       } else {
-        notIntheList.push({
-          company_id: company_id,
-          email: email
-        })
+        notIntheList.push(email.email)
       }
     })
 
     if ((emailInDatabase.length + notIntheList.length) > limit) return utils.handleError(res, { message: `You have limit of ${limit} emails`, code: 400 });
 
-    await PaidByCompany.insertMany(notIntheList);
 
-    res.json({ message: "uploaded successfully", media, Email, code: 200 })
+    const userWithActiveSubscription = [];
+    const emailToInsert = [];
+
+    for (let index = 0; index < notIntheList.length; index++) {
+      const email = notIntheList[index];
+
+      const card = await CardDetials.findOne({ "contact_details.email": email });
+      if (!card) {
+        emailToInsert.push({
+          company_id: company_id,
+          email: email,
+          is_card_created: false
+        })
+        continue;
+      }
+
+
+      const isSubcriptionActiveForUser = await checkSusbcriptionIsActive(card.owner_id)
+      if (!isSubcriptionActiveForUser) {
+        emailToInsert.push({
+          company_id: company_id,
+          email: email,
+          is_card_created: true
+        })
+
+        card.paid_by_company = true
+        await card.save()
+
+        continue;
+      }
+
+      userWithActiveSubscription.push(email)
+
+    }
+
+    if (emailToInsert.length === 0) return utils.handleError(res, { message: `${alreadyInTheList.length !== 0 ? `${alreadyInTheList.length} email is already in the list` : ``} ${alreadyInTheList.length !== 0 && userWithActiveSubscription.length !== 0 ? ' and ' : ''}${userWithActiveSubscription.length !== 0 ? `${userWithActiveSubscription.length} email have subscription active` : ""}`, code: 400 })
+
+    await PaidByCompany.insertMany(emailToInsert);
+
+    res.json({ message: `${emailToInsert.length} email uploaded successfully`, media, Email, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -862,10 +955,33 @@ exports.removeEmailfromPiadByCompany = async (req, res) => {
 
       const card = await CardDetials.findOne({ "contact_details.email": email })
       if (!card) utils.handleError(res, { message: "User card not found" })
-      card.waiting_end_time = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000))
+      card.waiting_end_time = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000));
+      card.paid_by_company = false;
       await card.save()
 
+
+      const notification = {
+        sender_id: company_id,
+        receiver_id: card?.owner_id,
+        type: "removed_from_paid",
+        title: "Subscription Update",
+        body: `You've been removed from the company plan. Please buy subscription within 7 days to keep using the app without any interruptions`
+      }
+  
+      const saveNotificationForUser = new Notification(notification)
+      await saveNotificationForUser.save()
+
+
+      const user = await User.findById(card?.owner_id);
+  
+      if (user?.notification) {
+        const device_token = await FCMDevice.findOne({ user_id: user._id })
+        if (!device_token) return
+        utils.sendPushNotification(device_token.token, notification.title, notification.body)
+      }
+
     }
+
 
     await isEmailAlreadyExist.remove();
     res.json({ message: "Email removed successfully", code: 200 })
@@ -873,6 +989,9 @@ exports.removeEmailfromPiadByCompany = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+
+
 
 exports.getListOfPaidByComapny = async (req, res) => {
   try {
@@ -954,15 +1073,35 @@ exports.transactionHistory = async (req, res) => {
 
 exports.plansList = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    const user_id = req.user._id;
     const plans = await Plan.find({ plan_type: "company" })
-    const activeSubscription = await Subscription.findOne({ user_id: company_id })
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
 
-    res.json({ data: plans, active: activeSubscription, code: 200 })
+    let updatedPlan = null;
+    if (activeSubscription) {
+      if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled" && activeSubscription.end_at < new Date())) {
+        activeSubscription = null
+      } else {
+        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+        if (subcription.has_scheduled_changes === true) {
+          const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
+          const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
+
+          updatedPlan = {
+            update,
+            planfromDatabase
+          }
+        }
+      }
+    }
+
+    res.json({ data: plans, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan, code: 200 });
+
   } catch (error) {
     utils.handleError(res, error)
   }
 }
+
 
 exports.activeSubscription = async (req, res) => {
   try {
@@ -986,12 +1125,12 @@ exports.activeSubscription = async (req, res) => {
         $unwind: "$plan"
       },
       {
-        $sort : {
-          createdAt : -1
+        $sort: {
+          createdAt: -1
         }
       },
       {
-        $limit : 1
+        $limit: 1
       }
     ])
 
@@ -1016,58 +1155,130 @@ exports.activeSubscription = async (req, res) => {
   }
 }
 
+async function isTrailNeedToBeGiven(user_id) {
+  try {
+    const isSubcriptionExist = await Subscription.findOne({ user_id: mongoose.Types.ObjectId(user_id), status: { $nin: ["created", "expired"] } });
+    if (isSubcriptionExist) {
+      return false
+    } else {
+      return true
+    }
+  } catch (error) {
+    throw new Error(error)
+  }
+
+}
+
+function getTotalCount(interval) {
+  if (interval === 12) {
+    return 10
+  } else if (interval === 6) {
+    return 20
+  } else if (interval === 3) {
+    return 40
+  } else if (interval === 1) {
+    return 120
+  }
+}
+
 exports.createSubscription = async (req, res) => {
   try {
+
     const user_id = req.user._id;
     const { plan_id } = req.body;
-    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id });
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
-    if (isSubcriptionExist && ["authenticated", "active", "paused", "pending"].includes(isSubcriptionExist.status)) {
-      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 200 })
-    }
-
-    console.log(isSubcriptionExist)
-    console.log(plan_id)
-    if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
-      return res.json({ message: "Please wait some time to swith the plan" , code : 400 });
-    }
 
     if (isSubcriptionExist && isSubcriptionExist.status === "created") {
-      await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+      console.log(isSubcriptionExist)
+      const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+      const status = subcription.status
+      console.log("subcription", status)
+      if (["created", "expired", "cancelled"].includes(status)) {
+        await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+        await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
+      } else if (["authenticated", "active", "paused", "pending"].includes(status)) {
+        return res.json({ message: `You already have ${status} subscription`, code: 400 })
+      }
+    }
+
+
+    if (isSubcriptionExist && ["authenticated", "active", "paused", "pending"].includes(isSubcriptionExist.status)) {
+      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
     }
 
     if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
-      return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 200 })
+      return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
     }
+
+    // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
+    //   return res.json({ message: "Please wait some time to swith the plan", code: 400 });
+    // }
+
+    // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) < new Date()) {
+    //   await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+    //   await instance.subscriptions.cancel(isSubcriptionExist.subcription_id, { cancel_at_cycle_end: 0 })
+    // }
+
+    // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id === isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) < new Date()) {
+    //   await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+    //   await instance.subscriptions.cancel(isSubcriptionExist.subcription_id, { cancel_at_cycle_end: 0 })
+    // }
+
+    // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id === isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
+    //  const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subcription_id);
+    //  if(subcription?.status === "created"){
+    //   res.json({ data: subcription, code: 200 });
+    //  }else{
+    //   res.josn({message : "subscription exits"})
+    //  }
+    // }
+
+
+
+
+
 
     const plan = await await Plan.findOne({ plan_id: plan_id });
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
 
-    console.log("plan" , plan)
-    if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for comapany", code: 400 });
+    if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
+
+    const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
+    let trail = {}
 
     const currentDate = moment();
     const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
-    const timestamp = isSubcriptionExist ? Date.now() / 1000 : Math.floor(futureDate.valueOf() / 1000);
+    if (trailToBeGiven === true) {
+      const timestamp = Math.floor(futureDate.valueOf() / 1000)
+      trail = { start_at: timestamp }
+    }
+
+    const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
+    console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
+
 
     const subcription = await instance.subscriptions.create({
       "plan_id": plan.plan_id,
-      "total_count": 1,
+      "total_count": getTotalCount(plan.interval),
       "quantity": 1,
       "customer_notify": 1,
-      "start_at": timestamp,
+      // ...trail,
+      expire_by: expireTime,
       "notes": {
         "user_id": user_id.toString(),
         "user_type": "company"
       }
     })
 
+    const now = new Date()
     const dataForDatabase = {
       user_id: user_id,
       subscription_id: subcription.id,
       plan_id: plan.plan_id,
-      start_at: new Date(Number(subcription.start_at) * 1000),
-      end_at: new Date(Number(subcription.end_at) * 1000),
+      plan_started_at: now,
+      start_at: now,
+      end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
       status: subcription.status
     }
 
@@ -1081,6 +1292,90 @@ exports.createSubscription = async (req, res) => {
   }
 }
 
+exports.updateSubscription = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const plan_id = req.body.plan_id;
+
+    const plan = await await Plan.findOne({ plan_id: plan_id });
+    if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
+    if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
+
+
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+    if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
+
+    const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+    const status = subcription.status;
+    if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+
+    if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+
+    if (subcription.has_scheduled_changes === true) {
+      await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+    }
+
+    const update = {
+      plan_id: plan_id,
+      schedule_change_at: "cycle_end",
+      customer_notify: true,
+      remaining_count: getTotalCount(plan.interval)
+    }
+
+    await instance.subscriptions.update(activeSubscription.subscription_id, update)
+
+    res.json({ message: "Subscription updated successfully", code: 200 })
+  } catch (error) {
+    console.log
+    utils.handleError(res, error)
+  }
+}
+
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+    if (!isSubcriptionExist) return res.json({ message: "Subscription not found", code: 404 });
+
+    const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+    const status = subcription.status
+
+    if (!["authenticated", "active", "paused", "pending", "halted"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
+
+    if (subcription.has_scheduled_changes === true) {
+      await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
+    }
+
+    const cancelledSubscription = await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false)
+
+    res.json({ message: "Subscription cancelled successfully", code: 200, data: cancelledSubscription });
+  } catch (error) {
+    console.log
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.cancelScheduledUpdate = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+    if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
+
+    const subscription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+    if (subscription.has_scheduled_changes !== true) return res.json({ message: `This subscription does not have any schedule changes`, code: 400 });
+
+    await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+
+    res.json({ message: "Schedule chnages cancelled successfully", code: 200 });
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
 
 // exports.cancelSubscription = async (req, res) => {
 //   try {

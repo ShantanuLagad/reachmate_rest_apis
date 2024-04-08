@@ -15,6 +15,10 @@ const subscriptionSchema = new mongoose.Schema(
             type : String,
             required : true
         },
+        plan_started_at :{
+            type : Date,
+            required : true
+        },
         start_at : {
             type : Date,
         },

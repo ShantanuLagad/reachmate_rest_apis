@@ -223,4 +223,27 @@ router.post(
   controller.createSubscription
 )
 
+router.post(
+  "/updateSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.updateSubscription
+)
+
+router.post(
+  "/cancelSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.cancelSubscription
+)
+
+router.post(
+  "/cancelScheduledUpdate",
+  requireAuth,
+  trimRequest.all,
+  controller.cancelScheduledUpdate
+)
+
+
+
 module.exports = router
