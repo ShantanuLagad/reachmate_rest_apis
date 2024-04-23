@@ -352,6 +352,19 @@ router.get(
   controller.chartData
 )
 
+router.post(
+  "/sendEmailOnCompany",
+  trimRequest.all,
+  requireAuth,
+  controller.sendEmailOnCompany
+)
+
+router.post(
+  "/getSubscription",
+  trimRequest.all,
+  requireAuth,
+  controller.getSubscription
+)
 
 
 module.exports = router

@@ -398,5 +398,25 @@ router.post(
   controller.deleteCard
 )
 
+router.post(
+  "/addSubscription",
+  requireAuth,
+  trimRequest.all,
+  controller.addSubscription
+)
+
+router.post(
+  "/getPaymentDetails",
+  requireAuth,
+  trimRequest.all,
+  controller.getPaymentDetails
+)
+
+router.post(
+  "/getPaymentMethod",
+  requireAuth,
+  trimRequest.all,
+  controller.getPaymentMethod
+)
 
 module.exports = router

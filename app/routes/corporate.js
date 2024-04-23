@@ -244,6 +244,39 @@ router.post(
   controller.cancelScheduledUpdate
 )
 
+router.post(
+  "/createCompanyAccount",
+  trimRequest.all,
+  controller.createCompanyAccount
+)
 
+
+router.post(
+  "/createSubAdmin",
+  trimRequest.all,
+  requireAuth,
+  controller.createSubAdmin
+)
+
+router.delete(
+  "/removeSubAdmin/:id",
+  trimRequest.all,
+  requireAuth,
+  controller.removeSubAdmin
+)
+
+router.get(
+  "/subSubAdminList",
+  trimRequest.all,
+  requireAuth,
+  controller.subSubAdminList
+)
+
+router.get(
+  "/getPaymentMethod",
+  requireAuth,
+  trimRequest.all,
+  controller.getPaymentMethod
+)
 
 module.exports = router

@@ -61,6 +61,7 @@ const jwt = require('jsonwebtoken')
 const { off } = require('process')
 const { json } = require('stream/consumers')
 const { count } = require('console')
+const { stat } = require('fs')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -706,12 +707,14 @@ exports.addCompany = async (req, res) => {
     if (isDomainExists) return handleError(res, { message: "Domain name already Exists", code: 400 })
 
     var password = generator.generate({
-      length: 10,
+      length: 8,
       numbers: true
     });
 
     const access_code = generator.generate({
-      length: 8,
+      length: 6,
+      numbers: true,
+      uppercase: false
     });
 
     const dataForCompany = {
@@ -721,6 +724,7 @@ exports.addCompany = async (req, res) => {
       decoded_password: password,
       email_domain: emailDomain,
       company_name: data.company_name,
+      type : "admin",
       // business_logo : data.business_logo,
       // text_color : data.text_color,
       // card_color : data.card_color,
@@ -730,6 +734,11 @@ exports.addCompany = async (req, res) => {
         // office_landline : data.contact_details.office_landline,
         // email :  data.contact_details.email,
         website: data.contact_details.website,
+      },
+      bio: {
+        first_name: data.bio.first_name,
+        last_name: data.bio.last_name,
+        full_name: `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
       },
       address: {
         country: data.address.country,
@@ -746,6 +755,9 @@ exports.addCompany = async (req, res) => {
       //   youtube : data.social_links.youtube,
       // }
     }
+
+
+
 
     const company = new Company(dataForCompany);
     await company.save();
@@ -774,7 +786,10 @@ exports.getCompanyList = async (req, res) => {
 
     const { search, limit = 10, offset = 0, sort = -1, start_date, end_date } = req.query;
 
-    const condition = {}
+    const condition = {
+      type : "admin",
+      is_profile_completed : true
+    }
 
     if (search) {
       condition["$or"] = [
@@ -2129,4 +2144,97 @@ exports.chartData = async (req, res) => {
   } catch (error) {
     handleError(res, error);
   }
+}
+
+
+exports.sendEmailOnCompany = async (req, res) => {
+  try {
+    const { _id, status, prodcution } = req.body;
+
+
+    if (!["accepted", "declined"].includes(status)) return handleError(res, { message: "Invalid status", code: 400 });
+
+    const registration = await Registration.findById(_id);
+    if (!registration) return handleError(res, { message: "Company request not found", code: 404 });
+    if (registration.status !== "pending") return handleError(res, { message: `Company request already ${registration.status}`, code: 400 });
+
+    await Registration.findByIdAndUpdate(_id, { status: status });
+
+    const locale = req.getLocale()
+
+    if (status === "accepted") {
+
+      const dataForMail = {
+        subject: 'Approval Granted: Your Reachmate Account Creation Request',
+        company_name: `${registration.first_name} ${registration.last_name}`,
+        email: registration.email,
+        link: `${prodcution === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${registration.email}`
+      }
+
+      emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
+      res.json({ message: "Approval email has been sent successfully", code: 200 })
+    } else {
+      res.json({ message: `Company request have been ${status}`, code: 200 })
+    }
+
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+// exports.actionOnCompanyRequest = async (req , res) => {
+//   try {
+//     const {_id , status} = req.body;
+
+//     const registration = await Registration.findById(_id);
+//     if(!registration) return handleError(res, {message : "Company request not found" , code : 404});
+
+//     if(registration.status !== "pending") return handleError(res, {message : `Company request already ${registration.status}` , code : 400});
+
+
+
+
+
+
+
+
+//   } catch (error) {
+//     handleError(res, error);
+//   }
+// }
+
+
+exports.getSubscription = async (req, res) => {
+  const subscription_id = req.body.subscription_id
+
+  let subscriptions ;
+
+  instance.subscriptions.fetch(subscription_id, (error, subscription) => {
+    if (error) {
+        console.error('Error:', error);
+        return;
+    }
+    console.log("subscription",subscription)
+    subscriptions = subscription;
+    res.json({subscription: subscriptions})
+    const paymentId = subscription.payment_id;
+
+    // Retrieve Payment details
+    instance.payments.fetch(paymentId, (error, payment) => {
+        if (error) {
+            console.error('Error:', error);
+            return;
+        }
+
+        // Extract Payment Method details
+        const paymentMethod = payment.method;
+
+        console.log('Current Payment Method:', paymentMethod);
+    });
+   
+});
+
+
+  
 }

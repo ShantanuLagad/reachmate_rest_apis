@@ -47,6 +47,12 @@ exports.handleError = (res, err) => {
     console.log(err)
   }
   // Sends error to user
+
+  if('statusCode' in err  && "error" in err){
+    err.code =  err?.statusCode;
+    err.message = err?.error?.description
+  }
+
   console.log("erorr" , err)
   res.status(err?.code ?? 500).json({
     errors: {

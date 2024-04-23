@@ -33,6 +33,11 @@ const registrationSchema = new mongoose.Schema(
         },
         how_can_we_help_you: {
             type: String,
+        },
+        status : {
+            type : String,
+            enum : ["pending" , "accepted" , "declined"],
+            default :"pending"
         }
     },
     {

@@ -14,8 +14,8 @@ const CompanySchema = new mongoose.Schema(
       lowercase: true,
       required: false,
     },
-    access_code : {
-      type : String,
+    access_code: {
+      type: String,
     },
     password: {
       type: String,
@@ -24,82 +24,115 @@ const CompanySchema = new mongoose.Schema(
     decoded_password: {
       type: String,
     },
-    email_domain : {
+    email_domain: {
       type: String,
     },
-    company_name : {
+    company_name: {
+      type: String,
+      default: ""
+    },
+    gst_no: {
+      type: String,
+      default: ""
+    },
+    business_logo: {
+      type: String
+    },
+    card_color: {
+      type: [String]
+    },
+    text_color: {
+      type: String
+    },
+    business_and_logo_status: {
+      type: String,
+      enum: ["both", "name", "logo"],
+    },
+    company_id: {
+      type: mongoose.Schema.Types.ObjectId,
+    },
+    type: {
+      type: String,
+      enum: ["admin", "sub admin"]
+    },
+    bio: {
+      first_name: {
         type: String,
-        default : ""
-    },
-    gst_no : {
+        default: ""
+      },
+      last_name: {
         type: String,
-        default : ""
+        default: ""
+      },
+      full_name: {
+        type: String,
+        default: ""
+      },
+      designation: {
+        type: String,
+        default: ""
+      }
     },
-    business_logo : {
-      type : String
+    contact_details: {
+      country_code: {
+        type: String,
+        default: ""
+      },
+      mobile_number: {
+        type: String,
+        default: ""
+      },
+      office_landline: {
+        type: String,
+        default: ""
+      },
+      email: {
+        type: String,
+        default: ""
+      },
+      website: {
+        type: String,
+        default: ""
+      },
     },
-    card_color : {
-      type : [String]
+    address: {
+      country: String,
+      state: String,
+      city: String,
+      address_line_1: {
+        type: String,
+      },
+      address_line_2: {
+        type: String,
+      },
+      pin_code: {
+        type: String,
+      },
     },
-    text_color : {
-      type : String
+    social_links: {
+      linkedin: {
+        type: String,
+        default: ""
+      },
+      x: {
+        type: String,
+        default: ""
+      },
+      instagram: {
+        type: String,
+        default: ""
+      },
+      youtube: {
+        type: String,
+        default: ""
+      }
     },
-    contact_details : {
-        mobile_number : {
-            type: String,
-            default :""
-        },
-        office_landline :  {
-            type: String,
-            default :""
-        },
-        email :  {
-            type: String,
-            default :""
-        },
-        website:  {
-            type: String,
-            default :""
-        },
-    },
-    address : {
-        country:String,
-        state:String,
-        city:String,
-        address_line_1 :  {
-          type: String,
-        },
-        address_line_2 :  {
-            type: String,
-        },
-        pin_code :  {
-          type: String,
-        },
-    },
-    social_links : {
-        linkedin : {
-            type: String,
-            default :""
-        },
-        x : {
-            type: String,
-            default :""
-        },
-        instagram : {
-            type: String,
-            default :""
-        },
-        youtube : {
-            type: String,
-            default :""
-        }
-    },
-    is_profile_completed : {
-      type : Boolean,
-      default : false
+    is_profile_completed: {
+      type: Boolean,
+      default: false
     }
-},
-{
+  },
+  {
     versionKey: false,
     timestamps: true
   }
@@ -124,7 +157,7 @@ const genSalt = (user, SALT_FACTOR, next) => {
   })
 }
 
-CompanySchema.pre('save', function(next) {
+CompanySchema.pre('save', function (next) {
   const that = this
   const SALT_FACTOR = 5
   if (!that.isModified('password')) {
@@ -133,7 +166,7 @@ CompanySchema.pre('save', function(next) {
   return genSalt(that, SALT_FACTOR, next)
 })
 
-CompanySchema.methods.comparePassword = function(passwordAttempt, cb) {
+CompanySchema.methods.comparePassword = function (passwordAttempt, cb) {
   bcrypt.compare(passwordAttempt, this.password, (err, isMatch) =>
     err ? cb(err) : cb(null, isMatch)
   )

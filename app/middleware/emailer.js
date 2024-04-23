@@ -258,7 +258,6 @@ module.exports = {
 
   async sendForgetPasswordEmail(locale, user, template) {
 
-    console.log("user", user)
     return new Promise(async (resolve, reject) => {
 
       try {
@@ -374,6 +373,97 @@ module.exports = {
             email: user.email,
             access_code: user.access_code,
             website_url: process.env.PRODUCTION_COMPANY_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Email has been sent");
+              resolve("Email has been sent");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+  },
+
+
+  
+  async sendAccountCreationEmail(locale, user, template) {
+
+    console.log("user", user)
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
+        console.log("Inside emailer");
+        if (!user.company_name) {
+          user.company_name = "User";
+        }
+
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Welcome to ${capitalizeFirstLetter(user.company_name)} - Your Sub-Admin Credentials`,
+            company_name: capitalizeFirstLetter(user.company_name),
+            password: user.password,
+            email: user.email,
+            name : user.name,
+            website_url: process.env.PRODUCTION_COMPANY_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Email has been sent");
+              resolve("Email has been sent");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+  },
+
+
+  async sendApprovalEmail(locale, user, template) {
+
+    console.log("user", user)
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
+        console.log("Inside emailer");
+        if (!user.company_name) {
+          user.company_name = "User";
+        }
+
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: user.subject,
+            company_name: capitalizeFirstLetter(user.company_name),
+            email: user.email,
+            link: user.link,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
           function (err) {

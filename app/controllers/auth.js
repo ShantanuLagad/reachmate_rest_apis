@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken')
 const UserModel = require('../models/user'); // Assuming you have a User model
+const Trial = require("../models/trial")
 const OtpModel = require('../models/otp'); // Import your OtpModel
 const User = require('../models/user')
 const Admin = require('../models/admin')
@@ -21,6 +22,7 @@ const PaidByCompany = require("../models/paid_by_company")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
+const moment = require("moment")
 /*********************
  * Private functions *
  *********************/
@@ -48,6 +50,12 @@ const generateToken = (user, role = 'user') => {
 }
 
 async function checkSusbcriptionIsActive(user_id) {
+  const checkIsTrialExits = await Trial.findOne({ user_id });
+
+  if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+    return true
+  }
+
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
   if (!subcription) return false
@@ -898,6 +906,7 @@ exports.verifyotpemailNew = async (req, res) => {
       // savedUser.email_verified = true; 
       // await user.save();
     }
+
 
 
     res.status(200).json({ message: 'OTP verified and user activated successfully.' });

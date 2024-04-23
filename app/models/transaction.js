@@ -31,6 +31,12 @@ const transactionSchema = new mongoose.Schema(
         invoice: {
             type: String,
             default: ""
+        },
+        payment_id :{
+            type : String,
+        },
+        payment_details : {
+            type : Object
         }
     },
     {

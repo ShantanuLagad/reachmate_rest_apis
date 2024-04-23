@@ -1,4 +1,5 @@
 const User = require('../models/user')
+const Trial = require("../models/trial")
 const utils = require('../middleware/utils')
 const { matchedData } = require('express-validator')
 const auth = require('../middleware/auth')
@@ -14,12 +15,14 @@ const PaidByCompany = require("../models/paid_by_company")
 const Subscription = require("../models/subscription")
 const Transaction = require("../models/transaction");
 const Plan = require("../models/plan")
+const Registration = require("../models/registration")
 const uuid = require('uuid')
 const { getCode, getName } = require('country-list');
 const mongoose = require("mongoose")
 const xlsx = require('xlsx');
 const csv = require('csv-parser');
 const fs = require('fs');
+var generator = require('generate-password');
 const moment = require("moment")
 const {
   uploadFile,
@@ -39,6 +42,13 @@ var instance = new Razorpay({
  *********************/
 
 async function checkSusbcriptionIsActive(user_id) {
+
+  const checkIsTrialExits = await Trial.findOne({ user_id });
+
+  if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+    return true
+  }
+
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
   if (!subcription) return false
@@ -46,6 +56,31 @@ async function checkSusbcriptionIsActive(user_id) {
   if (subcription.end_at < new Date()) return false
   return true
 }
+
+
+async function giveTrialIfNotGive(user_id) {
+  const isTrialGiven = await Trial.findOne({ user_id: user_id });
+
+  let value = false
+  if (!isTrialGiven) {
+    const currentDate = new Date();
+    const futureDate = moment(currentDate).add(180, 'days');
+
+    const trial = {
+      user_id: user_id,
+      start_at: new Date(),
+      end_at: futureDate.toDate()
+    }
+
+    const saveTrial = new Trial(trial);
+    await saveTrial.save();
+    value = true;
+  }
+
+
+  return value
+}
+
 
 
 function extractDomainFromEmail(email) {
@@ -112,7 +147,7 @@ const saveUserAccessAndReturnToken = async (req, user, remember_me) => {
  */
 const getProfileFromDB = async id => {
   return new Promise((resolve, reject) => {
-    Company.findById(id, '-_id -updatedAt -createdAt -password -decoded_password', (err, user) => {
+    Company.findById(id, ' -updatedAt -createdAt -password -decoded_password', (err, user) => {
       utils.itemNotFound(err, user, reject, 'NOT_FOUND')
       resolve(user)
     })
@@ -200,8 +235,20 @@ const changePasswordInDB = async (id, req) => {
  */
 exports.getProfile = async (req, res) => {
   try {
-    const id = await utils.isIDGood(req.user._id)
-    res.status(200).json({ data: await getProfileFromDB(id), code: 200 })
+    // const id = await utils.isIDGood(req.user._id)
+
+
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
+
+
+
+    res.status(200).json({ data: await getProfileFromDB(company_id), code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
@@ -489,7 +536,14 @@ exports.completeProfile = async (req, res) => {
 
 exports.corporateCardHolder = async (req, res) => {
   try {
-    const company_id = req.user._id;
+
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
     const { search = "", limit = 10, offset = 0, sort = -1 } = req.query;
 
     const condition = {
@@ -571,7 +625,14 @@ exports.corporateCardHolder = async (req, res) => {
 exports.deleteCorporateCardHolders = async (req, res) => {
   try {
 
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
+
     const user_id = req.query.user_id;
 
     console.log("user_id", user_id)
@@ -593,7 +654,12 @@ exports.deleteCorporateCardHolders = async (req, res) => {
 
 exports.dashboardData = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
 
     const sevenDay = 7 * 24 * 60 * 60 * 1000;
 
@@ -635,7 +701,9 @@ exports.dashboardData = async (req, res) => {
       }
     ])
 
-    res.json({ data: data[0], code: 200 })
+    const company = await Company.findById(company_id);
+
+    res.json({ data: data[0], access_code: company?.access_code, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -645,7 +713,13 @@ exports.dashboardData = async (req, res) => {
 
 exports.updateAccount = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
     const data = req.body;
 
     await Company.findByIdAndUpdate(company_id, data)
@@ -659,7 +733,12 @@ exports.updateAccount = async (req, res) => {
 exports.getNotification = async (req, res) => {
   try {
     const { limit = Number.MAX_SAFE_INTEGER, offset = 0 } = req.query;
-    var reciever_id = req.user._id;
+    let reciever_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      reciever_id = req.user.company_id
+    }
 
     const count = await Notification.count({
       receiver_id: mongoose.Types.ObjectId(reciever_id),
@@ -717,7 +796,12 @@ exports.getNotification = async (req, res) => {
 
 exports.deleteNotification = async (req, res) => {
   try {
-    const id = req.query.id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
 
     // const notificaiton = await Notification.findById(id);
     // // if (notificaiton.receiver_id.toString() !== req.user._id.toString()) return utils.handleError(res, { message: "You can only deleted you notification", code: 400 });
@@ -732,7 +816,12 @@ exports.deleteNotification = async (req, res) => {
 
 exports.deleteAllNotification = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
 
     await Notification.deleteMany({ receiver_id: mongoose.Types.ObjectId(company_id) });
 
@@ -748,7 +837,13 @@ exports.addEmailInPiadByCompany = async (req, res) => {
   try {
 
     const { email } = req.body;
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
 
     const emailDomain = extractDomainFromEmail(email);
     if (req.user.email_domain !== emailDomain) return utils.handleError(res, { message: "Domain name not matched", code: 400 });
@@ -797,9 +892,14 @@ exports.addEmailInPiadByCompany = async (req, res) => {
 
 exports.bulkUploadEmail = async (req, res) => {
   try {
-    const type = req.body.type;
-    const company_id = req.user._id;
+    const type1 = req.body.type;
 
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
     const isSubcriptionActive = await checkSusbcriptionIsActive(company_id)
     if (!isSubcriptionActive) return utils.handleError(res, { message: "You do not have any active subscription", code: 400 });
 
@@ -825,7 +925,7 @@ exports.bulkUploadEmail = async (req, res) => {
 
     var Email = [];
 
-    if (type === "excel") {
+    if (type1 === "excel") {
       // Read Excel file
       const processExcel = () => {
         const emails = []
@@ -844,7 +944,7 @@ exports.bulkUploadEmail = async (req, res) => {
         })
       }
       Email = await processExcel()
-    } else if (type === "csv") {
+    } else if (type1 === "csv") {
 
       const processCSV = () => {
         const emails = []
@@ -946,7 +1046,12 @@ exports.bulkUploadEmail = async (req, res) => {
 exports.removeEmailfromPiadByCompany = async (req, res) => {
   try {
     const { email } = req.body;
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
 
     const isEmailAlreadyExist = await PaidByCompany.findOne({ company_id: mongoose.Types.ObjectId(company_id), email: email });
     if (!isEmailAlreadyExist) return utils.handleError(res, { message: "Email not found", code: 404 });
@@ -955,31 +1060,45 @@ exports.removeEmailfromPiadByCompany = async (req, res) => {
 
       const card = await CardDetials.findOne({ "contact_details.email": email })
       if (!card) utils.handleError(res, { message: "User card not found" })
-      card.waiting_end_time = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000));
+      const user = await User.findById(card?.owner_id);
+
+      const isTrialGiven = await giveTrialIfNotGive(card?.owner_id);
       card.paid_by_company = false;
+      let notification;
+
+      if (isTrialGiven) {
+
+        notification = {
+          sender_id: company_id,
+          receiver_id: card?.owner_id,
+          type: "removed_from_paid",
+          title: "Subscription Update",
+          body: `You've been removed from the company plan. Your six month free plan has been activated`
+        }
+
+      } else {
+        card.waiting_end_time = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000));
+
+        notification = {
+          sender_id: company_id,
+          receiver_id: card?.owner_id,
+          type: "removed_from_paid",
+          title: "Subscription Update",
+          body: `You've been removed from the company plan. Please buy subscription within 7 days to keep using the app without any interruptions`
+        }
+
+      }
+
       await card.save()
 
-
-      const notification = {
-        sender_id: company_id,
-        receiver_id: card?.owner_id,
-        type: "removed_from_paid",
-        title: "Subscription Update",
-        body: `You've been removed from the company plan. Please buy subscription within 7 days to keep using the app without any interruptions`
-      }
-  
       const saveNotificationForUser = new Notification(notification)
       await saveNotificationForUser.save()
 
-
-      const user = await User.findById(card?.owner_id);
-  
       if (user?.notification) {
         const device_token = await FCMDevice.findOne({ user_id: user._id })
         if (!device_token) return
         utils.sendPushNotification(device_token.token, notification.title, notification.body)
       }
-
     }
 
 
@@ -996,7 +1115,12 @@ exports.removeEmailfromPiadByCompany = async (req, res) => {
 exports.getListOfPaidByComapny = async (req, res) => {
   try {
     const { sort = -1, limit = 10, offset = 0 } = req.query;
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
     const count = await PaidByCompany.countDocuments({ company_id: mongoose.Types.ObjectId(company_id) });
     const data = await PaidByCompany.find({ company_id: mongoose.Types.ObjectId(company_id) }).sort({ createdAt: +sort }).skip(+offset).limit(+limit)
 
@@ -1009,7 +1133,12 @@ exports.getListOfPaidByComapny = async (req, res) => {
 
 exports.transactionHistory = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
     const { sort = -1, limit = 10, offset = 0 } = req.query;
 
     const count = await Transaction.countDocuments({ user_id: mongoose.Types.ObjectId(company_id) });
@@ -1073,7 +1202,13 @@ exports.transactionHistory = async (req, res) => {
 
 exports.plansList = async (req, res) => {
   try {
-    const user_id = req.user._id;
+    let user_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      user_id = req.user.company_id
+    }
+
     const plans = await Plan.find({ plan_type: "company" })
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
 
@@ -1105,7 +1240,12 @@ exports.plansList = async (req, res) => {
 
 exports.activeSubscription = async (req, res) => {
   try {
-    const company_id = req.user._id;
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
 
     const activeSubscription = await Subscription.aggregate([
       {
@@ -1184,7 +1324,13 @@ function getTotalCount(interval) {
 exports.createSubscription = async (req, res) => {
   try {
 
-    const user_id = req.user._id;
+    let user_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      user_id = req.user.company_id
+    }
+
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
@@ -1197,14 +1343,18 @@ exports.createSubscription = async (req, res) => {
       if (["created", "expired", "cancelled"].includes(status)) {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
-      } else if (["authenticated", "active", "paused", "pending"].includes(status)) {
-        return res.json({ message: `You already have ${status} subscription`, code: 400 })
+      } else if (["authenticated", "active", "paused", "pending","halted"].includes(status)) {
+        return res.json({ message: `You already have ${status} subscription, It will take some to reflect here`, code: 400 })
       }
     }
 
 
-    if (isSubcriptionExist && ["authenticated", "active", "paused", "pending"].includes(isSubcriptionExist.status)) {
+    if (isSubcriptionExist && ["authenticated", "active"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
+    }
+
+    if (isSubcriptionExist && ["pending" , "halted"].includes(isSubcriptionExist.status)) {
+      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription , Please update your payment method`, code: 400 })
     }
 
     if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
@@ -1294,7 +1444,15 @@ exports.createSubscription = async (req, res) => {
 
 exports.updateSubscription = async (req, res) => {
   try {
-    const user_id = req.user._id;
+
+    let user_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      user_id = req.user.company_id
+    }
+
+
     const plan_id = req.body.plan_id;
 
     const plan = await await Plan.findOne({ plan_id: plan_id });
@@ -1333,7 +1491,12 @@ exports.updateSubscription = async (req, res) => {
 
 exports.cancelSubscription = async (req, res) => {
   try {
-    const user_id = req.user._id;
+    let user_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      user_id = req.user.company_id
+    }
 
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
@@ -1360,7 +1523,12 @@ exports.cancelSubscription = async (req, res) => {
 
 exports.cancelScheduledUpdate = async (req, res) => {
   try {
-    const user_id = req.user._id;
+    let user_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      user_id = req.user.company_id
+    }
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
@@ -1370,7 +1538,7 @@ exports.cancelScheduledUpdate = async (req, res) => {
 
     await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
 
-    res.json({ message: "Schedule chnages cancelled successfully", code: 200 });
+    res.json({ message: "Schedule changes cancelled successfully", code: 200 });
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1396,3 +1564,246 @@ exports.cancelScheduledUpdate = async (req, res) => {
 //     utils.handleError(res, error)
 //   }
 // }
+
+
+exports.createCompanyAccount = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const isEmailExist = await Company.findOne({ email: email });
+    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
+
+    const emailDomain = extractDomainFromEmail(email);
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
+
+
+    const isApprovedByAdmin = await Registration.findOne({ email: email });
+    if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
+
+    const access_code = generator.generate({
+      length: 6,
+      numbers: true,
+      uppercase: true
+    });
+
+    const dataForCompany = {
+      email: email,
+      access_code: access_code,
+      password: password,
+      decoded_password: password,
+      email_domain: emailDomain,
+      company_name: isApprovedByAdmin.company_name,
+      type: "admin",
+      bio: {
+        first_name: isApprovedByAdmin.first_name,
+        last_name: isApprovedByAdmin.last_name,
+        full_name: `${isApprovedByAdmin?.first_name}${isApprovedByAdmin?.last_name ? ` ${isApprovedByAdmin?.last_name}` : ""}`,
+      },
+      contact_details: {
+        country_code: isApprovedByAdmin?.country_code ?? "",
+        mobile_number: isApprovedByAdmin?.mobile_number ?? "",
+      },
+      address: {
+        country: isApprovedByAdmin.country
+      }
+    }
+
+    const company = new Company(dataForCompany);
+    await company.save();
+
+    const userObj = company.toJSON()
+
+    res.json({ message: "Company registered successfully", ...(await saveUserAccessAndReturnToken(req, userObj, true)), code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+
+exports.createSubAdmin = async (req, res) => {
+  try {
+    const { email, first_name, last_name, mobile_number, country_code } = req.body;
+
+    let company_id = req.user._id;
+
+    const type = req.user.type;
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
+    const isEmailExist = await Company.findOne({ email: email });
+    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
+
+    const company = await Company.findById(company_id);
+
+    const emailDomain = extractDomainFromEmail(email);
+
+    if (company.email_domain !== emailDomain) return utils.handleError(res, { message: "Domain name not matched", code: 400 })
+
+    const subAdminCount = await Company.find({ company_id: mongoose.Types.ObjectId(company_id), type: "sub admin" });
+
+    if (subAdminCount.length >= 3) return utils.handleError(res, { message: "You can create only 3 sub admins", code: 400 })
+
+
+    var password = generator.generate({
+      length: 8,
+      numbers: true
+    });
+
+    const data = {
+      email: email,
+      password: password,
+      decoded_password: password,
+      type: "sub admin",
+      company_id,
+      is_profile_completed: true,
+      bio: {
+        first_name: first_name,
+        last_name: last_name,
+        full_name: `${first_name}${last_name ? ` ${last_name}` : ""}`,
+      },
+      contact_details: {
+        country_code: country_code,
+        mobile_number: mobile_number,
+      }
+    }
+
+    const subAdmin = new Company(data);
+    await subAdmin.save();
+
+    const locale = req.getLocale()
+    const dataForMail = {
+      company_name: company.company_name,
+      email: email,
+      password: password,
+      name: data?.bio?.full_name
+
+    }
+
+    emailer.sendAccountCreationEmail(locale, dataForMail, 'sub-admin-created');
+
+    res.json({ message: "Sub admin created successfully", code: 200 });
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+
+exports.removeSubAdmin = async (req, res) => {
+  try {
+    const company_id = req.user._id;
+    const sub_admin_id = req.params.id;
+
+    const subAdmin = await Company.findById(sub_admin_id);
+    if (!subAdmin) return utils.handleError(res, { message: "Sub admin not found", code: 404 });
+
+    if (subAdmin.type !== "sub admin") return utils.handleError(res, { message: "You can delete only sub admin", code: 400 });
+    if (company_id.toString() !== subAdmin.company_id.toString()) return utils.handleError(res, { message: "You can delete only your sub admin", code: 400 });
+
+
+    await subAdmin.remove()
+
+    res.json({ message: "Sub admin removed successfully", code: 200 });
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.subSubAdminList = async (req, res) => {
+  try {
+
+    let company_id = req.user._id;
+    const type = req.user.type;
+
+    if (type === "sub admin") {
+      company_id = req.user.company_id
+    }
+
+    const subAdmins = await Company.find({ company_id: company_id, type: "sub admin" }).sort({ createdAt: -1 })
+
+    res.json({ data: subAdmins, type: req.user.type, code: 200 })
+
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.getPaymentMethod = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const latest_payment = await Transaction.findOne({ user_id }).sort({ createdAt: -1 });
+
+    if(!latest_payment){
+      return res.json({ data: latest_payment, code: 200 })
+    }
+
+    const data = latest_payment.toJSON()
+    data.full_name = req?.user?.bio?.first_name + " " +  req?.user?.bio?.last_name
+
+    res.json({ data: data, code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.addSubscription = async (req, res) => {
+  try {
+    const { razorpay_subscription_id } = req.body;
+    const user_id = req.user._id;
+
+    if (!razorpay_subscription_id) return utils.handleError(res, { message: "Subscription id is missing", code: 400 });
+    const subscription = await instance.subscriptions.fetch(razorpay_subscription_id);
+
+    if (!subscription) return utils.handleError(res, { message: "Subscription not found", code: 404 });
+    // if (subscription.status === "created") return utils.handleError(res, { message: "Subscription is not authenticated yet", code: 400 });
+    // if (subscription.status === "expired") return utils.handleError(res, { message: "Subscription is expired", code: 400 });
+    // if (subscription.status === "cancelled") return utils.handleError(res, { message: "Subscription is cancelled", code: 400 });
+
+    const SubscriptionIndatabase = await Subscription.findOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: razorpay_subscription_id })
+
+    if (!SubscriptionIndatabase) return utils.handleError(res, { message: "Subscription not found", code: 404 });
+
+    if (subscription.status === "active") {
+      await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: razorpay_subscription_id }, { status: subscription.status });
+    } else {
+
+    }
+
+    const user = await User.findById(user_id);
+    // if (user?.is_card_created === false) {
+    const savedCard = await SavedCard.findOne({ owner_id: user._id });
+    if (savedCard) {
+      const data = savedCard.toJSON();
+      delete data._id;
+      delete data.createdAt;
+      delete data.updatedAt;
+
+      const createCard = new CardDetials(data);
+      await createCard.save()
+      await savedCard.remove()
+
+      user.is_card_created = true;
+      user.user_type = data?.card_type;
+      await user.save()
+    }
+    // }
+
+
+    res.json({ code: 200 })
+  } catch (error) {
+    console.log("error", error)
+    utils.handleError(res, error)
+  }
+}

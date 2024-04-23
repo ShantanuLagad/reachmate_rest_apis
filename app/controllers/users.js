@@ -8,6 +8,8 @@ const {
   validateFileSize,
   objectToQueryString,
 } = require("../shared/helpers");
+
+const cron = require("node-cron");
 const { matchedData } = require('express-validator')
 const utils = require('../middleware/utils')
 const auth = require('../middleware/auth')
@@ -17,6 +19,7 @@ const User = require('../models/user')
 const CMS = require('../models/cms')
 const FAQ = require('../models/faq')
 const Feedback = require('../models/feedback')
+const Trial = require("../models/trial")
 
 const Support = require('../models/support')
 const { Country, State, City } = require('country-state-city');
@@ -57,6 +60,7 @@ const {
 const { stat } = require('fs/promises');
 const { subscribe } = require('diagnostics_channel');
 const { error } = require('console');
+const { start } = require('repl');
 /*********************
  * Private functions *
  *********************/
@@ -97,6 +101,84 @@ const createItem = async req => {
 }
 
 
+cron.schedule("0 15 * * *", async () => {
+
+
+  const start_date = moment().add(6, "days")
+  const end_date = moment().add(7, "days")
+
+  const trail = await Trial.aggregate([
+    {
+      $match: { end_at: { $gte: start_date.toDate(), $lte: end_date.toDate() }, status: "active" }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "user_id",
+        foreignField: "_id",
+        as: "users",
+      },
+    },
+    {
+      $unwind: {
+        path: "$users",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "fcmdevices",
+        localField: "user_id",
+        foreignField: "user_id",
+        as: "device_token"
+      }
+    },
+    {
+      $unwind: {
+        path: "$device_token",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ])
+
+
+  const title = "Your Free Trial Ends in 7 Days";
+  const body = "Your free trial is ending in 7 days. Please consider purchasing a subscription to continue enjoying our service"
+
+  const tokens = []
+  const notificationToCreate = []
+
+
+  trail.forEach(element => {
+
+    const notificationData = {
+      // sender_id: admin_id,
+      receiver_id: element?.user_id,
+      type: "by_admin",
+      title: title,
+      body: body
+    }
+
+    notificationToCreate.push(notificationData);
+
+    if (element?.users?.notification && element?.device_token?.token) {
+      tokens.push(element?.device_token?.token)
+    }
+
+  })
+
+  console.log("notificationToCreate", notificationToCreate)
+  await Notification.insertMany(notificationToCreate);
+
+  console.log("tokens", tokens)
+  //push notification
+  if (tokens.length !== 0) {
+    utils.sendPushNotification(tokens, title, body)
+  }
+
+});
+
+
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
   const parts = email.split('@');
@@ -119,8 +201,8 @@ const transporter = nodemailer.createTransport({
   port: 465,
   transportMethod: "SMTP",
   auth: {
-    user: process.env.EMAIL_ID,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_FROM,
+    pass: process.env.EMAIL_PASSWORD,
   },
 });
 
@@ -151,7 +233,6 @@ function sendInvoiceEmail(mailOptions) {
 }
 
 function sendInvoiceEmailForTransaction(mailOptions) {
-  console.log("mailOptions", mailOptions)
 
   return new Promise(async (resolve, reject) => {
     try {
@@ -178,6 +259,13 @@ function sendInvoiceEmailForTransaction(mailOptions) {
 }
 
 async function checkSusbcriptionIsActive(user_id) {
+
+  const checkIsTrialExits = await Trial.findOne({ user_id });
+
+  if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+    return true
+  }
+
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
   console.log("subcription", subcription)
@@ -330,6 +418,9 @@ exports.updateProfile = async (req, res) => {
 /*** Gagan ****/
 exports.editCardDetails = async (req, res) => {
   try {
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+
     const owner_id = req.user._id;
     const data = req.body;
     const existingCard = await CardDetials.findOne({ owner_id });
@@ -417,6 +508,11 @@ exports.changePassword = async (req, res) => {
 
 exports.addSharedCard = async (req, res) => {
   try {
+
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+
+
     const { card_id } = req.body;
     const user_id = req.user._id;
 
@@ -430,6 +526,7 @@ exports.addSharedCard = async (req, res) => {
     const your_card_id = userCard._id;
 
     // Fetch card details to get the owner_id
+
     const carddetails = await getItemThroughId(CardDetials, card_id);
     console.log("Card details are---", carddetails.data)
 
@@ -465,13 +562,18 @@ exports.addSharedCard = async (req, res) => {
 
     //share card to opposite side
 
-    const shareCardToOppositeSide = new SharedCards({
-      card_id: your_card_id,
-      user_id: card_owner_id,
-      card_owner_id: user_id,
-    })
+    const isOppositeSieCardAlreadyExist = await SharedCards.findOne({ card_id: your_card_id, user_id: card_owner_id, card_owner_id: user_id });
 
-    await shareCardToOppositeSide.save();
+    if (!isOppositeSieCardAlreadyExist) {
+
+      const shareCardToOppositeSide = new SharedCards({
+        card_id: your_card_id,
+        user_id: card_owner_id,
+        card_owner_id: user_id,
+      })
+
+      await shareCardToOppositeSide.save();
+    }
 
 
 
@@ -480,7 +582,7 @@ exports.addSharedCard = async (req, res) => {
       receiver_id: user_id,
       type: "card_shared",
       title: "Business Card Shared",
-      body: `${carddetails?.bio?.full_name} has shared their business card`
+      body: `${carddetails?.data?.bio?.full_name} has shared their business card`
     }
 
     const saveNotificationForUser1 = new Notification(notificationUser1)
@@ -488,9 +590,10 @@ exports.addSharedCard = async (req, res) => {
 
 
     if (user1.notification) {
-      const device_token = await FCMDevice.findOne({ user_id: user1._id })
+      const device_token = await FCMDevice.findOne({ user_id: user_id })
+      console.log("device_token1", device_token)
       if (!device_token) return
-      utils.sendPushNotification(device_token.token, notificationUser1.title, notificationUser1.body)
+      utils.sendPushNotification([device_token.token], notificationUser1.title, notificationUser1.body)
     }
 
 
@@ -508,8 +611,9 @@ exports.addSharedCard = async (req, res) => {
 
     if (user2.notification) {
       const device_token = await FCMDevice.findOne({ user_id: user2._id })
+      console.log("device_token2", device_token)
       if (!device_token) return
-      utils.sendPushNotification(device_token.token, notificationUser2.title, notificationUser2.body)
+      utils.sendPushNotification([device_token.token], notificationUser2.title, notificationUser2.body)
     }
 
 
@@ -524,13 +628,18 @@ exports.addSharedCard = async (req, res) => {
 
 exports.getSharedCardsForUser = async (req, res) => {
   try {
+    
     const { user_id, search } = req.params;
     const { limit = 10, offset = 0 } = req.query;
-
+    
     // Validate if user_id is provided
     if (!user_id) {
       return res.status(400).json({ code: 400, message: "User ID is required." });
     }
+
+    const user = await User.findById(user_id);
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
 
     // Convert limit and offset to integers
     const limitInt = parseInt(limit, 10);
@@ -652,6 +761,7 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 exports.addPersonalCard = async (req, res) => {
   try {
+ 
     const owner_id = req.user._id;
     // const owner_id = req.body.owner_id
 
@@ -702,6 +812,8 @@ exports.addPersonalCard = async (req, res) => {
 
     await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "personal", text_color: data.text_color })
 
+    await giveTrialIfNotGive(owner_id)
+
     await SavedCard.deleteOne({ owner_id: owner_id })
 
     res.json({ code: 200, message: "Card Save successfully" })
@@ -721,6 +833,9 @@ exports.matchAccessCode = async (req, res) => {
     const email_domain = extractDomainFromEmail(email);
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+
+    // if (company.email === email) return utils.handleError(res, { message: "Can not create card on compnay email", code: 400 })
+
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     res.json({ code: 200, data: company })
   } catch (error) {
@@ -777,7 +892,7 @@ exports.addCorporateCard = async (req, res) => {
     const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: data?.contact_details?.email });
     const haveSubscription = await checkSusbcriptionIsActive(owner_id);
 
-    if (!isSubscriptionPaidByCompany && !haveSubscription) return utils.handleError(res, { message: "You do not have any active subcription to create the card", code: 400 })
+    // if (!isSubscriptionPaidByCompany && !haveSubscription) return utils.handleError(res, { message: "You do not have any active subcription to create the card", code: 400 })
 
     let paid_by_company = false
     if (isSubscriptionPaidByCompany && !haveSubscription) {
@@ -787,6 +902,10 @@ exports.addCorporateCard = async (req, res) => {
       isSubscriptionPaidByCompany.is_card_created = true
       paid_by_company = true
       await isSubscriptionPaidByCompany.save()
+    }
+
+    if (paid_by_company === false) {
+      await giveTrialIfNotGive(owner_id)
     }
 
     //check this user have a card or not 
@@ -849,6 +968,7 @@ exports.addCorporateCard = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
+
     const user_id = req.user._id;
     console.log("==========user_id", user_id)
 
@@ -1082,6 +1202,7 @@ exports.getProfile = async (req, res) => {
 
 exports.accountPrivacy = async (req, res) => {
   try {
+
     const owner_id = req.user._id;
     const card = await CardDetials.findOne({ owner_id: owner_id });
 
@@ -1144,6 +1265,9 @@ exports.enableOrDisableLink = async (req, res) => {
 
 exports.getCard = async (req, res) => {
   try {
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+
     const user_id = req.user._id;
 
     // const profile = await CardDetials.findOne({owner_id : user_id});
@@ -1244,8 +1368,11 @@ exports.getStates = async (req, res) => {
 
     if (!countryCode) {
       const countryName = req.query.countryName
+      console.log("countryName",countryName)
       countryCode = getCode(countryName)
     }
+
+    console.log("countryCode" , countryCode)
 
     const data = State.getStatesOfCountry(countryCode)
     res.json({ data: data, code: 200 })
@@ -1447,6 +1574,7 @@ exports.changeNotificaitonSetting = async (req, res) => {
 
 exports.getNotificationSetting = async (req, res) => {
   try {
+
     const user_id = req.user._id;
 
     console.log("running")
@@ -1521,6 +1649,9 @@ exports.getNotification = async (req, res) => {
 
 exports.exportCardToExcel = async (req, res) => {
   try {
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+
     const user_id = req.user._id;
     const email = req.user.email;
 
@@ -1810,6 +1941,7 @@ exports.isSubscriptionActive = async (req, res) => {
 
 exports.removeLogo = async (req, res) => {
   try {
+
     const user_id = req.user._id;
 
     const card = await CardDetials.findOne({ owner_id: mongoose.Types.ObjectId(user_id) })
@@ -1854,14 +1986,18 @@ exports.createSubscription = async (req, res) => {
   try {
 
     if (req.user.is_card_created === false) {
-      const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
-      if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
+      return utils.handleError(res, { message: "Please create a card before purchasing the subscription", code: 400 })
     }
 
+    // if (req.user.is_card_created === false) {
+    //   const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
+    //   if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
+    // }
+
     const user_id = req.user._id;
+
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
-
 
     const getCard = await CardDetials.findOne({ owner_id: user_id })
 
@@ -1881,15 +2017,21 @@ exports.createSubscription = async (req, res) => {
 
 
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
-      } else if (["authenticated", "active", "paused", "pending"].includes(status)) {
+      } else if (["authenticated", "active", "paused", "pending" , "halted"].includes(status)) {
         return res.json({ message: `You already have ${status} subscription`, code: 400 })
       }
     }
 
 
-    if (isSubcriptionExist && ["authenticated", "active", "paused", "pending"].includes(isSubcriptionExist.status)) {
-      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
+    if (isSubcriptionExist && ["authenticated", "active"].includes(isSubcriptionExist.status)) {
+      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription, It will take some to reflect here`, code: 400 })
     }
+
+    if (isSubcriptionExist && ["pending" , "halted"].includes(isSubcriptionExist.status)) {
+      return res.json({ message: `You already have ${isSubcriptionExist.status} subscription , Please update your payment method`, code: 400 })
+    }
+
+
 
     if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
       return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
@@ -1945,7 +2087,7 @@ exports.createSubscription = async (req, res) => {
       "total_count": getTotalCount(plan.interval),
       "quantity": 1,
       "customer_notify": 1,
-      ...trail,
+      // ...trail,
       expire_by: expireTime,
       "notes": {
         "user_id": user_id.toString(),
@@ -1978,7 +2120,6 @@ exports.createSubscription = async (req, res) => {
 }
 
 
-
 exports.webhook = async (req, res) => {
   const payload = JSON.stringify(req.body);
   const signature = req.get('X-Razorpay-Signature');
@@ -1991,6 +2132,9 @@ exports.webhook = async (req, res) => {
 
 
   if (signature === expectedSignature) {
+
+
+    console.log("req.body.card>>>>>>>>>>>>>>>>>", req.body?.payload?.payment?.entity?.card)
     var event = req.body.event;
     console.log("event", event)
     const subscription = req.body.payload.subscription.entity
@@ -2024,9 +2168,14 @@ exports.webhook = async (req, res) => {
       case 'subscription.authenticated':
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status });
 
-        const user = await User.findById(user_id);
+        const checkIsTrialExits = await Trial.findOne({ user_id , status : "active" });
+        if(checkIsTrialExits){
+          checkIsTrialExits.status = "completed";
+          await checkIsTrialExits.save()
+        }
 
-        if (user?.is_card_created === false) {
+        if (user_type === "individual") {
+          const user = await User.findById(user_id);
           const savedCard = await SavedCard.findOne({ owner_id: user._id });
           if (savedCard) {
             const data = savedCard.toJSON();
@@ -2073,6 +2222,10 @@ exports.webhook = async (req, res) => {
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
         break;
       case 'subscription.charged':
+
+        const payment_id = req?.body?.payload?.payment?.entity?.id
+        const payment_details = req?.body?.payload?.payment?.entity
+
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status, start_at: new Date(subscription.current_start * 1000), end_at: new Date(subscription.current_end * 1000) })
         const transactionData = {
           user_id: user_id,
@@ -2080,8 +2233,11 @@ exports.webhook = async (req, res) => {
           country: user_country,
           plan_id: plan_id,
           subcription_id: subscription.id,
-          amount: Number(plan?.item?.amount ?? 0) / 100
+          amount: Number(plan?.item?.amount ?? 0) / 100,
+          payment_id: payment_id,
+          payment_details: payment_details
         }
+
         const transaction = new Transaction(transactionData);
         await transaction.save();
 
@@ -2115,9 +2271,15 @@ exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
     const plans = await Plan.find({ plan_type: "individual" })
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
 
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
+    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      return res.json({ data: plans, isTrialActive: true, active: checkIsTrialExits, update: updatedPlan ? updatedPlan : null, code: 200 });
+    }
+
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
     if (activeSubscription) {
       if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled" && activeSubscription.end_at < new Date())) {
         activeSubscription = null
@@ -2135,12 +2297,31 @@ exports.plansList = async (req, res) => {
       }
     }
 
-    res.json({ data: plans, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
+    res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
 
   } catch (error) {
     utils.handleError(res, error)
   }
 }
+
+async function giveTrialIfNotGive(user_id) {
+  const isTrialGiven = await Trial.findOne({ user_id: user_id });
+
+  if (!isTrialGiven) {
+    const currentDate = new Date();
+    const futureDate = moment(currentDate).add(180, 'days');
+
+    const trial = {
+      user_id: user_id,
+      start_at: new Date(),
+      end_at: futureDate.toDate()
+    }
+
+    const saveTrial = new Trial(trial);
+    await saveTrial.save();
+  }
+}
+
 
 
 exports.saveCard = async (req, res) => {
@@ -2191,6 +2372,7 @@ exports.saveCard = async (req, res) => {
           youtube: data.social_links.youtube,
         }
       }
+
       if (isCardExist) {
         //updating the saved card
         await SavedCard.updateOne({ owner_id: owner_id }, card);
@@ -2199,6 +2381,8 @@ exports.saveCard = async (req, res) => {
         const savedcard = new SavedCard(card)
         await savedcard.save()
       }
+
+      await giveTrialIfNotGive(owner_id)
 
     } else if (card_type == "corporate") {
 
@@ -2249,7 +2433,17 @@ exports.saveCard = async (req, res) => {
         await savedcard.save();
       }
 
+      const email_domain = extractDomainFromEmail(data?.contact_details?.email);
+      const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
+      if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+      const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company._id, email: data?.contact_details?.email });
+      if (!isSubscriptionPaidByCompany) {
+        await giveTrialIfNotGive(owner_id)
+      }
+
     }
+
+
 
     res.json({ message: "Card saved successfully", code: 200 })
   } catch (error) {
@@ -2275,25 +2469,31 @@ exports.isPaymentDone = async (req, res) => {
     console.log("user_id", user_id)
     const isPayment = await checkSusbcriptionIsActive(user_id)
 
+    if (isPayment === true) {
+      const user = await User.findById(user_id);
+      const savedCard = await SavedCard.findOne({ owner_id: user_id });
+      if (savedCard) {
+        const data = savedCard.toJSON();
+        delete data._id;
+        delete data.createdAt;
+        delete data.updatedAt;
 
-    // if (isPayment === true) {
-    //   const user = await User.findById(user_id);
-    //   const savedCard = await SavedCard.findOne({ owner_id: user_id });
-    //   if (savedCard) {
-    //     const data = savedCard.toJSON();
-    //     delete data._id;
-    //     delete data.createdAt;
-    //     delete data.updatedAt;
+        const getCard = await CardDetials.findOne({ owner_id: user_id });
 
-    //     const createCard = new CardDetials(data);
-    //     await createCard.save()
-    //     await savedCard.remove()
+        if (getCard) {
+          await CardDetials.findByIdAndUpdate(getCard._id, data)
+        } else {
+          const createCard = new CardDetials(data);
+          await createCard.save()
+        }
 
-    //     user.is_card_created = true;
-    //     user.user_type = data?.card_type;
-    //     await user.save()
-    //   }
-    // }
+        await savedCard.remove()
+
+        user.is_card_created = true;
+        user.user_type = data?.card_type;
+        await user.save()
+      }
+    }
     // const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
     // console.log("isSubcriptionExist" ,isSubcriptionExist)
@@ -2383,7 +2583,7 @@ exports.updateSubscription = async (req, res) => {
 
     res.json({ message: "Subscription updated successfully", code: 200 })
   } catch (error) {
-    console.log
+    console.log("errorewre" , error)
     utils.handleError(res, error)
   }
 }
@@ -2400,7 +2600,7 @@ exports.cancelScheduledUpdate = async (req, res) => {
 
     await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
 
-    res.json({ message: "Schedule chnages cancelled successfully", code: 200 });
+    res.json({ message: "Schedule changes cancelled successfully", code: 200 });
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -2411,9 +2611,17 @@ exports.registration = async (req, res) => {
   try {
     const { first_name, last_name, email, country_code, mobile_number, company_name, country, how_can_we_help_you } = req.body;
 
-    console.log("req.body", req.body)
+
+    const isEmailExistInCompany = await Company.findOne({ email: email });
+    if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })
+
+    const emailDomain = extractDomainFromEmail(email);
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
+
+
     const isEmailExist = await Registration.findOne({ email: email });
-    console.log("isEmailExist", isEmailExist)
+
     if (isEmailExist) return utils.handleError(res, { message: "You have already register", code: 400 });
     if (mobile_number) {
       const isPhoneNumberExist = await Registration.findOne({ mobile_number: mobile_number });
@@ -2555,13 +2763,12 @@ async function generateAndSavePDF(html, options, fileName, data) {
 function calculatePercentage(amount, percentage) {
   const decimalPercentage = percentage / 100;
   const percentageAmount = amount * decimalPercentage;
-  return percentageAmount;
+  return Math.round(percentageAmount * 100 )/100;
 }
 
 async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, user) {
 
   const planFromDataBase = await Plan.findOne({ plan_id: plan.id })
-  console.log("planFromDataBase", planFromDataBase)
   const amount = (plan?.item?.amount ?? 0) / 100
   const gst_amount = calculatePercentage(amount, 18);
   const sub_total = amount - gst_amount;
@@ -2625,7 +2832,6 @@ async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, use
     path: `${process.env.STORAGE_PATH_HTTP_AWS}/${invoice_image}`,
   });
 
-  console.log("mailOptions", mailOptions)
   sendInvoiceEmailForTransaction(mailOptions)
 
 }
@@ -2743,6 +2949,9 @@ exports.sendMail = (req, res) => {
 
 exports.deleteCard = async (req, res) => {
   try {
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+
     const { card_id } = req.body;
     const user_id = req.user._id;
 
@@ -2759,6 +2968,92 @@ exports.deleteCard = async (req, res) => {
     res.json({ message: "Card deleted successfully", card_id, code: 200 })
   } catch (error) {
     console.log("error", error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.addSubscription = async (req, res) => {
+  try {
+    const { razorpay_subscription_id } = req.body;
+    const user_id = req.user._id;
+
+    if (!razorpay_subscription_id) return utils.handleError(res, { message: "Subscription id is missing", code: 400 });
+    const subscription = await instance.subscriptions.fetch(razorpay_subscription_id);
+
+    if (!subscription) return utils.handleError(res, { message: "Subscription not found", code: 404 });
+    if (subscription.status === "created") return utils.handleError(res, { message: "Subscription is not authenticated yet", code: 400 });
+    if (subscription.status === "expired") return utils.handleError(res, { message: "Subscription is expired", code: 400 });
+    if (subscription.status === "cancelled") return utils.handleError(res, { message: "Subscription is cancelled", code: 400 });
+
+    const SubscriptionIndatabase = await Subscription.findOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: razorpay_subscription_id })
+
+    if (!SubscriptionIndatabase) return utils.handleError(res, { message: "Subscription not found", code: 404 });
+
+
+    await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: razorpay_subscription_id }, { status: subscription.status });
+
+    const user = await User.findById(user_id);
+    // if (user?.is_card_created === false) {
+    const savedCard = await SavedCard.findOne({ owner_id: user._id });
+    if (savedCard) {
+      const data = savedCard.toJSON();
+      delete data._id;
+      delete data.createdAt;
+      delete data.updatedAt;
+
+      const createCard = new CardDetials(data);
+      await createCard.save()
+      await savedCard.remove()
+
+      user.is_card_created = true;
+      user.user_type = data?.card_type;
+      await user.save()
+    }
+    // }
+
+
+    res.json({ code: 200 })
+  } catch (error) {
+    console.log("error", error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.getPaymentDetails = async (req, res) => {
+  try {
+    const user_id = req.user._id
+    const subcription = await Subscription.findOne({ user_id });
+
+    const subcription_razorpay = await instance.subscriptions.fetch(subcription.subscription_id);
+
+    console.log("subcription_razorpay", subcription_razorpay)
+    const customer = await instance.customers.fetch(subcription_razorpay.customer_id);
+
+    res.json({ data: subcription_razorpay, customer })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+exports.getPaymentMethod = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const latest_payment = await Transaction.findOne({ user_id }).sort({ createdAt: -1 });
+
+    if(!latest_payment){
+      return res.json({ data: latest_payment, code: 200 })
+    }
+
+    const data = latest_payment.toJSON()
+    data.full_name = req?.user?.full_name
+
+    res.json({ data: data, code: 200 })
+  } catch (error) {
+    console.log(error)
     utils.handleError(res, error)
   }
 }
