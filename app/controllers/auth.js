@@ -790,6 +790,7 @@ exports.sendotpnew = async (req, res) => {
       });
       await otpData.save();
     }
+    console.log("newOtpforget",newOtpforget )
 
     // Send the OTP to the email address
     await emailer.sendOtpOnEmail({

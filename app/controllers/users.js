@@ -419,7 +419,7 @@ exports.updateProfile = async (req, res) => {
 exports.editCardDetails = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const owner_id = req.user._id;
     const data = req.body;
@@ -510,7 +510,7 @@ exports.addSharedCard = async (req, res) => {
   try {
 
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
 
     const { card_id } = req.body;
@@ -628,10 +628,10 @@ exports.addSharedCard = async (req, res) => {
 
 exports.getSharedCardsForUser = async (req, res) => {
   try {
-    
+
     const { user_id, search } = req.params;
     const { limit = 10, offset = 0 } = req.query;
-    
+
     // Validate if user_id is provided
     if (!user_id) {
       return res.status(400).json({ code: 400, message: "User ID is required." });
@@ -639,7 +639,7 @@ exports.getSharedCardsForUser = async (req, res) => {
 
     const user = await User.findById(user_id);
     const isSubscriptionActive = await isSubscriptionActiveOrNot(user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     // Convert limit and offset to integers
     const limitInt = parseInt(limit, 10);
@@ -714,6 +714,13 @@ exports.getSharedCardsForUser = async (req, res) => {
               else: '$cardDetails.business_logo'
             }
           },
+          "cardDetails.business_and_logo_status": {
+            $cond: {
+              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+              then: '$company.business_and_logo_status',
+              else: '$cardDetails.business_and_logo_status'
+            }
+          },
           "cardDetails.address": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
@@ -761,7 +768,7 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 exports.addPersonalCard = async (req, res) => {
   try {
- 
+
     const owner_id = req.user._id;
     // const owner_id = req.body.owner_id
 
@@ -1266,7 +1273,7 @@ exports.enableOrDisableLink = async (req, res) => {
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
 
@@ -1306,6 +1313,13 @@ exports.getCard = async (req, res) => {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.card_color',
               else: '$card_color'
+            }
+          },
+          "business_and_logo_status": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.business_and_logo_status',
+              else: '$business_and_logo_status'
             }
           },
           'text_color': {
@@ -1368,11 +1382,11 @@ exports.getStates = async (req, res) => {
 
     if (!countryCode) {
       const countryName = req.query.countryName
-      console.log("countryName",countryName)
+      console.log("countryName", countryName)
       countryCode = getCode(countryName)
     }
 
-    console.log("countryCode" , countryCode)
+    console.log("countryCode", countryCode)
 
     const data = State.getStatesOfCountry(countryCode)
     res.json({ data: data, code: 200 })
@@ -1650,7 +1664,7 @@ exports.getNotification = async (req, res) => {
 exports.exportCardToExcel = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
     const email = req.user.email;
@@ -2017,7 +2031,7 @@ exports.createSubscription = async (req, res) => {
 
 
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
-      } else if (["authenticated", "active", "paused", "pending" , "halted"].includes(status)) {
+      } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
         return res.json({ message: `You already have ${status} subscription`, code: 400 })
       }
     }
@@ -2027,7 +2041,7 @@ exports.createSubscription = async (req, res) => {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription, It will take some to reflect here`, code: 400 })
     }
 
-    if (isSubcriptionExist && ["pending" , "halted"].includes(isSubcriptionExist.status)) {
+    if (isSubcriptionExist && ["pending", "halted"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription , Please update your payment method`, code: 400 })
     }
 
@@ -2168,8 +2182,8 @@ exports.webhook = async (req, res) => {
       case 'subscription.authenticated':
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status });
 
-        const checkIsTrialExits = await Trial.findOne({ user_id , status : "active" });
-        if(checkIsTrialExits){
+        const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+        if (checkIsTrialExits) {
           checkIsTrialExits.status = "completed";
           await checkIsTrialExits.save()
         }
@@ -2583,7 +2597,7 @@ exports.updateSubscription = async (req, res) => {
 
     res.json({ message: "Subscription updated successfully", code: 200 })
   } catch (error) {
-    console.log("errorewre" , error)
+    console.log("errorewre", error)
     utils.handleError(res, error)
   }
 }
@@ -2763,7 +2777,7 @@ async function generateAndSavePDF(html, options, fileName, data) {
 function calculatePercentage(amount, percentage) {
   const decimalPercentage = percentage / 100;
   const percentageAmount = amount * decimalPercentage;
-  return Math.round(percentageAmount * 100 )/100;
+  return Math.round(percentageAmount * 100) / 100;
 }
 
 async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, user) {
@@ -2950,7 +2964,7 @@ exports.sendMail = (req, res) => {
 exports.deleteCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if(isSubscriptionActive === false) return  utils.handleError(res, {message : "Your subscription has expired. Please renew to continue accessing our services" , code : 400});
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const { card_id } = req.body;
     const user_id = req.user._id;
@@ -3044,7 +3058,7 @@ exports.getPaymentMethod = async (req, res) => {
 
     const latest_payment = await Transaction.findOne({ user_id }).sort({ createdAt: -1 });
 
-    if(!latest_payment){
+    if (!latest_payment) {
       return res.json({ data: latest_payment, code: 200 })
     }
 
