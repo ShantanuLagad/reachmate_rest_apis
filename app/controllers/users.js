@@ -3,12 +3,13 @@ const uuid = require('uuid')
 const {
   getUserIdFromToken,
   uploadFile,
+  uploadFileToLocal,
   uploadFilefromPath,
   capitalizeFirstLetter,
   validateFileSize,
   objectToQueryString,
 } = require("../shared/helpers");
-
+const { convert } = require('convert-svg-to-png');
 const cron = require("node-cron");
 const { matchedData } = require('express-validator')
 const utils = require('../middleware/utils')
@@ -45,6 +46,8 @@ const Plan = require("../models/plan")
 const Razorpay = require('razorpay');
 const moment = require("moment")
 const fs = require("fs")
+const path = require("path")
+const axios = require("axios")
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -52,6 +55,10 @@ var instance = new Razorpay({
 var html_to_pdf = require('html-pdf-node');
 const commaNumber = require('comma-number')
 const crypto = require('crypto');
+const FormData = require('form-data');
+
+
+
 const {
 
   getItemThroughId,
@@ -101,79 +108,594 @@ const createItem = async req => {
 }
 
 
-cron.schedule("0 15 * * *", async () => {
+// cron.schedule("0 15 * * *", async () => {
+
+//   const start_date = moment().add(6, "days")
+//   const end_date = moment().add(7, "days")
+
+//   const trail = await Trial.aggregate([
+//     {
+//       $match: { end_at: { $gte: start_date.toDate(), $lte: end_date.toDate() }, status: "active" }
+//     },
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "user_id",
+//         foreignField: "_id",
+//         as: "users",
+//       },
+//     },
+//     {
+//       $unwind: {
+//         path: "$users",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     },
+//     {
+//       $lookup: {
+//         from: "fcmdevices",
+//         localField: "user_id",
+//         foreignField: "user_id",
+//         as: "device_token"
+//       }
+//     },
+//     {
+//       $unwind: {
+//         path: "$device_token",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     },
+//   ])
 
 
-  const start_date = moment().add(6, "days")
-  const end_date = moment().add(7, "days")
+//   const title = "Your Free Trial Ends in 7 Days";
+//   const body = "Your free trial is ending in 7 days. Please consider purchasing a subscription to continue enjoying our service"
 
-  const trail = await Trial.aggregate([
-    {
-      $match: { end_at: { $gte: start_date.toDate(), $lte: end_date.toDate() }, status: "active" }
-    },
-    {
-      $lookup: {
-        from: "users",
-        localField: "user_id",
-        foreignField: "_id",
-        as: "users",
+//   const tokens = []
+//   const notificationToCreate = []
+
+
+//   trail.forEach(element => {
+
+//     const notificationData = {
+//       // sender_id: admin_id,
+//       receiver_id: element?.user_id,
+//       type: "by_admin",
+//       title: title,
+//       body: body
+//     }
+
+//     notificationToCreate.push(notificationData);
+
+//     if (element?.users?.notification && element?.device_token?.token) {
+//       tokens.push(element?.device_token?.token)
+//     }
+
+//   })
+
+//   console.log("notificationToCreate", notificationToCreate)
+//   await Notification.insertMany(notificationToCreate);
+
+//   console.log("tokens", tokens)
+//   //push notification
+//   if (tokens.length !== 0) {
+//     utils.sendPushNotification(tokens, title, body)
+//   }
+
+
+
+
+// });
+
+// cron.schedule("*/20 * * * * *", async () => {
+cron.schedule("30 3 * * *", async () => {
+
+  try {
+
+    //to same day
+    const same_day = moment().endOf("day").toDate();
+    const todayEndingTrail = await Trial.aggregate([
+      {
+        $match: { end_at: same_day, status: "active" }
       },
-    },
-    {
-      $unwind: {
-        path: "$users",
-        preserveNullAndEmptyArrays: true,
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "fcmdevices",
-        localField: "user_id",
-        foreignField: "user_id",
-        as: "device_token"
+      {
+        $unwind: "$users",
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "subscription",
+        },
+      },
+      {
+        $unwind: {
+          path: "$subscription",
+          preserveNullAndEmptyArrays: true,
+        },
       }
-    },
-    {
-      $unwind: {
-        path: "$device_token",
-        preserveNullAndEmptyArrays: true,
+    ])
+
+    for (let index = 0; index < todayEndingTrail.length; index++) {
+
+      const trail = todayEndingTrail[index];
+
+
+      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+
+      if (!isSubscriptionActive) {
+        emailer.sendReminderEmail({
+          subject: "Your Trial Period is Ending Today - Renew Your Subscription",
+          email: trail?.users?.email,
+          full_name: trail?.users?.full_name,
+          day: "today"
+        },
+          "subscriptionExpiry"
+        )
+      }
+
+    }
+
+    //cencelled
+    const same_day_start = moment().startOf("day").toDate();
+    const todayEndingCanceledSubscription = await Subscription.aggregate([
+      {
+        $match: { end_at: { $gte: same_day_start, $lte: same_day }, status: "cancelled" }
       },
-    },
-  ])
+      {
+        $sort: {
+          createdAt: -1
+        }
+      }, {
+        $limit: 1
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          users: {
+            $ifNull: ["$users", "$company"]
+          }
+        }
+      },
+      {
+        $match: {
+          users: { $exists: true }
+        }
+      }
+    ])
 
+    for (let index = 0; index < todayEndingCanceledSubscription.length; index++) {
+      const trail = todayEndingCanceledSubscription[index];
 
-  const title = "Your Free Trial Ends in 7 Days";
-  const body = "Your free trial is ending in 7 days. Please consider purchasing a subscription to continue enjoying our service"
+      emailer.sendReminderEmail({
+        subject: "Your Subscription is Ending Today - Renew Your Subscription",
+        email: trail?.users?.email,
+        full_name: trail?.users?.full_name || trail?.users?.bio.full_name,
+        day: "today"
+      },
+        "cancelSubscriptionExpiry"
+      )
 
-  const tokens = []
-  const notificationToCreate = []
-
-
-  trail.forEach(element => {
-
-    const notificationData = {
-      // sender_id: admin_id,
-      receiver_id: element?.user_id,
-      type: "by_admin",
-      title: title,
-      body: body
     }
 
-    notificationToCreate.push(notificationData);
 
-    if (element?.users?.notification && element?.device_token?.token) {
-      tokens.push(element?.device_token?.token)
+
+
+
+    //to send reminder 1 day before
+    const one_day = moment().add(1, "days").endOf("day").toDate();
+    const trailEndingInOneDays = await Trial.aggregate([
+      {
+        $match: { end_at: one_day, status: "active" }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: "$users",
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "subscription",
+        },
+      },
+      {
+        $unwind: {
+          path: "$subscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    ])
+
+    for (let index = 0; index < trailEndingInOneDays.length; index++) {
+      console.log("todayEndingTrailsdfg")
+      const trail = trailEndingInOneDays[index];
+
+      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+
+      if (!isSubscriptionActive) {
+
+        emailer.sendReminderEmail({
+          subject: "Your Trial Period is Ending Tommorrow - Renew Your Subscription",
+          email: trail?.users?.email,
+          full_name: trail?.users?.full_name,
+          day: "tommorrow"
+        },
+          "subscriptionExpiry"
+        )
+
+      }
+
+
     }
 
-  })
+    //cencelled
+    const one_day_start = moment().add(1, "day").startOf("day").toDate();
+    const subscriptionEndingInOneDays = await Subscription.aggregate([
+      {
+        $match: { end_at: { $gte: one_day_start, $lte: one_day }, status: "cancelled" }
+      },
+      {
+        $sort: {
+          createdAt: -1
+        }
+      }, {
+        $limit: 1
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          users: {
+            $ifNull: ["$users", "$company"]
+          }
+        }
+      },
+      {
+        $match: {
+          users: { $exists: true }
+        }
+      }
+    ])
 
-  console.log("notificationToCreate", notificationToCreate)
-  await Notification.insertMany(notificationToCreate);
+    for (let index = 0; index < subscriptionEndingInOneDays.length; index++) {
+      const trail = subscriptionEndingInOneDays[index];
 
-  console.log("tokens", tokens)
-  //push notification
-  if (tokens.length !== 0) {
-    utils.sendPushNotification(tokens, title, body)
+      emailer.sendReminderEmail({
+        subject: "Your Subscription is Ending Tommorrow - Renew Your Subscription",
+        email: trail?.users?.email,
+        full_name: trail?.users?.full_name || trail?.users?.bio.full_name,
+        day: "tommorrow"
+      },
+        "cancelSubscriptionExpiry"
+      )
+
+    }
+
+
+
+
+
+
+
+    // //to send reminder 7 days before
+    const seven_day = moment().add(6, "days").endOf("day").toDate();
+    const trailEndingInSevenDays = await Trial.aggregate([
+      {
+        $match: { end_at: seven_day, status: "active" }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: "$users",
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "subscription",
+        },
+      },
+      {
+        $unwind: {
+          path: "$subscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    ])
+
+    for (let index = 0; index < trailEndingInSevenDays.length; index++) {
+      console.log("todayEndingTrailsdfg")
+      const trail = trailEndingInSevenDays[index];
+
+      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+
+      if (!isSubscriptionActive) {
+
+        emailer.sendReminderEmail({
+          subject: "Your Trial Period Ends in 7 Days - Renew Your Subscription",
+          email: trail?.users?.email,
+          full_name: trail?.users?.full_name,
+          day: "in 7 days"
+        },
+          "subscriptionExpiry"
+        )
+
+      }
+
+
+    }
+
+    //cencelled
+    const seven_day_start = moment().add(6, "days").startOf("day").toDate();
+    const subscriptionEndingInSevenDays = await Subscription.aggregate([
+      {
+        $match: { end_at: { $gte: seven_day_start, $lte: seven_day }, status: "cancelled" }
+      },
+      {
+        $sort: {
+          createdAt: -1
+        }
+      }, {
+        $limit: 1
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          users: {
+            $ifNull: ["$users", "$company"]
+          }
+        }
+      },
+      {
+        $match: {
+          users: { $exists: true }
+        }
+      }
+    ])
+
+    for (let index = 0; index < subscriptionEndingInSevenDays.length; index++) {
+      const trail = subscriptionEndingInSevenDays[index];
+
+      emailer.sendReminderEmail({
+        subject: "Your Subscription Ends in 7 Days - Renew Your Subscription",
+        email: trail?.users?.email,
+        full_name: trail?.users?.full_name || trail?.users?.bio.full_name,
+        day: "in 7 days"
+      },
+        "cancelSubscriptionExpiry"
+      )
+
+    }
+
+
+    // //to send reminder 15 days before
+    const fifteen_day = moment().add(14, "days").endOf("day").toDate();
+    const trailEndingInFifteenDays = await Trial.aggregate([
+      {
+        $match: { end_at: fifteen_day, status: "active" }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "subscription",
+        },
+      },
+      {
+        $unwind: "$users",
+      },
+    ])
+
+    for (let index = 0; index < trailEndingInFifteenDays.length; index++) {
+
+      const trail = trailEndingInFifteenDays[index];
+
+      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+
+      if (!isSubscriptionActive) {
+        emailer.sendReminderEmail({
+          subject: "Your Trial Period Ends in 15 Days - Renew Your Subscription",
+          email: trail?.users?.email,
+          full_name: trail?.users?.full_name,
+          day: "in 15 days"
+        },
+          "subscriptionExpiry"
+        )
+      }
+
+    }
+
+    //cencelled
+    const fifteen_day_start = moment().add(14, "days").startOf("day").toDate();
+    const subscriptionEndingInifteenDays = await Subscription.aggregate([
+      {
+        $match: { end_at: { $gte: fifteen_day_start, $lte: fifteen_day }, status: "cancelled" }
+      },
+      {
+        $sort: {
+          createdAt: -1
+        }
+      }, {
+        $limit: 1
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+      {
+        $unwind: {
+          path: "$users",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          users: {
+            $ifNull: ["$users", "$company"]
+          }
+        }
+      },
+      {
+        $match: {
+          users: { $exists: true }
+        }
+      }
+    ])
+
+    for (let index = 0; index < subscriptionEndingInifteenDays.length; index++) {
+      const trail = subscriptionEndingInifteenDays[index];
+
+      emailer.sendReminderEmail({
+        subject: "Your Subscription Ends in 15 Days - Renew Your Subscription",
+        email: trail?.users?.email,
+        full_name: trail?.users?.full_name || trail?.users?.bio.full_name,
+        day: "in 15 days"
+      },
+        "cancelSubscriptionExpiry"
+      )
+
+    }
+
+  } catch (error) {
+    console.log("error", error)
   }
 
 });
@@ -377,6 +899,8 @@ exports.uploadUserMedia = async (req, res) => {
         message: "MEDIA OR PATH MISSING",
       });
     }
+    console.log("req.files.media.mimetype", req.files.media.mimetype)
+    console.log(req.files.media)
 
     let media = await uploadFile({
       file: req.files.media,
@@ -394,6 +918,196 @@ exports.uploadUserMedia = async (req, res) => {
     utils.handleError(res, error)
   }
 };
+
+// exports.uploadUserMediaForIOS = async (req, res) => {
+//   try {
+//     if (!req.files.media || !req.body.path) {
+//       // check if image and path missing
+//       return res.status(422).json({
+//         code: 422,
+//         message: "MEDIA OR PATH MISSING",
+//       });
+//     }
+
+
+//     return res.status(200).json({
+//       code: 200,
+//       data: media,
+//     });
+//   } catch (error) {
+//     console.log(error)
+//     utils.handleError(res, error)
+//   }
+// };
+
+
+exports.uploadUserMediaForIOS = async (req, res) => {
+  try {
+    if (!req.files.media || !req.body.path) {
+      // check if image and path missing
+      return res.status(422).json({
+        code: 422,
+        message: "MEDIA OR PATH MISSING",
+      });
+    }
+
+    const apiKey = process.env.REMOVE_BG_KEY;
+    const files = req.files;
+    console.log("files are---", files);
+
+    var FormData = require('form-data');
+    var fs = require('fs');
+   
+    const formData = new FormData();
+    formData.append('size', 'auto');
+    formData.append('image_file', files.media.data, files.media.name);
+    // var file_name = Date.now() + files.media.name;
+    const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
+      responseType: 'arraybuffer',
+      headers: {
+        ...formData.getHeaders(),
+        'X-Api-Key': apiKey,
+      },
+      encoding: null
+    });
+
+    if (response.status !== 200) {
+      return res.status(response.status).json({ error: 'Remove.bg API error' });
+    }
+
+    req.files.media.data = response.data
+
+    let media = await uploadFile({
+      file: req.files.media,
+      path: `${process.env.STORAGE_PATH}/${req.body.path}`,
+    });
+
+    media = `${req.body.path}/${media}`
+
+    return res.status(200).json({
+      code: 200,
+      data: media,
+    });
+  } catch (err) {
+    console.log("error occurred here---", err);
+    utils.handleError(res, err);
+  }
+}
+
+
+// const svg2img = require('svg2img');
+
+// exports.uploadUserMedia = async (req, res) => {
+//   try {
+//     if (!req.files.media || !req.body.path) {
+//       // Check if image and path are missing
+//       return res.status(422).json({
+//         code: 422,
+//         message: "MEDIA OR PATH MISSING",
+//       });
+//     }
+
+//     console.log("req.files.media.mimetype" ,req.files.media.mimetype)
+//     // Check if the uploaded file is SVG
+//     if (req.files.media.mimetype === 'image/svg+xml') {
+//       // Convert SVG to PNG
+//       const svgBuffer = req.files.media.data;
+//       svg2img(svgBuffer, async function(error, pngBuffer) {
+//         if (error) {
+//           console.error('Error converting SVG to PNG:', error);
+//           return res.status(500).json({
+//             code: 500,
+//             message: "Error converting SVG to PNG",
+//           });
+//         }
+
+//         console.log("svgBuffer" ,svgBuffer)
+//         req.files.media.data = svgBuffer;
+//         req.files.media.name = req.files.media.name.replace('.svg', '.png');
+
+//         console.log("req.files.media.name" ,req.files.media.name)
+//         // // Write the PNG buffer to file
+//         // const filePath = `${process.env.STORAGE_PATH}/${req.body.path}`;
+//         // const fileName = req.files.media.name.replace('.svg', '.png');
+
+
+//         // fs.writeFileSync(`${filePath}/${fileName}`, pngBuffer);
+
+//         // Construct the path to the PNG file
+//         let media = await uploadFile({
+//           file: req.files.media,
+//           path: `${process.env.STORAGE_PATH}/${req.body.path}`,
+//         });
+
+//         media = `${req.body.path}/${media}`;
+
+//         return res.status(200).json({
+//           code: 200,
+//           data: media,
+//         });
+//       });
+//     } else {
+//       // If the uploaded file is not SVG, proceed with regular file upload logic
+//       let media = await uploadFile({
+//         file: req.files.media,
+//         path: `${process.env.STORAGE_PATH}/${req.body.path}`,
+//       });
+
+//       media = `${req.body.path}/${media}`;
+
+//       return res.status(200).json({
+//         code: 200,
+//         data: media,
+//       });
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     utils.handleError(res, error);
+//   }
+// };
+// exports.uploadUserMedia = async (req, res) => {
+//   try {
+//     if (!req.files.media || !req.body.path) {
+//       // check if image and path missing
+//       return res.status(422).json({
+//         code: 422,
+//         message: "MEDIA OR PATH MISSING",
+//       });
+//     }
+
+//     let media = req.files.media;
+
+//     // Check if the uploaded file is an SVG
+//     if (media.mimetype === 'image/svg+xml') {
+//       // Convert SVG to PNG
+//       const pngBuffer = await convert(media.data, {
+//         width: 200, // Specify width of PNG image
+//         height: 200, // Specify height of PNG image
+//       });
+//       media = {
+//         data: pngBuffer,
+//         mimetype: 'image/png',
+//       };
+//     }
+
+//     // Upload the media file
+//     let uploadedMedia = await uploadFile({
+//       file: media,
+//       path: `${process.env.STORAGE_PATH}/${req.body.path}`,
+//     });
+
+//     uploadedMedia = `${req.body.path}/${uploadedMedia}`;
+
+//     return res.status(200).json({
+//       code: 200,
+//       data: uploadedMedia,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     utils.handleError(res, error);
+//   }
+// };
+
 
 exports.updateProfile = async (req, res) => {
   try {
@@ -418,8 +1132,8 @@ exports.updateProfile = async (req, res) => {
 /*** Gagan ****/
 exports.editCardDetails = async (req, res) => {
   try {
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    // if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const owner_id = req.user._id;
     const data = req.body;
@@ -834,9 +1548,6 @@ exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
 
-    const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
-    if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
-
     const email_domain = extractDomainFromEmail(email);
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
@@ -844,6 +1555,12 @@ exports.matchAccessCode = async (req, res) => {
     // if (company.email === email) return utils.handleError(res, { message: "Can not create card on compnay email", code: 400 })
 
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
+
+
+    const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
+    if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
+
+
     res.json({ code: 200, data: company })
   } catch (error) {
     utils.handleError(res, error)
@@ -917,6 +1634,7 @@ exports.addCorporateCard = async (req, res) => {
 
     //check this user have a card or not 
     const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
+    const previousCompany = isCardExist?.company_id;
 
     const card = {
       card_type: 'corporate',
@@ -953,9 +1671,31 @@ exports.addCorporateCard = async (req, res) => {
       paid_by_company: paid_by_company
     }
 
+    const notificationData = {
+      sender_id: owner_id,
+      receiver_id: company_id,
+      type: "company",
+      title: "Company Joined",
+      body: `${req.user.full_name} has joined the company.`
+    }
+
+    const saveNotification = new Notification(notificationData);
+    await saveNotification.save()
+
     if (isCardExist) {
       await CardDetials.updateOne({ owner_id: owner_id }, card);
       await SavedCard.deleteOne({ owner_id: owner_id })
+
+      const notificationData = {
+        sender_id: owner_id,
+        receiver_id: previousCompany,
+        type: "company",
+        title: "Company Changed",
+        body: `${req.user.full_name} has left the company`
+      }
+
+      const saveNotification = new Notification(notificationData);
+      await saveNotification.save()
 
       res.json({ code: 200, message: "Company change successfully" })
     } else {
@@ -963,6 +1703,8 @@ exports.addCorporateCard = async (req, res) => {
       await cardData.save()
       await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "corporate" })
       await SavedCard.deleteOne({ owner_id: owner_id })
+
+
       res.json({ code: 200, message: "Card Save successfully" })
     }
 
@@ -1166,6 +1908,7 @@ exports.getProfile = async (req, res) => {
       {
         $project: {
           _id: 1,
+          billing_address: 1,
           text_color: 1,
           social_type: 1,
           is_card_created: 1,
@@ -1341,6 +2084,13 @@ exports.getCard = async (req, res) => {
               if: { $eq: ['$card_type', 'corporate'] },
               then: '$company.address',
               else: '$address'
+            }
+          },
+          "contact_details.website": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$contact_details.website'
             }
           },
           "website": {
@@ -2323,7 +3073,7 @@ async function giveTrialIfNotGive(user_id) {
 
   if (!isTrialGiven) {
     const currentDate = new Date();
-    const futureDate = moment(currentDate).add(180, 'days');
+    const futureDate = moment(currentDate).add(180, 'days').endOf('day');
 
     const trial = {
       user_id: user_id,
@@ -3066,6 +3816,37 @@ exports.getPaymentMethod = async (req, res) => {
     data.full_name = req?.user?.full_name
 
     res.json({ data: data, code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+exports.editBillingAddress = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const { country,
+      state,
+      city,
+      address_line_1,
+      address_line_2,
+      pin_code } = req.body;
+
+
+    const billing_address = {
+      country,
+      state,
+      city,
+      address_line_1,
+      address_line_2,
+      pin_code
+    }
+
+    await User.findByIdAndUpdate(user_id, { $set: { billing_address: billing_address } })
+
+
+    res.json({ message: "Billing address saved successfully", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)

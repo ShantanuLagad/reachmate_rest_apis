@@ -87,6 +87,34 @@ const generateToken = (_id, role, remember_me) => {
 }
 
 
+function generateAccessCode() {
+  // Generate 4 random characters
+  var chars = '';
+  var charLength = 4;
+  for (var i = 0; i < charLength; i++) {
+      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  }
+  
+  // Generate 2 random digits
+  var digits = '';
+  var digitLength = 2;
+  for (var j = 0; j < digitLength; j++) {
+      digits += Math.floor(Math.random() * 10);
+  }
+  
+  // Combine characters and digits
+  var code = chars + digits;
+  // Convert to array to shuffle
+  var codeArray = code.split('');
+  for (var k = codeArray.length - 1; k > 0; k--) {
+      var randIndex = Math.floor(Math.random() * (k + 1));
+      var temp = codeArray[k];
+      codeArray[k] = codeArray[randIndex];
+      codeArray[randIndex] = temp;
+  }
+  code = codeArray.join('');
+  return code;
+}
 
 
 const findUser = async email => {
@@ -583,6 +611,8 @@ exports.getCorporateUser = async (req, res) => {
         { "bio.full_name": { $regex: new RegExp(search, 'i') } },
         { "contact_details.mobile_number": { $regex: new RegExp(search, 'i') } },
         { "bio.designation": { $regex: new RegExp(search, 'i') } },
+        { "contact_details.email": { $regex: new RegExp(search, 'i') } },
+        { "users.email": { $regex: new RegExp(search, 'i') } },
       ]
     }
 
@@ -711,15 +741,20 @@ exports.addCompany = async (req, res) => {
       numbers: true
     });
 
-    const access_code = generator.generate({
-      length: 6,
-      numbers: true,
-      uppercase: false
-    });
+    // let =  access_code = generator.generate({
+    //   length: 6,
+    //   numbers: true,
+    //   uppercase: false
+    // });
+
+
+    // Example usage
+    const access_code = generateAccessCode();
+ 
 
     const dataForCompany = {
       email: data.email,
-      access_code: access_code,
+      access_code: access_code.toUpperCase(),
       password: password,
       decoded_password: password,
       email_domain: emailDomain,
@@ -795,6 +830,7 @@ exports.getCompanyList = async (req, res) => {
       condition["$or"] = [
         { company_name: { $regex: new RegExp(search, 'i') } },
         { email_domain: { $regex: new RegExp(search, 'i') } },
+        // { email: { $regex: new RegExp(search, 'i') } },
       ]
     }
 
@@ -874,8 +910,8 @@ exports.dashBoardCard = async (req, res) => {
         $unwind: "$card"
       }
     ]);
-    const totalComany = await Company.countDocuments({})
 
+    const totalComany = await Company.countDocuments({type : "admin" , is_profile_completed : true})
 
     const revenue = await Transaction.aggregate([
       {
@@ -1269,8 +1305,19 @@ exports.getRegistrationList = async (req, res) => {
   try {
     const { limit = 10, offset = 0, sort = -1 } = req.query;
 
+    const start_date = moment().subtract(30 , "days").toDate() 
     const count = await Registration.countDocuments({})
-    const registration = await Registration.find({}).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
+    const registration = await Registration.find({
+      $or :[
+        {status : "pending" },
+        {
+          $and :[
+            {status : "declined" },
+            { createdAt : {$gte : start_date}}
+          ]
+        }
+      ]
+       }).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
 
 
     res.json({ data: registration, count, code: 200 })

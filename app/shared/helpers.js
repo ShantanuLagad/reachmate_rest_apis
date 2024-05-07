@@ -40,7 +40,7 @@ module.exports = {
   */
 
   async uploadFileToLocal(object) {
-    console.log("object" , object)
+    console.log("object", object)
     return new Promise((resolve, reject) => {
       var obj = object.file;
       var name = Date.now() + obj.name;
@@ -55,54 +55,57 @@ module.exports = {
 
 
 
-// S3 BUCKET
-async uploadFile(object){
-  return new Promise(async (resolve, reject) => {
-    var file = object.file;
-    console.log("OBJ in upload file is here---", file);
+  // S3 BUCKET
+  async uploadFile(object) {
+    return new Promise(async (resolve, reject) => {
+      var file = object.file;
+      var filename = Date.now() + file.name;
 
-    var filename = Date.now() + file.name;
-    const params = {
-      Bucket: Bucket,
-      Key: object.path + "/" + filename,
-      Body: file.data,
-      ContentType: file.mimetype,
-    };
-    return bucket.upload(params, function (err, data) {
-      if (err) {
-        console.log("----err----",err);
-        reject(buildErrObject(422, err.message));
-      }
-      console.log("data",data)
-      resolve(filename);
+      console.log("OBJ in upload file is here---", file.data);
+      console.log("OBJ in upload file is here---", file.mimetype);
+      console.log("object.path + / + filename", object.path + "/" + filename);
+      
+      const params = {
+        Bucket: Bucket,
+        Key: object.path + "/" + filename,
+        Body: file.data,
+        ContentType: file.mimetype,
+      };
+      return bucket.upload(params, function (err, data) {
+        if (err) {
+          console.log("----err----", err);
+          reject(buildErrObject(422, err.message));
+        }
+        console.log("data", data)
+        resolve(filename);
+      });
     });
-  });
-}, 
+  },
 
 
 
-//S3 BUCKET
-async uploadFilefromPath(object){
-  return new Promise(async (resolve, reject) => {
-    var file = object.image_data;
-    console.log("OBJ in upload file is here---", file);
+  //S3 BUCKET
+  async uploadFilefromPath(object) {
+    return new Promise(async (resolve, reject) => {
+      var file = object.image_data;
+      console.log("OBJ in upload file is here---", file);
 
-    var filename = Date.now() + file.name;
-    const params = {
-      Bucket: Bucket,
-      Key: object.path + "/" + filename,
-      Body: file.data,
-      ContentType: file.mimetype,
-    };
-    return bucket.upload(params, function (err, data) {
-      if (err) {
-        console.log("----err----",err);
-        reject(buildErrObject(422, err.message));
-      }
-      resolve({ success: true, data: data });
+      var filename = Date.now() + file.name;
+      const params = {
+        Bucket: Bucket,
+        Key: object.path + "/" + filename,
+        Body: file.data,
+        ContentType: file.mimetype,
+      };
+      return bucket.upload(params, function (err, data) {
+        if (err) {
+          console.log("----err----", err);
+          reject(buildErrObject(422, err.message));
+        }
+        resolve({ success: true, data: data });
+      });
     });
-  });
-}, 
+  },
 
   /**
    * capitalize first letter of string
@@ -143,10 +146,10 @@ async uploadFilefromPath(object){
     return array.map(item => mongoose.Types.ObjectId(item));
   },
 
-   /**
-   * convert title to slug
-   * @param {String} title 
-  */
+  /**
+  * convert title to slug
+  * @param {String} title 
+ */
   async createSlug(title) {
     return title
       .toLowerCase()
@@ -162,16 +165,16 @@ async uploadFilefromPath(object){
   async validateFileSize(file, size) {
     return new Promise(async (resolve, reject) => {
 
-      try{
+      try {
 
-        if(file.size > size){
-          reject(buildErrObject(422, `File should be less than ${size/1048576} MB`)); // convert byte to MB
+        if (file.size > size) {
+          reject(buildErrObject(422, `File should be less than ${size / 1048576} MB`)); // convert byte to MB
         }
         resolve({
-          success : true,
+          success: true,
         })
 
-      }catch(err){
+      } catch (err) {
         reject(buildErrObject(422, err.message));
       }
 

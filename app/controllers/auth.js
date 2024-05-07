@@ -1353,6 +1353,7 @@ exports.sendOTP = async (req, res) => {
       await otpData.save()
     }
 
+    console.log("newOtpforget" ,newOtpforget)
 
     emailer.sendOtpOnEmail({
       email: data.email,

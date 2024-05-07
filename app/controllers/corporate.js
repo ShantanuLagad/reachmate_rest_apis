@@ -81,6 +81,34 @@ async function giveTrialIfNotGive(user_id) {
   return value
 }
 
+function generateAccessCode() {
+  // Generate 4 random characters
+  var chars = '';
+  var charLength = 4;
+  for (var i = 0; i < charLength; i++) {
+      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  }
+  
+  // Generate 2 random digits
+  var digits = '';
+  var digitLength = 2;
+  for (var j = 0; j < digitLength; j++) {
+      digits += Math.floor(Math.random() * 10);
+  }
+  
+  // Combine characters and digits
+  var code = chars + digits;
+  // Convert to array to shuffle
+  var codeArray = code.split('');
+  for (var k = codeArray.length - 1; k > 0; k--) {
+      var randIndex = Math.floor(Math.random() * (k + 1));
+      var temp = codeArray[k];
+      codeArray[k] = codeArray[randIndex];
+      codeArray[randIndex] = temp;
+  }
+  code = codeArray.join('');
+  return code;
+}
 
 
 function extractDomainFromEmail(email) {
@@ -253,6 +281,19 @@ exports.getProfile = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+exports.getMyProfile = async (req, res) => {
+  try {
+    // const id = await utils.isIDGood(req.user._id)
+
+    let company_id = req.user._id;
+
+    res.status(200).json({ data: await getProfileFromDB(company_id), code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
 
 /**
  * Update profile function called by route
@@ -551,6 +592,7 @@ exports.corporateCardHolder = async (req, res) => {
         { "bio.full_name": { $regex: new RegExp(search, 'i') } },
         { "contact_details.mobile_number": { $regex: new RegExp(search, 'i') } },
         { "bio.designation": { $regex: new RegExp(search, 'i') } },
+        { "contact_details.email": { $regex: new RegExp(search, 'i') } },
       ]
     }
 
@@ -797,6 +839,7 @@ exports.getNotification = async (req, res) => {
 exports.deleteNotification = async (req, res) => {
   try {
     let company_id = req.user._id;
+    const id = req.query.id
 
     const type = req.user.type;
     if (type === "sub admin") {
@@ -1097,7 +1140,7 @@ exports.removeEmailfromPiadByCompany = async (req, res) => {
       if (user?.notification) {
         const device_token = await FCMDevice.findOne({ user_id: user._id })
         if (!device_token) return
-        utils.sendPushNotification(device_token.token, notification.title, notification.body)
+        utils.sendPushNotification([device_token.token], notification.title, notification.body)
       }
     }
 
@@ -1581,15 +1624,18 @@ exports.createCompanyAccount = async (req, res) => {
     const isApprovedByAdmin = await Registration.findOne({ email: email });
     if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
 
-    const access_code = generator.generate({
-      length: 6,
-      numbers: true,
-      uppercase: true
-    });
+    // const access_code = generator.generate({
+    //   length: 6,
+    //   numbers: true,
+    //   uppercase: true
+    // });
+    
+    const access_code = generateAccessCode();
+
 
     const dataForCompany = {
       email: email,
-      access_code: access_code,
+      access_code: access_code.toUpperCase(),
       password: password,
       decoded_password: password,
       email_domain: emailDomain,
@@ -1683,7 +1729,7 @@ exports.createSubAdmin = async (req, res) => {
 
     }
 
-    emailer.sendAccountCreationEmail(locale, dataForMail, 'sub-admin-created');
+    emailer.sendAccountCreationEmailSubAdmin(locale, dataForMail, 'sub-admin-created');
 
     res.json({ message: "Sub admin created successfully", code: 200 });
   } catch (error) {
@@ -1804,6 +1850,37 @@ exports.addSubscription = async (req, res) => {
     res.json({ code: 200 })
   } catch (error) {
     console.log("error", error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.editBillingAddress = async (req, res) => {
+  try {
+    const company_id = req.user._id;
+
+    const { country,
+      state,
+      city,
+      address_line_1,
+      address_line_2,
+      pin_code } = req.body;
+
+
+    const billing_address = {
+      country,
+      state,
+      city,
+      address_line_1,
+      address_line_2,
+      pin_code
+    }
+
+    await Company.findByIdAndUpdate(company_id, { $set: { billing_address: billing_address } })
+
+    res.json({ message : "Billing address saved successfully", code: 200 })
+  } catch (error) {
+    console.log(error)
     utils.handleError(res, error)
   }
 }

@@ -130,6 +130,14 @@ const CompanySchema = new mongoose.Schema(
     is_profile_completed: {
       type: Boolean,
       default: false
+    },
+    billing_address : {
+      country:String,
+      state:String,
+      city:String,
+      address_line_1 :  String,
+      address_line_2 :String,
+      pin_code :String
     }
   },
   {

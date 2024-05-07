@@ -357,12 +357,13 @@ module.exports = {
       try {
         user = JSON.parse(JSON.stringify(user));
         console.log(template);
-
+        console.log("user", user)
         console.log("Inside emailer");
         if (!user.company_name) {
           user.company_name = "User";
         }
 
+        console.log("user.access_code" ,user.access_code)
         app.mailer.send(
           `${locale}/${template}`,
           {
@@ -395,8 +396,8 @@ module.exports = {
   },
 
 
-  
-  async sendAccountCreationEmail(locale, user, template) {
+
+  async sendAccountCreationEmailSubAdmin(locale, user, template) {
 
     console.log("user", user)
     return new Promise(async (resolve, reject) => {
@@ -418,7 +419,7 @@ module.exports = {
             company_name: capitalizeFirstLetter(user.company_name),
             password: user.password,
             email: user.email,
-            name : user.name,
+            name: user.name,
             website_url: process.env.PRODUCTION_COMPANY_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
@@ -485,6 +486,51 @@ module.exports = {
     })
   },
 
+  async sendReminderEmail(user, template) {
+
+    console.log("user", user)
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        console.log(template);
+
+        console.log("Inside emailer");
+        if (!user.full_name) {
+          user.full_name = "User";
+        }
+
+        app.mailer.send(
+          `${template}`,
+          {
+            to: user.email,
+            subject: user.subject,
+            full_name: capitalizeFirstLetter(user.full_name),
+            email: user.email,
+            day: user.day,
+            app_name: process.env.APP_NAME,
+            reachmate_link: process.env.PRODUCTION_WEBSITE_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+              reject(buildErrObject(422, err.message));
+            } else {
+              console.log("Email has been sent");
+              resolve("Email has been sent");
+            }
+
+          }
+        );
+
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+
+    })
+  },
+
 
   async sendBuySubscriptionEmail(locale, user, template) {
 
@@ -505,14 +551,14 @@ module.exports = {
             subject: `Subscription Purchased: - ${process.env.APP_NAME}`,
             full_name: capitalizeFirstLetter(user.full_name),
             email: user.email,
-            app_name : process.env.APP_NAME,
-            subscription_name : user.subscription_name,
-            purchased_date :user.purchased_date,
-            price : user.price,
-            start_date : user.start_date,
+            app_name: process.env.APP_NAME,
+            subscription_name: user.subscription_name,
+            purchased_date: user.purchased_date,
+            price: user.price,
+            start_date: user.start_date,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-            year : new Date().getFullYear()
+            year: new Date().getFullYear()
           },
           function (err) {
             if (err) {

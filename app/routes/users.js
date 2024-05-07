@@ -120,6 +120,19 @@ router.post(
   controller.uploadUserMedia
 );
 
+router.post(
+  "/uploadUserMediaForIOS",
+  trimRequest.all,
+  // requireAuth,
+  controller.uploadUserMediaForIOS
+);
+
+// router.post(
+//   "/removebg",
+//   trimRequest.all,
+//   controller.removebg
+// )
+
 
 router.post(
   '/addPersonalCard',
@@ -417,6 +430,13 @@ router.post(
   requireAuth,
   trimRequest.all,
   controller.getPaymentMethod
+)
+
+router.post(
+  "/editBillingAddress",
+  requireAuth,
+  trimRequest.all,
+  controller.editBillingAddress
 )
 
 module.exports = router

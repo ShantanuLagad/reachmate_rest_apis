@@ -24,6 +24,13 @@ router.get(
   controller.getProfile
 )
 
+router.get(
+  '/getMyProfile',
+  requireAuth,
+  trimRequest.all,
+  controller.getMyProfile
+)
+
 /*
  * Update profile route
  */
@@ -277,6 +284,13 @@ router.get(
   requireAuth,
   trimRequest.all,
   controller.getPaymentMethod
+)
+
+router.post(
+  "/editBillingAddress",
+  requireAuth,
+  trimRequest.all,
+  controller.editBillingAddress
 )
 
 module.exports = router
