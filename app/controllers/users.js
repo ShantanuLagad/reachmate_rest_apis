@@ -957,7 +957,7 @@ exports.uploadUserMediaForIOS = async (req, res) => {
 
     var FormData = require('form-data');
     var fs = require('fs');
-   
+
     const formData = new FormData();
     formData.append('size', 'auto');
     formData.append('image_file', files.media.data, files.media.name);
@@ -2753,12 +2753,18 @@ exports.createSubscription = async (req, res) => {
       return utils.handleError(res, { message: "Please create a card before purchasing the subscription", code: 400 })
     }
 
-    // if (req.user.is_card_created === false) {
-    //   const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
-    //   if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
-    // }
+    if (req.user.is_card_created === false) {
+      const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
+      if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
+    }
 
     const user_id = req.user._id;
+
+    // function checkValue(value) {
+    //   return !value;
+    // }
+    
+    // if (req.user.billing_address && (Object.values(req.user.billing_address).length === 0 || Object.values(req.user.billing_address).every(checkValue))) return res.json({ code: 400, billing_address: false })
 
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
@@ -3531,6 +3537,12 @@ function calculatePercentage(amount, percentage) {
 }
 
 async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, user) {
+
+  // const billing_address = user?.billing_address;
+  // const line_1 = `${billing_address?.address_line_1}${billing_address?.address_line_2 ?`, ${billing_address?.address_line_2}` : ''}`
+  // const line_2 = `${billing_address?.city}, ${billing_address?.state}, ${billing_address?.country},${billing_address?.pin_code}`;
+  
+
 
   const planFromDataBase = await Plan.findOne({ plan_id: plan.id })
   const amount = (plan?.item?.amount ?? 0) / 100
