@@ -84,21 +84,21 @@ app.set('views', path.join(__dirname, 'views'))
 app.engine('html', require('ejs').renderFile)
 app.set('view engine', 'html')
 app.use(require('./app/routes'))
-// app.listen(app.get('port'))
+app.listen(app.get('port'))
 
-if (process.env.NODE_ENV == 'development') {
-    app.listen(app.get('port'))
-  } else {
-    var options = {
-      key: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/privkey.pem', 'utf8'),
-      cert: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/fullchain.pem', 'utf8')
-    };
+// if (process.env.NODE_ENV == 'development') {
+//     app.listen(app.get('port'))
+//   } else {
+//     var options = {
+//       key: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/privkey.pem', 'utf8'),
+//       cert: fs.readFileSync('/etc/letsencrypt/live/uat.reachmate.app/fullchain.pem', 'utf8')
+//     };
 
-    const httpsServer = https.createServer(options, app)
-    httpsServer.listen(app.get('port'), () => {
-      // console.log('socket running on port no : '+app.get('port'));
-    })
-  }
+//     const httpsServer = https.createServer(options, app)
+//     httpsServer.listen(app.get('port'), () => {
+//       // console.log('socket running on port no : '+app.get('port'));
+//     })
+//   }
 
 // Init MongoDB
 initMongo()

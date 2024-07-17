@@ -421,7 +421,7 @@ exports.forgotPassword = async (req, res) => {
     console.log(data)
 
     if (!user) {
-      throw buildErrObject(422, "WRONG_EMAIL");
+      throw utils.buildErrObject(422, "WRONG_EMAIL");
     }
 
     const token = uuid.v4();
@@ -451,7 +451,7 @@ exports.forgotPassword = async (req, res) => {
 
     return res.status(200).json({
       code: 200,
-      message: item,
+      message: "Reset password link has been sent to your email",
     });
 
   } catch (err) {

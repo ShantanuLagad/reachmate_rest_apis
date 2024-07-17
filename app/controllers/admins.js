@@ -803,7 +803,7 @@ exports.addCompany = async (req, res) => {
       company_name: data.company_name,
       email: data.email,
       password: password,
-      access_code: access_code
+      access_code: access_code.toUpperCase()
     }
 
     emailer.sendAccountCreationEmail(locale, dataForMail, 'account-created');
@@ -823,7 +823,7 @@ exports.getCompanyList = async (req, res) => {
 
     const condition = {
       type : "admin",
-      is_profile_completed : true
+      // is_profile_completed : true
     }
 
     if (search) {
@@ -911,7 +911,9 @@ exports.dashBoardCard = async (req, res) => {
       }
     ]);
 
-    const totalComany = await Company.countDocuments({type : "admin" , is_profile_completed : true})
+    const totalComany = await Company.countDocuments({type : "admin" ,
+    //  is_profile_completed : true
+    })
 
     const revenue = await Transaction.aggregate([
       {
