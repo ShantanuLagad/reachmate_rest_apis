@@ -150,7 +150,7 @@ const saveUserAccessAndReturnToken = async (req, user) => {
       const userInfo = setUserInfo(user)
       // Returns data with access token
       const savedCard = await getPreviewCard(user._id)
-     
+
 
       resolve({
         token: generateToken(user._id, user.role),
@@ -790,7 +790,7 @@ exports.sendotpnew = async (req, res) => {
       });
       await otpData.save();
     }
-    console.log("newOtpforget",newOtpforget )
+    console.log("newOtpforget", newOtpforget)
 
     // Send the OTP to the email address
     await emailer.sendOtpOnEmail({
@@ -948,9 +948,9 @@ exports.loginUser = async (req, res) => {
 
     user = user.toJSON()
 
-    console.log("user" ,user);
+    console.log("user", user);
     let haveSubscription = await isSubscriptionActiveOrNot(user)
-    console.log("haveSubscription" ,haveSubscription);
+    console.log("haveSubscription", haveSubscription);
 
     delete user.password;
     delete user.confirm_password;
@@ -1050,6 +1050,9 @@ exports.resetpassword = async (req, res) => {
 exports.socialLogin = async (req, res) => {
   try {
     const data = req.body;
+    console.log("data", data)
+
+    if(!data.social_id  || !data.social_type) return utils.handleError(res, {message : "social id or social type is missing" , code : 400});
     const userExists = await emailer.userExists(User, data.email, false);
     const doesSocialIdExists = await emailer.socialIdExists(User,
       data.social_id,
@@ -1057,7 +1060,8 @@ exports.socialLogin = async (req, res) => {
     );
     data.password = "12345678";
     data.confirm_password = "12345678";
-
+    console.log("userExists", userExists)
+    console.log("doesSocialIdExists", doesSocialIdExists)
     if (!userExists && !doesSocialIdExists) {
       const item = await registerUser(data);
       console.log("item", item)
@@ -1069,9 +1073,9 @@ exports.socialLogin = async (req, res) => {
       res.status(201).json({ code: 200, data: await saveUserAccessAndReturnToken(req, item) });
     } else {
 
-      const user = await User.findOne({ email: data.email })
+      const user = await User.findOne({ $or: [{ email: data.email }, { social_id: data.social_id, social_type: data.social_id }] })
       userExists.last_sign_in = new Date();
-
+      console.log("user", user)
       // if(data.login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
 
       return res.status(200).json(
@@ -1353,7 +1357,7 @@ exports.sendOTP = async (req, res) => {
       await otpData.save()
     }
 
-    console.log("newOtpforget" ,newOtpforget)
+    console.log("newOtpforget", newOtpforget)
 
     emailer.sendOtpOnEmail({
       email: data.email,
