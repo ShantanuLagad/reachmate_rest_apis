@@ -3864,3 +3864,22 @@ exports.editBillingAddress = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+
+
+exports.checkProfileIsExist = async (req, res) => {
+  try {
+    const data = req.body;
+
+    const user = await User.findOne({ social_id: data.social_id }).select("_id social_id first_name last_name full_name email");
+
+    if (!user) {
+      return res.status(404).json({ message: 'User does not exist.' ,code:404 });
+    }else {
+           return      res.status(200).json({data:user ,code:200});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};

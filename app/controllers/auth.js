@@ -1054,6 +1054,12 @@ exports.socialLogin = async (req, res) => {
 
     if(!data.social_id  || !data.social_type) return utils.handleError(res, {message : "social id or social type is missing" , code : 400});
     const userExists = await emailer.userExists(User, data.email, false);
+
+    if(data.social_type === "apple" && (!data.first_name || !data.last_name) ){
+      const user = await User.findOne({ $or: [{ email: data.email }, { social_id: data.social_id, social_type: data.social_id }] });
+      if(!user) return res.json({data : false , code : 400})
+    }
+    
     const doesSocialIdExists = await emailer.socialIdExists(User,
       data.social_id,
       data.social_type

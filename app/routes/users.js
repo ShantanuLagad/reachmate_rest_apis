@@ -439,4 +439,12 @@ router.post(
   controller.editBillingAddress
 )
 
+
+router.post(
+  "/checkProfileIsExist",
+  // requireAuth,
+  trimRequest.all,
+  controller.checkProfileIsExist
+)
+
 module.exports = router
