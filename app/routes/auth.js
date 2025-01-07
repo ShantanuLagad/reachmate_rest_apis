@@ -35,6 +35,12 @@ router.post(
   trimRequest.all,
   controller.registerUser
 )
+router.get(
+  '/verifyEmail',
+  trimRequest.all,
+  controller.verifyEmail
+)
+
 router.post(
   '/verifyotpemail',
   trimRequest.all,

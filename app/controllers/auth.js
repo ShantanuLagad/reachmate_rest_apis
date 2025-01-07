@@ -19,6 +19,7 @@ const mongoose = require("mongoose")
 const Subscription = require("../models/subscription");
 const CardDetials = require('../models/cardDetials')
 const PaidByCompany = require("../models/paid_by_company")
+const VerificationToken = require('../models/verificationToken');
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -33,9 +34,15 @@ const moment = require("moment")
  */
 const generateToken = (user, role = 'user') => {
   // Gets expiration time
+  console.log("user",user)
   const expiration =
     Math.floor(Date.now() / 1000) + 60 * process.env.JWT_EXPIRATION_IN_MINUTES
 
+const signedToken = jwt.sign({ data: { _id: user } }, process.env.JWT_SECRET);
+console.log('Signed Token:', signedToken);
+
+const encryptedToken = auth.encrypt(signedToken);
+console.log('Encrypted Token:', encryptedToken);
   // returns signed and encrypted token
   return auth.encrypt(
     jwt.sign(
@@ -48,6 +55,24 @@ const generateToken = (user, role = 'user') => {
     )
   )
 }
+
+
+// const generateToken = (user, role = 'user') => {
+//   const expiration =
+//     Math.floor(Date.now() / 1000) + 60 * process.env.JWT_EXPIRATION_IN_MINUTES;
+
+//   return jwt.sign(
+//     {
+//       data: {
+//         _id: user,
+//       },
+//       exp: expiration, 
+//     },
+//     process.env.JWT_SECRET
+//   );
+// };
+
+
 
 async function checkSusbcriptionIsActive(user_id) {
   const checkIsTrialExits = await Trial.findOne({ user_id });
@@ -633,17 +658,42 @@ const checkPermissions = async (data, next) => {
  * Gets user id from token
  * @param {string} token - Encrypted and encoded token
  */
+// const getUserIdFromToken = async token => {
+//   return new Promise((resolve, reject) => {
+//     // Decrypts, verifies and decode token
+//     jwt.verify(auth.decrypt(token), process.env.JWT_SECRET, (err, decoded) => {
+//       if (err) {
+//         reject(utils.buildErrObject(409, 'BAD_TOKEN'))
+//       }
+//       resolve(decoded.data._id)
+//     })
+//   })
+// }
+
 const getUserIdFromToken = async token => {
   return new Promise((resolve, reject) => {
-    // Decrypts, verifies and decode token
-    jwt.verify(auth.decrypt(token), process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        reject(utils.buildErrObject(409, 'BAD_TOKEN'))
-      }
-      resolve(decoded.data._id)
-    })
-  })
-}
+    try {
+      const decryptedToken = auth.decrypt(token);
+      console.log('Decrypted Token:', decryptedToken);
+      jwt.verify(decryptedToken, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+          console.error('JWT Verification Error:', err);
+          return reject(utils.buildErrObject(409, 'BAD_TOKEN'));
+        }
+        console.log('Decoded Token:', decoded);
+        const userId = decoded?.data?._id || decoded._id;
+        if (!userId) {
+          return reject(utils.buildErrObject(400, 'INVALID_TOKEN_PAYLOAD'));
+        }
+        resolve(userId);
+      });
+    } catch (error) {
+      console.error('Decryption Error:', error);
+      reject(utils.buildErrObject(400, 'TOKEN_DECRYPTION_FAILED'));
+    }
+  });
+};
+
 
 /********************
  * Public functions *
@@ -740,37 +790,82 @@ exports.registerUser = async (req, res) => {
   try {
     let newOtpforget;
     const userData = req.body;
-    console.log("userData============", userData)
+    console.log("userData============",userData)
 
     const doesEmailExist = await UserModel.exists({ email: userData.email });
     if (doesEmailExist) {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
     }
-
     userData.full_name = `${userData.first_name} ${userData.last_name}`
     const newUser = new UserModel(userData);
     const savedUser = await newUser.save();
     newOtpforget = generateNumericOTP();
-
+    
     const userInfo = {
       id: savedUser._id,
       first_name: savedUser.first_name,
       last_name: savedUser.last_name,
       email: savedUser.email,
+      profile_image:savedUser.profile_image,
+      dateOfBirth:savedUser.dateOfBirth,
+      sex:savedUser.sex,
       password: savedUser.password,
       confirm_password: savedUser.confirm_password,
     };
+    const verificationToken= generateToken(userInfo.id);
 
-
-
-    // emailer.sendRegistrationEmailMessage(locale, item)
-
-    res.status(201).json({ userInfo: userInfo, token: generateToken(userInfo._id), message: 'User registered successfully.' });
+    await emailer.sendVerificationEmail(req.body.locale || 'en', 
+      userInfo,"emailVerification",verificationToken);
+    
+    res.status(201).json({
+       userInfo: userInfo, 
+       token:verificationToken, 
+       message: 'Email sent for verification successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
   }
 };
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ code: 400, message: "Token is required." });
+    }
+
+    const verificationRecord = await VerificationToken.findOne({ token });
+
+    if (!verificationRecord) {
+      return res
+        .status(400)
+        .json({ code: 400, message: "Invalid or expired token." });
+    }
+
+    if (verificationRecord.isVerified) {
+      return res
+        .status(400)
+        .json({ code: 400, message: "This email has already been verified." });
+    }
+
+    verificationRecord.isVerified = true;
+    const verifydata = await verificationRecord.save();
+
+    await UserModel.findOneAndUpdate(
+      { email: verifydata.email },
+      { $set: { is_email_verified: true } }
+    );
+
+    return res
+      .status(200)
+      .json({ code: 200, message: "Email verification successful!" });
+  } catch (err) {
+    return utils.handleError(res, err);
+  }
+};
+
+
 
 exports.sendotpnew = async (req, res) => {
   try {

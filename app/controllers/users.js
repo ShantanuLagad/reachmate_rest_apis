@@ -1482,13 +1482,12 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 exports.addPersonalCard = async (req, res) => {
   try {
-
     const owner_id = req.user._id;
     // const owner_id = req.body.owner_id
 
-    const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
-
-    if (isCardExist) return utils.handleError(res, { message: "Card already create", code: 400 })
+    //-----to check that user has only one card
+    // const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
+    // if (isCardExist) return utils.handleError(res, { message: "Card already create", code: 400 })
 
     const data = req.body;
     const card = {
@@ -1527,9 +1526,13 @@ exports.addPersonalCard = async (req, res) => {
         youtube: data.social_links.youtube,
       }
     }
-
     const cardData = new CardDetials(card)
     await cardData.save()
+
+    //--------------------------------------
+    await User.findByIdAndUpdate(owner_id, {
+      $push: { personal_cards: cardData._id },
+    });
 
     await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "personal", text_color: data.text_color })
 
@@ -1537,7 +1540,8 @@ exports.addPersonalCard = async (req, res) => {
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
-    res.json({ code: 200, message: "Card Save successfully" })
+    res.json({ code: 200, message: "Card Save successfully"
+     })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1714,24 +1718,256 @@ exports.addCorporateCard = async (req, res) => {
   }
 }
 
+// exports.getProfile = async (req, res) => {
+//   try {
+//     const user_id = req.user._id;
+//     console.log("==========user_id", user_id)
+
+//     const profile = await User.aggregate([
+//       {
+//         $match: {
+//           _id: user_id
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "card_details",
+//           localField: "_id",
+//           foreignField: "owner_id",
+//           as: "card_details",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$card_details",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "companies",
+//           localField: "card_details.company_id",
+//           foreignField: "_id",
+//           as: "company",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$company",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $addFields: {
+//           'card_details.bio.business_name': {
+//             $cond: {
+//               if: { $eq: ['$card_details.card_type', 'corporate'] },
+//               then: '$company.company_name',
+//               else: '$card_details.bio.business_name'
+//             }
+//           },
+//           'card_details.card_color': {
+//             $cond: {
+//               if: { $eq: ['$card_details.card_type', 'corporate'] },
+//               then: '$company.card_color',
+//               else: '$card_details.card_color'
+//             }
+//           },
+//           "card_details.business_logo": {
+//             $cond: {
+//               if: { $eq: ['$card_details.card_type', 'corporate'] },
+//               then: '$company.business_logo',
+//               else: '$card_details.business_logo'
+//             }
+//           },
+//           "card_details.address": {
+//             $cond: {
+//               if: { $eq: ['$card_details.card_type', 'corporate'] },
+//               then: '$company.address',
+//               else: '$card_details.address'
+//             }
+//           },
+//           "card_details.contact_details.website": {
+//             $cond: {
+//               if: { $eq: ['$card_details.card_type', 'corporate'] },
+//               then: '$company.contact_details.website',
+//               else: '$card_details.contact_details.website'
+//             }
+//           },
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "SharedCards",
+//           localField: "_id",
+//           foreignField: "user_id",
+//           as: "shared_cards",
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "saved_cards",
+//           let: { id: "$_id" },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: { $eq: [{ $toString: "$owner_id" }, { $toString: "$$id" }] }
+//               }
+//             },
+//             {
+//               $lookup: {
+//                 from: "companies",
+//                 localField: "company_id",
+//                 foreignField: "_id",
+//                 as: "company",
+//               },
+//             },
+//             {
+//               $unwind: {
+//                 path: "$company",
+//                 preserveNullAndEmptyArrays: true,
+//               },
+//             },
+//             {
+//               $addFields: {
+//                 'bio.business_name': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.company_name',
+//                     else: '$bio.business_name'
+//                   }
+//                 },
+//                 'card_color': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.card_color',
+//                     else: '$card_color'
+//                   }
+//                 },
+//                 'text_color': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.text_color',
+//                     else: '$text_color'
+//                   }
+//                 },
+//                 "business_logo": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.business_logo',
+//                     else: '$business_logo'
+//                   }
+//                 },
+//                 "address": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.address',
+//                     else: '$address'
+//                   }
+//                 },
+//                 "contact_details.website": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.contact_details.website',
+//                     else: '$contact_details.website'
+//                   }
+//                 },
+//               }
+//             },
+//             {
+//               $project: {
+//                 company: 0
+//               }
+//             }
+//           ],
+//           as: "saved_card",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$saved_card",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $addFields: {
+//           saved_card: {
+//             $cond: {
+//               if: { $eq: [{ $type: "$saved_card" }, "missing"] },
+//               then: null,
+//               else: "$saved_card"
+//             }
+//           }
+//         }
+//       },
+//       {
+//         $project: {
+//           password: 0,
+//           confirm_password: 0,
+//           company: 0
+//         }
+//       },
+//       {
+//         $project: {
+//           _id: 1,
+//           billing_address: 1,
+//           text_color: 1,
+//           social_type: 1,
+//           is_card_created: 1,
+//           notification: 1,
+//           status: 1,
+//           first_name: 1,
+//           last_name: 1,
+//           email: 1,
+//           email_verified: 1,
+//           full_name: 1,
+//           createdAt: 1,
+//           updatedAt: 1,
+//           card_details: {
+//             $cond: {
+//               if: { $eq: ['$is_card_created', true] },
+//               then: '$card_details',
+//               else: null
+//             }
+//           },
+//           shared_cards: 1,
+//           saved_card: 1
+//         }
+//       }
+//     ])
+
+
+//     if (!profile[0]) return utils.handleError(res, { message: "User not found", code: 404 });
+//     const subscription = await checkSusbcriptionIsActive(user_id);
+
+//     const data = {
+//       ...profile[0],
+//       have_subscription: subscription
+//     }
+
+//     res.json({ data: data, code: 200 })
+//   } catch (error) {
+//     console.log(error)
+//     utils.handleError(res, error)
+//   }
+// }
 
 exports.getProfile = async (req, res) => {
   try {
-
     const user_id = req.user._id;
-    console.log("==========user_id", user_id)
+    console.log("==========user_id", user_id);
 
     const profile = await User.aggregate([
       {
         $match: {
-          _id: user_id
-        }
+          _id: mongoose.Types.ObjectId(user_id),
+        },
       },
       {
         $lookup: {
           from: "card_details",
-          localField: "_id",
-          foreignField: "owner_id",
+          localField: "personal_cards",
+          foreignField: "_id",
           as: "card_details",
         },
       },
@@ -1761,38 +1997,57 @@ exports.getProfile = async (req, res) => {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.company_name',
-              else: '$card_details.bio.business_name'
-            }
+              else: '$card_details.bio.business_name',
+            },
           },
           'card_details.card_color': {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.card_color',
-              else: '$card_details.card_color'
-            }
+              else: '$card_details.card_color',
+            },
           },
           "card_details.business_logo": {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.business_logo',
-              else: '$card_details.business_logo'
-            }
+              else: '$card_details.business_logo',
+            },
           },
           "card_details.address": {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.address',
-              else: '$card_details.address'
-            }
+              else: '$card_details.address',
+            },
           },
           "card_details.contact_details.website": {
             $cond: {
               if: { $eq: ['$card_details.card_type', 'corporate'] },
               then: '$company.contact_details.website',
-              else: '$card_details.contact_details.website'
-            }
+              else: '$card_details.contact_details.website',
+            },
           },
-        }
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          billing_address: { $first: "$billing_address" },
+          text_color: { $first: "$text_color" },
+          social_type: { $first: "$social_type" },
+          is_card_created: { $first: "$is_card_created" },
+          notification: { $first: "$notification" },
+          status: { $first: "$status" },
+          first_name: { $first: "$first_name" },
+          last_name: { $first: "$last_name" },
+          email: { $first: "$email" },
+          email_verified: { $first: "$email_verified" },
+          full_name: { $first: "$full_name" },
+          createdAt: { $first: "$createdAt" },
+          updatedAt: { $first: "$updatedAt" },
+          card_details: { $push: "$card_details" },
+        },
       },
       {
         $lookup: {
@@ -1800,7 +2055,7 @@ exports.getProfile = async (req, res) => {
           localField: "_id",
           foreignField: "user_id",
           as: "shared_cards",
-        }
+        },
       },
       {
         $lookup: {
@@ -1809,8 +2064,8 @@ exports.getProfile = async (req, res) => {
           pipeline: [
             {
               $match: {
-                $expr: { $eq: [{ $toString: "$owner_id" }, { $toString: "$$id" }] }
-              }
+                $expr: { $eq: [{ $toString: "$owner_id" }, { $toString: "$$id" }] },
+              },
             },
             {
               $lookup: {
@@ -1832,123 +2087,78 @@ exports.getProfile = async (req, res) => {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.company_name',
-                    else: '$bio.business_name'
-                  }
+                    else: '$bio.business_name',
+                  },
                 },
                 'card_color': {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.card_color',
-                    else: '$card_color'
-                  }
+                    else: '$card_color',
+                  },
                 },
                 'text_color': {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.text_color',
-                    else: '$text_color'
-                  }
+                    else: '$text_color',
+                  },
                 },
                 "business_logo": {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.business_logo',
-                    else: '$business_logo'
-                  }
+                    else: '$business_logo',
+                  },
                 },
                 "address": {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.address',
-                    else: '$address'
-                  }
+                    else: '$address',
+                  },
                 },
                 "contact_details.website": {
                   $cond: {
                     if: { $eq: ['$card_type', 'corporate'] },
                     then: '$company.contact_details.website',
-                    else: '$contact_details.website'
-                  }
+                    else: '$contact_details.website',
+                  },
                 },
-              }
+              },
             },
             {
               $project: {
-                company: 0
-              }
-            }
+                company: 0,
+              },
+            },
           ],
           as: "saved_card",
         },
       },
       {
-        $unwind: {
-          path: "$saved_card",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $addFields: {
-          saved_card: {
-            $cond: {
-              if: { $eq: [{ $type: "$saved_card" }, "missing"] },
-              then: null,
-              else: "$saved_card"
-            }
-          }
-        }
-      },
-      {
         $project: {
           password: 0,
           confirm_password: 0,
-          company: 0
-        }
+        },
       },
-      {
-        $project: {
-          _id: 1,
-          billing_address: 1,
-          text_color: 1,
-          social_type: 1,
-          is_card_created: 1,
-          notification: 1,
-          status: 1,
-          first_name: 1,
-          last_name: 1,
-          email: 1,
-          email_verified: 1,
-          full_name: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          card_details: {
-            $cond: {
-              if: { $eq: ['$is_card_created', true] },
-              then: '$card_details',
-              else: null
-            }
-          },
-          shared_cards: 1,
-          saved_card: 1
-        }
-      }
-    ])
-
+    ]);
 
     if (!profile[0]) return utils.handleError(res, { message: "User not found", code: 404 });
     const subscription = await checkSusbcriptionIsActive(user_id);
 
     const data = {
       ...profile[0],
-      have_subscription: subscription
-    }
+      have_subscription: subscription,
+    };
 
-    res.json({ data: data, code: 200 })
+    res.json({ data, code: 200 });
   } catch (error) {
-    console.log(error)
-    utils.handleError(res, error)
+    console.log(error);
+    utils.handleError(res, error);
   }
-}
+};
+
 
 exports.accountPrivacy = async (req, res) => {
   try {
@@ -2013,14 +2223,118 @@ exports.enableOrDisableLink = async (req, res) => {
 }
 
 
+// exports.getCard = async (req, res) => {
+//   try {
+//     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+//     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+
+//     const user_id = req.user._id;
+
+//     // const profile = await CardDetials.findOne({owner_id : user_id});
+
+//     const profile = await CardDetials.aggregate([
+//       {
+//         $match: {
+//           owner_id: user_id
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "companies",
+//           localField: "company_id",
+//           foreignField: "_id",
+//           as: "company",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$company",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $addFields: {
+//           'bio.business_name': {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.company_name',
+//               else: '$bio.business_name'
+//             }
+//           },
+//           'card_color': {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.card_color',
+//               else: '$card_color'
+//             }
+//           },
+//           "business_and_logo_status": {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.business_and_logo_status',
+//               else: '$business_and_logo_status'
+//             }
+//           },
+//           'text_color': {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.text_color',
+//               else: '$text_color'
+//             }
+//           },
+//           "business_logo": {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.business_logo',
+//               else: '$business_logo'
+//             }
+//           },
+//           "address": {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.address',
+//               else: '$address'
+//             }
+//           },
+//           "contact_details.website": {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.contact_details.website',
+//               else: '$contact_details.website'
+//             }
+//           },
+//           "website": {
+//             $cond: {
+//               if: { $eq: ['$card_type', 'corporate'] },
+//               then: '$company.contact_details.website',
+//               else: '$website'
+//             }
+//           },
+//         }
+//       },
+//       {
+//         $project: {
+//           company: 0
+//         }
+//       }
+//     ])
+//     res.json({ data: profile[0], code: 200 })
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// }
+
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    if (isSubscriptionActive === false) {
+      return utils.handleError(res, {
+        message: "Your subscription has expired. Please renew to continue accessing our services",
+        code: 400
+      });
+    }
 
     const user_id = req.user._id;
-
-    // const profile = await CardDetials.findOne({owner_id : user_id});
 
     const profile = await CardDetials.aggregate([
       {
@@ -2107,12 +2421,15 @@ exports.getCard = async (req, res) => {
           company: 0
         }
       }
-    ])
-    res.json({ data: profile[0], code: 200 })
+    ]);
+
+    // Return all cards for the user
+    res.json({ data: profile, code: 200 });
   } catch (error) {
-    utils.handleError(res, error)
+    utils.handleError(res, error);
   }
-}
+};
+
 
 
 exports.getCountries = async (req, res) => {
