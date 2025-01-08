@@ -14,10 +14,13 @@ const CardDetials = new mongoose.Schema(
         type : mongoose.Schema.Types.ObjectId,
         ref : "company"
     },
-
     card_type : {
         type : String,
         enum : ["personal" , "corporate"]
+    },
+    primary_card : {
+        type:Boolean,
+        default:false
     },
     business_logo : {
         type : String,

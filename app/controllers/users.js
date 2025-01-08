@@ -1129,57 +1129,7 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
-/*** Gagan ****/
-exports.editCardDetails = async (req, res) => {
-  try {
-    // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    // if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
-    const owner_id = req.user._id;
-    const data = req.body;
-    const existingCard = await CardDetials.findOne({ owner_id });
-
-    if (existingCard) {
-      // Update existing card details dynamically based on provided fields
-      for (const field in data) {
-        if (field === 'bio') {
-          // Update bio fields
-          for (const bioField in data.bio) {
-            existingCard.bio[bioField] = data.bio[bioField];
-          }
-        } else if (field === 'contact_details') {
-          // Update contact details fields
-          for (const contactField in data.contact_details) {
-            existingCard.contact_details[contactField] = data.contact_details[contactField];
-          }
-        } else if (field === 'address') {
-          // Update address fields
-          for (const addressField in data.address) {
-            existingCard.address[addressField] = data.address[addressField];
-          }
-        } else if (field === 'social_links') {
-          // Update social links fields
-          for (const socialField in data.social_links) {
-            existingCard.social_links[socialField] = data.social_links[socialField];
-          }
-        } else {
-          // Update other top-level fields
-          existingCard[field] = data[field];
-        }
-      }
-
-      existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
-
-      await existingCard.save();
-      res.json({ code: 200, message: "Card updated successfully" });
-    } else {
-
-      res.json({ code: 404, message: "Card not found" });
-    }
-  } catch (error) {
-    utils.handleError(res, error);
-  }
-};
 
 exports.changePassword = async (req, res) => {
   try {
@@ -1547,6 +1497,142 @@ exports.addPersonalCard = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+//----------when there is single card for one user
+// exports.editCardDetails = async (req, res) => {
+//   try {
+//     // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+//     // if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+
+//     const owner_id = req.user._id;
+//     const data = req.body;
+//     const existingCard = await CardDetials.findOne({ owner_id });
+
+//     if (existingCard) {
+//       // Update existing card details dynamically based on provided fields
+//       for (const field in data) {
+//         if (field === 'bio') {
+//           // Update bio fields
+//           for (const bioField in data.bio) {
+//             existingCard.bio[bioField] = data.bio[bioField];
+//           }
+//         } else if (field === 'contact_details') {
+//           // Update contact details fields
+//           for (const contactField in data.contact_details) {
+//             existingCard.contact_details[contactField] = data.contact_details[contactField];
+//           }
+//         } else if (field === 'address') {
+//           // Update address fields
+//           for (const addressField in data.address) {
+//             existingCard.address[addressField] = data.address[addressField];
+//           }
+//         } else if (field === 'social_links') {
+//           // Update social links fields
+//           for (const socialField in data.social_links) {
+//             existingCard.social_links[socialField] = data.social_links[socialField];
+//           }
+//         } else {
+//           // Update other top-level fields
+//           existingCard[field] = data[field];
+//         }
+//       }
+
+//       existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
+
+//       await existingCard.save();
+//       res.json({ code: 200, message: "Card updated successfully" });
+//     } else {
+
+//       res.json({ code: 404, message: "Card not found" });
+//     }
+//   } catch (error) {
+//     utils.handleError(res, error);
+//   }
+// };
+
+//------when there are multiple cards of a single user
+exports.editCardDetails = async (req, res) => {
+  try {
+    const owner_id = req.user._id; 
+    const card_id = req.body._id; 
+    const data = req.body;
+
+    if (!card_id) {
+      return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
+    }
+    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
+
+    if (existingCard) {
+      
+      for (const field in data) {
+        if (field === 'bio') {
+          for (const bioField in data.bio) {
+            existingCard.bio[bioField] = data.bio[bioField];
+          }
+        } else if (field === 'contact_details') {
+          for (const contactField in data.contact_details) {
+            existingCard.contact_details[contactField] = data.contact_details[contactField];
+          }
+        } else if (field === 'address') {
+          for (const addressField in data.address) {
+            existingCard.address[addressField] = data.address[addressField];
+          }
+        } else if (field === 'social_links') {
+          for (const socialField in data.social_links) {
+            existingCard.social_links[socialField] = data.social_links[socialField];
+          }
+        } else {
+          existingCard[field] = data[field];
+        }
+      }
+
+      
+      existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
+
+      await existingCard.save();
+      res.json({ code: 200, message: "Card updated successfully" });
+    } else {
+      res.json({ code: 404, message: "Card not found" });
+    }
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+};
+
+//---------make Individual card Primary
+exports.makeIndividualCardPrimary = async (req, res) => {
+  try {
+    const owner_id = req.user._id;
+    const card_id = req.body._id;
+
+    
+    if (!card_id) {
+      return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
+    }
+
+    
+    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
+
+    if (!existingCard) {
+      return res.status(404).json({ code: 404, message: "Card not found" });
+    }
+
+    
+    await CardDetials.updateMany(
+      { owner_id, _id: { $ne: card_id } },
+      { $set: { primary_card: false } }
+    );
+
+    
+    existingCard.primary_card = true;
+    await existingCard.save();
+
+    res.json({ code: 200, message: "Primary card updated successfully" });
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+};
+
 
 exports.matchAccessCode = async (req, res) => {
   try {
@@ -2475,7 +2561,7 @@ exports.getCMS = async (req, res) => {
         message: 'Data not found for the specified type.',
       });
     }
-
+ 
     res.json({
       code: 200,
       content: cmsResp,
@@ -3698,7 +3784,6 @@ exports.registration = async (req, res) => {
   try {
     const { first_name, last_name, email, country_code, mobile_number, company_name, country, how_can_we_help_you } = req.body;
 
-
     const isEmailExistInCompany = await Company.findOne({ email: email });
     if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })
 
@@ -3751,7 +3836,6 @@ exports.contactUs = async (req, res) => {
     //   console.log("isPhoneNumberExist", isPhoneNumberExist)
     //   if (isPhoneNumberExist) return utils.handleError(res, { message: "You have already register", code: 400 });
     // }
-
 
     const data = {
       first_name,
@@ -3926,7 +4010,6 @@ async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, use
   });
 
   sendInvoiceEmailForTransaction(mailOptions)
-
 }
 
 
@@ -4009,7 +4092,6 @@ exports.sendMail = (req, res) => {
       },
       created_at: 1710939406
     }
-
 
     const user = {
       text_color: '#ffffff',

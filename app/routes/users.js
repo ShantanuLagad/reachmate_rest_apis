@@ -90,6 +90,12 @@ router.post(
   trimRequest.all,
   controller.editCardDetails
 )
+router.post(
+  '/makeIndividualCardPrimary',
+  requireAuth,
+  trimRequest.all,
+  controller.makeIndividualCardPrimary
+)
 
 router.post(
   '/changePassword',
@@ -142,7 +148,7 @@ router.post(
 )
 
 router.post(
-  '/matchAccessCode',
+  '/  ',
   requireAuth,
   trimRequest.all,
   controller.matchAccessCode
