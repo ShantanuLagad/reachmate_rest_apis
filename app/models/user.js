@@ -2,9 +2,13 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcrypt-nodejs')
 const validator = require('validator')
 const mongoosePaginate = require('mongoose-paginate-v2')
+//const { stringAt } = require('pdfkit/js/data')
 
 const UserSchema = new mongoose.Schema(
   {
+    profile_image:{
+      type:String
+    },
     first_name: {
       type: String,
     },
@@ -25,6 +29,12 @@ const UserSchema = new mongoose.Schema(
     },
     email_verified : {
       type : Boolean,
+    },
+    dateOfBirth:{
+      type:Date
+    },
+    sex:{
+      type:String
     },
     password: {
       type: String,
@@ -52,6 +62,12 @@ const UserSchema = new mongoose.Schema(
       type : Boolean,
       default : false
     },
+    personal_cards: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CardDetails',
+      },
+    ],
     user_type : {
       type : String,
       enum : ["personal" , "corporate"]

@@ -90,6 +90,12 @@ router.post(
   trimRequest.all,
   controller.editCardDetails
 )
+router.post(
+  '/makeIndividualCardPrimary',
+  requireAuth,
+  trimRequest.all,
+  controller.makeIndividualCardPrimary
+)
 
 router.post(
   '/changePassword',
@@ -142,7 +148,7 @@ router.post(
 )
 
 router.post(
-  '/matchAccessCode',
+  '/  ',
   requireAuth,
   trimRequest.all,
   controller.matchAccessCode
@@ -209,6 +215,22 @@ router.post(
   trimRequest.all,
   controller.getCard
 )
+//----------9 Jan-------
+router.get(
+  '/getPersonalCards',
+  requireAuth,
+  trimRequest.all,
+  controller.getPersonalCards
+)
+
+//----------------
+router.put(
+  '/editUser',
+  requireAuth,
+  trimRequest.all,
+  controller.editUser
+)
+
 router.post(
   '/getCMS',
   trimRequest.all,
@@ -245,7 +267,6 @@ router.post(
   trimRequest.all,
   controller.deleteFCMDevice
 )
-
 
 router.post(
   "/deleteAccount",

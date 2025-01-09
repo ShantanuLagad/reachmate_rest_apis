@@ -40,7 +40,7 @@ const jwtOptions = {
  */
 const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
 
-  console.log("payload" , payload)
+ // console.log("payload" , payload)
 
   if(payload.data.role == "admin"){
     Admin.findById(payload.data._id, (err, user) => {
@@ -50,7 +50,7 @@ const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
       return !user ? done(null, false) : done(null, user)
     })
   }else if (payload.data.role == "company"){
-    console.log("if else if")
+   // console.log("if else if")
     Company.findById(payload.data._id, (err, user) => {
       if (err) {
         return done(err, false)
