@@ -215,6 +215,22 @@ router.post(
   trimRequest.all,
   controller.getCard
 )
+//----------9 Jan-------
+router.get(
+  '/getPersonalCards',
+  requireAuth,
+  trimRequest.all,
+  controller.getPersonalCards
+)
+
+//----------------
+router.put(
+  '/editUser',
+  requireAuth,
+  trimRequest.all,
+  controller.editUser
+)
+
 router.post(
   '/getCMS',
   trimRequest.all,
@@ -251,7 +267,6 @@ router.post(
   trimRequest.all,
   controller.deleteFCMDevice
 )
-
 
 router.post(
   "/deleteAccount",

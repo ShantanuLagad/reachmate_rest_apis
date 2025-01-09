@@ -1804,8 +1804,10 @@ exports.addCorporateCard = async (req, res) => {
   }
 }
 
+//----------before 9 Jan--------
 // exports.getProfile = async (req, res) => {
 //   try {
+
 //     const user_id = req.user._id;
 //     console.log("==========user_id", user_id)
 
@@ -2037,213 +2039,228 @@ exports.addCorporateCard = async (req, res) => {
 //     utils.handleError(res, error)
 //   }
 // }
+//-----------------Updated on 9 jan with remove of card details object
+// exports.getProfile = async (req, res) => {
+//   try {
+//     const user_id = req.user._id;
+//     console.log("==========user_id", user_id);
+
+//     const profile = await User.aggregate([
+//       {
+//         $match: {
+//           _id: mongoose.Types.ObjectId(user_id),
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$_id",
+//           billing_address: { $first: "$billing_address" },
+//           text_color: { $first: "$text_color" },
+//           social_type: { $first: "$social_type" },
+//           is_card_created: { $first: "$is_card_created" },
+//           notification: { $first: "$notification" },
+//           status: { $first: "$status" },
+//           first_name: { $first: "$first_name" },
+//           last_name: { $first: "$last_name" },
+//           email: { $first: "$email" },
+//           email_verified: { $first: "$email_verified" },
+//           full_name: { $first: "$full_name" },
+//           createdAt: { $first: "$createdAt" },
+//           updatedAt: { $first: "$updatedAt" },
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "SharedCards",
+//           localField: "_id",
+//           foreignField: "user_id",
+//           as: "shared_cards",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "saved_cards",
+//           let: { id: "$_id" },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: { $eq: [{ $toString: "$owner_id" }, { $toString: "$$id" }] },
+//               },
+//             },
+//             {
+//               $lookup: {
+//                 from: "companies",
+//                 localField: "company_id",
+//                 foreignField: "_id",
+//                 as: "company",
+//               },
+//             },
+//             {
+//               $unwind: {
+//                 path: "$company",
+//                 preserveNullAndEmptyArrays: true,
+//               },
+//             },
+//             {
+//               $addFields: {
+//                 'bio.business_name': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.company_name',
+//                     else: '$bio.business_name',
+//                   },
+//                 },
+//                 'card_color': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.card_color',
+//                     else: '$card_color',
+//                   },
+//                 },
+//                 'text_color': {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.text_color',
+//                     else: '$text_color',
+//                   },
+//                 },
+//                 "business_logo": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.business_logo',
+//                     else: '$business_logo',
+//                   },
+//                 },
+//                 "address": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.address',
+//                     else: '$address',
+//                   },
+//                 },
+//                 "contact_details.website": {
+//                   $cond: {
+//                     if: { $eq: ['$card_type', 'corporate'] },
+//                     then: '$company.contact_details.website',
+//                     else: '$contact_details.website',
+//                   },
+//                 },
+//               },
+//             },
+//             {
+//               $project: {
+//                 company: 0,
+//               },
+//             },
+//           ],
+//           as: "saved_card",
+//         },
+//       },
+//       {
+//         $project: {
+//           password: 0,
+//           confirm_password: 0,
+//         },
+//       },
+//     ]);
+
+//     if (!profile[0]) return utils.handleError(res, { message: "User not found", code: 404 });
+//     const subscription = await checkSusbcriptionIsActive(user_id);
+
+//     const data = {
+//       ...profile[0],
+//       have_subscription: subscription,
+//     };
+
+//     res.json({ data, code: 200 });
+//   } catch (error) {
+//     console.log(error);
+//     utils.handleError(res, error);
+//   }
+// };
 
 exports.getProfile = async (req, res) => {
   try {
-    const user_id = req.user._id;
-    console.log("==========user_id", user_id);
+    const userId = req.user._id;  // Retrieve the user ID from the request parameters
+    const user = await User.findById(userId);  // Find the user by ID
+    
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
 
-    const profile = await User.aggregate([
-      {
-        $match: {
-          _id: mongoose.Types.ObjectId(user_id),
-        },
-      },
-      {
-        $lookup: {
-          from: "card_details",
-          localField: "personal_cards",
-          foreignField: "_id",
-          as: "card_details",
-        },
-      },
-      {
-        $unwind: {
-          path: "$card_details",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "companies",
-          localField: "card_details.company_id",
-          foreignField: "_id",
-          as: "company",
-        },
-      },
-      {
-        $unwind: {
-          path: "$company",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $addFields: {
-          'card_details.bio.business_name': {
-            $cond: {
-              if: { $eq: ['$card_details.card_type', 'corporate'] },
-              then: '$company.company_name',
-              else: '$card_details.bio.business_name',
-            },
-          },
-          'card_details.card_color': {
-            $cond: {
-              if: { $eq: ['$card_details.card_type', 'corporate'] },
-              then: '$company.card_color',
-              else: '$card_details.card_color',
-            },
-          },
-          "card_details.business_logo": {
-            $cond: {
-              if: { $eq: ['$card_details.card_type', 'corporate'] },
-              then: '$company.business_logo',
-              else: '$card_details.business_logo',
-            },
-          },
-          "card_details.address": {
-            $cond: {
-              if: { $eq: ['$card_details.card_type', 'corporate'] },
-              then: '$company.address',
-              else: '$card_details.address',
-            },
-          },
-          "card_details.contact_details.website": {
-            $cond: {
-              if: { $eq: ['$card_details.card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$card_details.contact_details.website',
-            },
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id",
-          billing_address: { $first: "$billing_address" },
-          text_color: { $first: "$text_color" },
-          social_type: { $first: "$social_type" },
-          is_card_created: { $first: "$is_card_created" },
-          notification: { $first: "$notification" },
-          status: { $first: "$status" },
-          first_name: { $first: "$first_name" },
-          last_name: { $first: "$last_name" },
-          email: { $first: "$email" },
-          email_verified: { $first: "$email_verified" },
-          full_name: { $first: "$full_name" },
-          createdAt: { $first: "$createdAt" },
-          updatedAt: { $first: "$updatedAt" },
-          card_details: { $push: "$card_details" },
-        },
-      },
-      {
-        $lookup: {
-          from: "SharedCards",
-          localField: "_id",
-          foreignField: "user_id",
-          as: "shared_cards",
-        },
-      },
-      {
-        $lookup: {
-          from: "saved_cards",
-          let: { id: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: [{ $toString: "$owner_id" }, { $toString: "$$id" }] },
-              },
-            },
-            {
-              $lookup: {
-                from: "companies",
-                localField: "company_id",
-                foreignField: "_id",
-                as: "company",
-              },
-            },
-            {
-              $unwind: {
-                path: "$company",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $addFields: {
-                'bio.business_name': {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.company_name',
-                    else: '$bio.business_name',
-                  },
-                },
-                'card_color': {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.card_color',
-                    else: '$card_color',
-                  },
-                },
-                'text_color': {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.text_color',
-                    else: '$text_color',
-                  },
-                },
-                "business_logo": {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.business_logo',
-                    else: '$business_logo',
-                  },
-                },
-                "address": {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.address',
-                    else: '$address',
-                  },
-                },
-                "contact_details.website": {
-                  $cond: {
-                    if: { $eq: ['$card_type', 'corporate'] },
-                    then: '$company.contact_details.website',
-                    else: '$contact_details.website',
-                  },
-                },
-              },
-            },
-            {
-              $project: {
-                company: 0,
-              },
-            },
-          ],
-          as: "saved_card",
-        },
-      },
-      {
-        $project: {
-          password: 0,
-          confirm_password: 0,
-        },
-      },
-    ]);
-
-    if (!profile[0]) return utils.handleError(res, { message: "User not found", code: 404 });
-    const subscription = await checkSusbcriptionIsActive(user_id);
-
-    const data = {
-      ...profile[0],
-      have_subscription: subscription,
+    // Construct the user data response
+    const userInfo = {
+      id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      profile_image: user.profile_image,
+      dateOfBirth: user.dateOfBirth,
+      sex: user.sex,
     };
 
-    res.json({ data, code: 200 });
+    res.status(200).json({ data:userInfo });
   } catch (error) {
-    console.log(error);
-    utils.handleError(res, error);
+    console.error(error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
   }
 };
+
+
+//---------------EDIT PROFILE-------------------
+exports.editUser = async (req, res) => {
+  try {
+    const userId = req.user._id; // Assuming user ID is passed as a URL parameter
+    const updateData = req.body;
+
+    console.log("updateData============", updateData);
+
+    // Validate the existence of the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
+
+    // Check if email already exists and does not belong to the current user
+    if (updateData.email && updateData.email !== user.email) {
+      const emailExists = await User.exists({ email: updateData.email });
+      if (emailExists) {
+        return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+      }
+    }
+
+    // Update user data
+    if (updateData.first_name || updateData.last_name) {
+      updateData.full_name = `${updateData.first_name || user.first_name} ${updateData.last_name || user.last_name}`;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true, // Return the updated document
+      runValidators: true, // Run schema validators on update
+    });
+
+    if (!updatedUser) {
+      return res.status(500).json({ errors: { msg: 'Failed to update user.' } });
+    }
+
+    // Prepare user information to return
+    const userInfo = {
+      id: updatedUser._id,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      profile_image: updatedUser.profile_image,
+      dateOfBirth: updatedUser.dateOfBirth,
+      sex: updatedUser.sex,
+    };
+
+    res.status(200).json({ userInfo, message: 'User updated successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};
+
 
 
 exports.accountPrivacy = async (req, res) => {
@@ -2308,15 +2325,122 @@ exports.enableOrDisableLink = async (req, res) => {
 
 }
 
+//-------get All scanned Cards and one Primary Individual Card (if user created any card primary)----
 
+exports.getCard = async (req, res) => {
+  try {
+    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+
+    const user_id = req.user._id;
+
+    // const profile = await CardDetials.findOne({owner_id : user_id});
+
+    const profile = await CardDetials.aggregate([
+      {
+        $match: {
+          owner_id: user_id,
+          primary_card: true, //---------added on 9 jan
+        }
+      },
+      {
+        $lookup: {
+          from: "companies",
+          localField: "company_id",
+          foreignField: "_id",
+          as: "company",
+        },
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          'bio.business_name': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.company_name',
+              else: '$bio.business_name'
+            }
+          },
+          'card_color': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.card_color',
+              else: '$card_color'
+            }
+          },
+          "business_and_logo_status": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.business_and_logo_status',
+              else: '$business_and_logo_status'
+            }
+          },
+          'text_color': {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.text_color',
+              else: '$text_color'
+            }
+          },
+          "business_logo": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.business_logo',
+              else: '$business_logo'
+            }
+          },
+          "address": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.address',
+              else: '$address'
+            }
+          },
+          "contact_details.website": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$contact_details.website'
+            }
+          },
+          "website": {
+            $cond: {
+              if: { $eq: ['$card_type', 'corporate'] },
+              then: '$company.contact_details.website',
+              else: '$website'
+            }
+          },
+        }
+      },
+      {
+        $project: {
+          company: 0
+        }
+      }
+    ])
+    res.json({ data: profile[0], code: 200 })
+  } catch (error) {
+    utils.handleError(res, error)
+  }
+}
+
+//------------updated on 6Jan 2025
 // exports.getCard = async (req, res) => {
 //   try {
 //     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-//     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+//     if (isSubscriptionActive === false) {
+//       return utils.handleError(res, {
+//         message: "Your subscription has expired. Please renew to continue accessing our services",
+//         code: 400
+//       });
+//     }
 
 //     const user_id = req.user._id;
-
-//     // const profile = await CardDetials.findOne({owner_id : user_id});
 
 //     const profile = await CardDetials.aggregate([
 //       {
@@ -2403,119 +2527,42 @@ exports.enableOrDisableLink = async (req, res) => {
 //           company: 0
 //         }
 //       }
-//     ])
-//     res.json({ data: profile[0], code: 200 })
+//     ]);
+
+//     // Return all cards for the user
+//     res.json({ data: profile, code: 200 });
 //   } catch (error) {
-//     utils.handleError(res, error)
+//     utils.handleError(res, error);
 //   }
-// }
+// };
 
-exports.getCard = async (req, res) => {
-  try {
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if (isSubscriptionActive === false) {
-      return utils.handleError(res, {
-        message: "Your subscription has expired. Please renew to continue accessing our services",
-        code: 400
-      });
-    }
+//--------get All Individual added Cards of a user-----------
+exports.getPersonalCards = async (req, res) => {
+  //try {
+    const userId = "677d11274f424b3f360a6dd7"; 
+    console.log("User ID:", userId);
 
-    const user_id = req.user._id;
+    // if (!mongoose.Types.ObjectId.isValid(userId)) {
+    //   console.error("Invalid User ID format:", userId);
+    //   return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
+    // }
 
-    const profile = await CardDetials.aggregate([
-      {
-        $match: {
-          owner_id: user_id
-        }
-      },
-      {
-        $lookup: {
-          from: "companies",
-          localField: "company_id",
-          foreignField: "_id",
-          as: "company",
-        },
-      },
-      {
-        $unwind: {
-          path: "$company",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $addFields: {
-          'bio.business_name': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.company_name',
-              else: '$bio.business_name'
-            }
-          },
-          'card_color': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.card_color',
-              else: '$card_color'
-            }
-          },
-          "business_and_logo_status": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.business_and_logo_status',
-              else: '$business_and_logo_status'
-            }
-          },
-          'text_color': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.text_color',
-              else: '$text_color'
-            }
-          },
-          "business_logo": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.business_logo',
-              else: '$business_logo'
-            }
-          },
-          "address": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.address',
-              else: '$address'
-            }
-          },
-          "contact_details.website": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$contact_details.website'
-            }
-          },
-          "website": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$website'
-            }
-          },
-        }
-      },
-      {
-        $project: {
-          company: 0
-        }
-      }
-    ]);
+    // const personalCards = await CardDetials.find({
+    //   owner_id: userId,
+    //   card_type: "personal",
+    // });
 
-    // Return all cards for the user
-    res.json({ data: profile, code: 200 });
-  } catch (error) {
-    utils.handleError(res, error);
-  }
+    // if (!personalCards || personalCards.length === 0) {
+    //   console.log("No personal cards found for user:", userId);
+    //   return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
+    // }
+
+    // res.status(200).json({ data: personalCards });
+  // } catch (error) {
+  //   console.error("Error fetching personal cards:", error);
+  //   res.status(500).json({ errors: { msg: "Server error" } });
+  // }
 };
-
 
 
 exports.getCountries = async (req, res) => {
