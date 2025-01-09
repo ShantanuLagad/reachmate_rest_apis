@@ -827,6 +827,72 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+//---------------EDIT PROFILE-------------------
+exports.editUser = async (req, res) => {
+  try {
+    const userId = req.user._id; 
+    const updateData = req.body;
+
+    console.log("updateData============", updateData);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
+
+    let emailChanged = false;
+
+    if (updateData.email && updateData.email !== user.email) {
+      const emailExists = await User.exists({ email: updateData.email });
+      if (emailExists) {
+        return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+      }
+      emailChanged = true; 
+    }
+
+    if (updateData.first_name || updateData.last_name) {
+      updateData.full_name = `${updateData.first_name || user.first_name} ${updateData.last_name || user.last_name}`;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true, 
+      runValidators: true, 
+    });
+
+    if (!updatedUser) {
+      return res.status(500).json({ errors: { msg: 'Failed to update user.' } });
+    }
+
+    if (emailChanged) {
+      const verificationToken = generateToken(updatedUser._id);
+      await emailer.sendVerificationEmail(req.body.locale || 'en', {
+        id: updatedUser._id,
+        first_name: updatedUser.first_name,
+        last_name: updatedUser.last_name,
+        email: updatedUser.email,
+      }, "emailVerification", verificationToken);
+    }
+
+    const userInfo = {
+      id: updatedUser._id,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      profile_image: updatedUser.profile_image,
+      dateOfBirth: updatedUser.dateOfBirth,
+      sex: updatedUser.sex,
+    };
+
+    res.status(200).json({ 
+      userInfo, 
+      message: emailChanged ? 'User updated successfully. Verification email sent.' : 'User updated successfully.'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};
+
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.query;

@@ -223,14 +223,6 @@ router.get(
   controller.getPersonalCards
 )
 
-//----------------
-router.put(
-  '/editUser',
-  requireAuth,
-  trimRequest.all,
-  controller.editUser
-)
-
 router.post(
   '/getCMS',
   trimRequest.all,
@@ -458,14 +450,6 @@ router.post(
   requireAuth,
   trimRequest.all,
   controller.editBillingAddress
-)
-
-
-router.post(
-  "/checkProfileIsExist",
-  // requireAuth,
-  trimRequest.all,
-  controller.checkProfileIsExist
 )
 
 module.exports = router

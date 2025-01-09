@@ -35,6 +35,13 @@ router.post(
   trimRequest.all,
   controller.registerUser
 )
+//----------------9 Jan
+router.put(
+  '/editUser',
+  requireAuth,
+  trimRequest.all,
+  controller.editUser
+)
 router.get(
   '/verifyEmail',
   trimRequest.all,

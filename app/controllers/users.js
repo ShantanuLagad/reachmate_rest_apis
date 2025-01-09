@@ -2181,14 +2181,13 @@ exports.addCorporateCard = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const userId = req.user._id;  // Retrieve the user ID from the request parameters
-    const user = await User.findById(userId);  // Find the user by ID
+    const userId = req.user._id;  
+    const user = await User.findById(userId);  
     
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
 
-    // Construct the user data response
     const userInfo = {
       id: user._id,
       first_name: user.first_name,
@@ -2207,59 +2206,7 @@ exports.getProfile = async (req, res) => {
 };
 
 
-//---------------EDIT PROFILE-------------------
-exports.editUser = async (req, res) => {
-  try {
-    const userId = req.user._id; // Assuming user ID is passed as a URL parameter
-    const updateData = req.body;
 
-    console.log("updateData============", updateData);
-
-    // Validate the existence of the user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ errors: { msg: 'User not found.' } });
-    }
-
-    // Check if email already exists and does not belong to the current user
-    if (updateData.email && updateData.email !== user.email) {
-      const emailExists = await User.exists({ email: updateData.email });
-      if (emailExists) {
-        return res.status(400).json({ errors: { msg: 'Email already exists.' } });
-      }
-    }
-
-    // Update user data
-    if (updateData.first_name || updateData.last_name) {
-      updateData.full_name = `${updateData.first_name || user.first_name} ${updateData.last_name || user.last_name}`;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-      new: true, // Return the updated document
-      runValidators: true, // Run schema validators on update
-    });
-
-    if (!updatedUser) {
-      return res.status(500).json({ errors: { msg: 'Failed to update user.' } });
-    }
-
-    // Prepare user information to return
-    const userInfo = {
-      id: updatedUser._id,
-      first_name: updatedUser.first_name,
-      last_name: updatedUser.last_name,
-      email: updatedUser.email,
-      profile_image: updatedUser.profile_image,
-      dateOfBirth: updatedUser.dateOfBirth,
-      sex: updatedUser.sex,
-    };
-
-    res.status(200).json({ userInfo, message: 'User updated successfully.' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
-  }
-};
 
 
 
