@@ -2485,30 +2485,30 @@ exports.getCard = async (req, res) => {
 
 //--------get All Individual added Cards of a user-----------
 exports.getPersonalCards = async (req, res) => {
-  //try {
-    const userId = "677d11274f424b3f360a6dd7"; 
+  try {
+    const userId = req.user._id; 
     console.log("User ID:", userId);
 
-    // if (!mongoose.Types.ObjectId.isValid(userId)) {
-    //   console.error("Invalid User ID format:", userId);
-    //   return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
-    // }
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error("Invalid User ID format:", userId);
+      return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
+    }
 
-    // const personalCards = await CardDetials.find({
-    //   owner_id: userId,
-    //   card_type: "personal",
-    // });
+    const personalCards = await CardDetials.find({
+      owner_id: userId,
+      card_type: "personal",
+    });
 
-    // if (!personalCards || personalCards.length === 0) {
-    //   console.log("No personal cards found for user:", userId);
-    //   return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
-    // }
+    if (!personalCards || personalCards.length === 0) {
+      console.log("No personal cards found for user:", userId);
+      return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
+    }
 
-    // res.status(200).json({ data: personalCards });
-  // } catch (error) {
-  //   console.error("Error fetching personal cards:", error);
-  //   res.status(500).json({ errors: { msg: "Server error" } });
-  // }
+    res.status(200).json({ data: personalCards });
+  } catch (error) {
+    console.error("Error fetching personal cards:", error);
+    res.status(500).json({ errors: { msg: "Server error" } });
+  }
 };
 
 
