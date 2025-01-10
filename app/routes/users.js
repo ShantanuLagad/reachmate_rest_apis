@@ -41,14 +41,14 @@ router.post(
 /*
  * Get item route
  */
-router.get(
-  '/:id',
-  requireAuth,
-  // AuthController.roleAuthorization(['admin']),
-  trimRequest.all,
-  validate.getItem,
-  controller.getItem
-)
+// router.get(
+//   '/:id',
+//   requireAuth,
+//   // AuthController.roleAuthorization(['admin']),
+//   trimRequest.all,
+//   validate.getItem,
+//   controller.getItem
+// )
 
 /*
  * Update item route
@@ -176,7 +176,7 @@ router.post(
   controller.addCorporateCard
 )
 
-router.post(
+router.get(
   '/getProfile',
   requireAuth,
   trimRequest.all,
