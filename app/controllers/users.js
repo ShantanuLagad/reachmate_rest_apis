@@ -2370,6 +2370,13 @@ exports.getCard = async (req, res) => {
         }
       }
     ])
+
+    if (!profile || profile.length === 0) {
+     
+      return res.status(404).json({ message: "No primary or scanned card available", code: 404 });
+    }
+
+
     res.json({ data: profile[0], code: 200 })
   } catch (error) {
     utils.handleError(res, error)

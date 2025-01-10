@@ -209,7 +209,7 @@ router.post(
   controller.getStates
 )
 
-router.post(
+router.get(
   '/getCard',
   requireAuth,
   trimRequest.all,
