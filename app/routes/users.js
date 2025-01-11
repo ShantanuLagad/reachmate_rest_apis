@@ -148,11 +148,19 @@ router.post(
 )
 
 router.post(
-  '/  ',
+  '/matchAccessCode',
   requireAuth,
   trimRequest.all,
   controller.matchAccessCode
 )
+
+router.post(
+  '/verifyOtpAndFetchCompany',
+  requireAuth,
+  trimRequest.all,
+  controller.verifyOtpAndFetchCompany
+)
+
 
 router.post(
   "/isPaidByCompany",

@@ -21,7 +21,7 @@ const CMS = require('../models/cms')
 const FAQ = require('../models/faq')
 const Feedback = require('../models/feedback')
 const Trial = require("../models/trial")
-
+const Otp = require('../models/otp');
 const Support = require('../models/support')
 const { Country, State, City } = require('country-state-city');
 const Company = require("../models/company")
@@ -1633,29 +1633,105 @@ exports.makeIndividualCardPrimary = async (req, res) => {
   }
 };
 
+// exports.matchAccessCode = async (req, res) => {
+//   try {
+//     const { email, access_code } = req.body;
+
+//     const email_domain = extractDomainFromEmail(email);
+//     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
+//     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+
+//     // if (company.email === email) return utils.handleError(res, { message: "Can not create card on compnay email", code: 400 })
+
+//     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
+//     const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
+//     if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
+
+
+//     res.json({ code: 200, data: company })
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// }
+
+
+const generateNumericOTP = () => {
+  return Math.floor(1000 + Math.random() * 9000); 
+};
 
 exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
+    const userId = req.user._id; 
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
     const email_domain = extractDomainFromEmail(email);
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
-
-    // if (company.email === email) return utils.handleError(res, { message: "Can not create card on compnay email", code: 400 })
-
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-
-
+   
     const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
     if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
 
+    const otp = generateNumericOTP();
+    const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
 
-    res.json({ code: 200, data: company })
+    const otpData = new Otp({ email, otp, expired: expirationTime });
+    await otpData.save();
+
+    await emailer.sendAccessCodeOTP_Email(req.body.locale || 'en', {
+      id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      otp:otp,
+      expirationTime:expirationTime
+      }, "matchAccessCodeOTP");
+    res.status(200).json({ message: 'OTP sent successfully!' });
   } catch (error) {
     utils.handleError(res, error)
+    // console.error("Error in matchAccessCode API:", error);
+    //res.status(500).json({ message: 'Failed to send OTP', error: error.message || error });
   }
-}
+};
+
+exports.verifyOtpAndFetchCompany = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format.' });
+    }
+
+    const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    }
+
+    otpRecord.used = true;
+
+    const emailDomain = email.split('@')[1];
+    const company = await Company.findOne({ email_domain: emailDomain }, { password: 0, decoded_password: 0 });
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found.' });
+    }
+
+    await Promise.all([
+      Otp.deleteMany({ expired: { $lt: new Date() }, used: true }),
+      otpRecord.save(),
+    ]);
+
+    res.status(200).json({ message: 'OTP verified successfully!', data: company });
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+};
+
+
+//--------------------------
 
 exports.isPaidByCompany = async (req, res) => {
   try {

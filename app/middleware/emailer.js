@@ -8,6 +8,7 @@ const APP_NAME = process.env.APP_NAME;
 const { capitalizeFirstLetter } = require("../shared/helpers");
 const VerificationToken=require("../models/verificationToken")
 var jwt = require("jsonwebtoken");
+const moment = require('moment');
 
 const {
   handleError,
@@ -174,6 +175,66 @@ module.exports = {
         );
       } catch (err) {
         reject(buildErrObject(422, err.message));
+      }
+    })
+  },
+
+  //-----------------------------MATCH ACCESS CODE OTP-------------------
+  async sendAccessCodeOTP_Email(locale, user, template) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        user = JSON.parse(JSON.stringify(user));
+
+        console.log("user========", user)
+        const otpHtml = String(user.otp)
+        .split('')
+        .map(digit => 
+          `<span style="font-size: 35px; color: #ef7f1a; margin-right: 20px;"><b>${digit}</b></span>`
+        )
+        .join('');
+        if (!user.first_name) {
+          user.first_name = "user";
+        }
+        if (!user.last_name) {
+          user.last_name = "";
+        }
+        const expirationTime = new Date(user.expirationTime); // Convert to Date object
+        const otpExpirationDuration = (expirationTime - Date.now()) / 1000; // Calculate time in seconds
+
+        console.log('time', otpExpirationDuration);
+
+        const minutes = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration / 60);
+        console.log('minutes', minutes);
+
+        const seconds = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration % 60);
+        console.log('seconds', seconds);
+
+        const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Your OTP Code - ${process.env.APP_NAME}`,
+            name: `${user.first_name} ${user.last_name}`,
+            website_url: process.env.PRODUCTION_WEBSITE_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
+            validity:formattedTime,
+            otp:otpHtml
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+            } else {
+              console.log("OTP SENT");
+              resolve(true);
+            }
+
+          }
+        );
+      } catch (err) {
+        console.error("Error in sendAccessCodeOTP_Email:", err);
+        reject(buildErrObject(422, err.message || err)); 
       }
     })
   },

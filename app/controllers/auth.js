@@ -830,8 +830,8 @@ exports.registerUser = async (req, res) => {
 //---------------EDIT PROFILE-------------------
 exports.editUser = async (req, res) => {
   try {
-    const userId = req.user._id; 
     const updateData = req.body;
+    const userId = req.user._id; 
 
     console.log("updateData============", updateData);
 
