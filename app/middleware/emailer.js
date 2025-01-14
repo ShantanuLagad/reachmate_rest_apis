@@ -185,7 +185,7 @@ module.exports = {
       try {
         user = JSON.parse(JSON.stringify(user));
 
-        console.log("user========", user)
+        //console.log("user========", user)
         const otpHtml = String(user.otp)
         .split('')
         .map(digit => 
@@ -198,18 +198,18 @@ module.exports = {
         if (!user.last_name) {
           user.last_name = "";
         }
-        const expirationTime = new Date(user.expirationTime); // Convert to Date object
-        const otpExpirationDuration = (expirationTime - Date.now()) / 1000; // Calculate time in seconds
+        //const expirationTime = new Date(user.expirationTime); 
+        //const otpExpirationDuration = (expirationTime - Date.now()) / 1000; 
 
-        console.log('time', otpExpirationDuration);
+        //console.log('time', otpExpirationDuration);
 
-        const minutes = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration / 60);
-        console.log('minutes', minutes);
+        //const minutes = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration / 60);
+        //console.log('minutes', minutes);
 
-        const seconds = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration % 60);
-        console.log('seconds', seconds);
+        //const seconds = isNaN(otpExpirationDuration) ? 0 : Math.floor(otpExpirationDuration % 60);
+        //console.log('seconds', seconds);
 
-        const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        //const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
         app.mailer.send(
           `${locale}/${template}`,

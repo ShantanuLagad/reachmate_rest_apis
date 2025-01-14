@@ -704,7 +704,7 @@ cron.schedule("30 3 * * *", async () => {
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
   const parts = email.split('@');
-
+ //console.log('email parts',parts)
   // Check if the email has the correct format
   if (parts.length !== 2) {
     console.error('Invalid email address format');
@@ -1669,6 +1669,7 @@ exports.matchAccessCode = async (req, res) => {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
     const email_domain = extractDomainFromEmail(email);
+     console.log('email domain',email_domain)
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
@@ -1677,9 +1678,10 @@ exports.matchAccessCode = async (req, res) => {
     if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
 
     const otp = generateNumericOTP();
-    const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
+   // const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
+   // const otpData = new Otp({ email, otp, expired: expirationTime });
 
-    const otpData = new Otp({ email, otp, expired: expirationTime });
+   const otpData = new Otp({ email, otp});
     await otpData.save();
 
     await emailer.sendAccessCodeOTP_Email(req.body.locale || 'en', {
@@ -1688,7 +1690,7 @@ exports.matchAccessCode = async (req, res) => {
       last_name: user.last_name,
       email: user.email,
       otp:otp,
-      expirationTime:expirationTime
+      //expirationTime:expirationTime
       }, "matchAccessCodeOTP");
     res.status(200).json({ message: 'OTP sent successfully!' });
   } catch (error) {
@@ -1706,7 +1708,8 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
 
-    const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
+    // const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
+    const otpRecord = await Otp.findOne({ email, otp, used: false });
     if (!otpRecord) {
       return res.status(400).json({ message: 'Invalid or expired OTP.' });
     }
@@ -1719,10 +1722,10 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(404).json({ message: 'Company not found.' });
     }
 
-    await Promise.all([
-      Otp.deleteMany({ expired: { $lt: new Date() }, used: true }),
-      otpRecord.save(),
-    ]);
+    // await Promise.all([
+    //   Otp.deleteMany({ expired: { $lt: new Date() }, used: true }),
+    //   otpRecord.save(),
+    // ]);
 
     res.status(200).json({ message: 'OTP verified successfully!', data: company });
   } catch (error) {
