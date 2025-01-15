@@ -574,6 +574,7 @@ exports.completeProfile = async (req, res) => {
   }
 }
 
+//--------------- List of Employees in a Business Team--- 
 
 exports.corporateCardHolder = async (req, res) => {
   try {
@@ -662,6 +663,58 @@ exports.corporateCardHolder = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+//-----------Add User By Admin(Business Team)-----
+exports.addEmployeeByBusinessTeam = async (req, res) => {
+  try {
+    let newOtpforget;
+    const userData = req.body;
+    console.log("userData in admin============",userData)
+    console.log('BUsiness team name',req.user)
+
+    const doesEmailExist = await UserModel.exists({ email: userData.email });
+    if (doesEmailExist) {
+      return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+    }
+    userData.full_name = `${userData.first_name} ${userData.last_name}`
+    const newUser = new UserModel(userData);
+    const savedUser = await newUser.save();
+    newOtpforget = generateNumericOTP();
+    
+    const userInfo = {
+      id: savedUser._id,
+      first_name: savedUser.first_name,
+      last_name: savedUser.last_name,
+      email: savedUser.email,
+      Phone_number:savedUser.Phone_number,
+      designation:savedUser.designation,
+      status:savedUser.status,
+      
+      // profile_image:savedUser.profile_image,
+      // dateOfBirth:savedUser.dateOfBirth,
+      // sex:savedUser.sex,
+      // password: savedUser.password,
+      // confirm_password: savedUser.confirm_password,
+    };
+    const verificationToken= generateToken(userInfo.id);
+
+    await emailer.sendVerificationEmail(req.body.locale || 'en', 
+      userInfo,"emailVerification",verificationToken);
+    
+    res.status(201).json({
+       userInfo: userInfo, 
+       token:verificationToken, 
+       message: 'Email sent for verification successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};
+
+//--------
+const generateNumericOTP = () => {
+  return Math.floor(1000 + Math.random() * 9000);
+};
 
 
 exports.deleteCorporateCardHolders = async (req, res) => {

@@ -156,13 +156,21 @@ router.delete(
   controller.deleteAllNotification
 )
 
-
+//----------get list of employees
 router.get(
   "/corporateCardHolder",
   requireAuth,
   trimRequest.all,
   controller.corporateCardHolder
 )
+//---------add Employee by Business Team
+router.post(
+  "/addEmployeeByBusinessTeam",
+  requireAuth,
+  trimRequest.all,
+  controller.addEmployeeByBusinessTeam
+)
+
 
 router.delete(
   "/deleteCorporateCardHolders",

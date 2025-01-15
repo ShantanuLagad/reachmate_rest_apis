@@ -30,6 +30,12 @@ const UserSchema = new mongoose.Schema(
     email_verified : {
       type : Boolean,
     },
+    designation:{
+      type:String
+    },
+    Phone_number:{
+      type:String
+    },
     dateOfBirth:{
       type:String
     },

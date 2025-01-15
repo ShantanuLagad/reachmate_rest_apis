@@ -219,7 +219,7 @@ module.exports = {
             name: `${user.first_name} ${user.last_name}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-            validity:formattedTime,
+            
             otp:otpHtml
           },
           function (err) {
