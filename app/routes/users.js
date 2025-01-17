@@ -160,7 +160,13 @@ router.post(
   trimRequest.all,
   controller.verifyOtpAndFetchCompany
 )
-
+//-------------Get ALL ACCESS CARDS OF A USER
+router.get(
+  '/getAllAccessCards',
+  requireAuth,
+  trimRequest.all,
+  controller.getAllAccessCards
+)
 
 router.post(
   "/isPaidByCompany",

@@ -163,15 +163,46 @@ router.get(
   trimRequest.all,
   controller.corporateCardHolder
 )
-//---------add Employee by Business Team
+//---------add TeamMember by Business Team
 router.post(
-  "/addEmployeeByBusinessTeam",
+  "/addTeamMember",
   requireAuth,
   trimRequest.all,
-  controller.addEmployeeByBusinessTeam
+  controller.addTeamMemberByBusinessTeam
+)
+
+//-------get all team members list
+router.get(
+  "/getTeamMembers",
+  requireAuth,
+  trimRequest.all,
+  controller.getTeamMembersByBusinessTeam
+)
+//----get Team Member By ID
+router.get(
+  "/getTeamMemberById",
+  requireAuth,
+  trimRequest.all,
+  controller.getTeamMemberByID
+)
+//-----update Team member
+router.patch(
+  "/updateTeamMember",
+  requireAuth,
+  trimRequest.all,
+  controller.updateTeamMember
+)
+//----delete Team Member
+router.delete(
+  "/deleteTeamMember/:_id",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteTeamMemberByID
 )
 
 
+
+//--------------------
 router.delete(
   "/deleteCorporateCardHolders",
   requireAuth,

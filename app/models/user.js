@@ -100,7 +100,15 @@ const UserSchema = new mongoose.Schema(
       address_line_1 :  String,
       address_line_2 :String,
       pin_code :String
-    }
+    },
+    companyAccessCardDetails:[
+      {
+        company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
+        email_domain: { type: String }, 
+        company_name: { type: String }, 
+        access_code:{type:String}
+      },
+    ],
   },
   {
     versionKey: false,
@@ -143,3 +151,5 @@ UserSchema.methods.comparePassword = function(passwordAttempt, cb) {
 }
 UserSchema.plugin(mongoosePaginate)
 module.exports = mongoose.model('User', UserSchema)
+
+

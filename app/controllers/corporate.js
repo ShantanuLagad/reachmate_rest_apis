@@ -24,6 +24,7 @@ const csv = require('csv-parser');
 const fs = require('fs');
 var generator = require('generate-password');
 const moment = require("moment")
+const TeamMember=require("../models/teamMember")
 const {
   uploadFile,
   uploadFileToLocal,
@@ -665,58 +666,224 @@ exports.corporateCardHolder = async (req, res) => {
 }
 
 //-----------Add User By Admin(Business Team)-----
-exports.addEmployeeByBusinessTeam = async (req, res) => {
+exports.addTeamMemberByBusinessTeam = async (req, res) => {
   try {
-    let newOtpforget;
     const userData = req.body;
-    console.log("userData in admin============",userData)
-    console.log('BUsiness team name',req.user)
-
-    const doesEmailExist = await UserModel.exists({ email: userData.email });
+    const workEmailDomain = userData.work_email.split('@')[1];
+    const companyDomain = req.user.email_domain;
+    if (workEmailDomain !== companyDomain) {
+      return res.status(400).json({
+        errors: {
+          msg: `Work email domain "${workEmailDomain}" does not match the company domain "${companyDomain}".`,
+        },
+      });
+    }
+    userData.company_details= {
+      company_id:req.user._id,
+      email_domain:req.user.email_domain,
+      company_name:req.user.company_name,
+      access_code:req.user.access_code
+    }
+   // console.log("userData in admin============",userData)
+    //console.log('BUsiness team name------------------>>>>',req.user)
+    const doesEmailExist = await TeamMember.exists({ work_email: userData.work_email });
     if (doesEmailExist) {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
     }
     userData.full_name = `${userData.first_name} ${userData.last_name}`
-    const newUser = new UserModel(userData);
+    const newUser = new TeamMember(userData);
     const savedUser = await newUser.save();
-    newOtpforget = generateNumericOTP();
-    
     const userInfo = {
       id: savedUser._id,
       first_name: savedUser.first_name,
       last_name: savedUser.last_name,
-      email: savedUser.email,
-      Phone_number:savedUser.Phone_number,
+      work_email: savedUser.work_email,
+      phone_number:savedUser.phone_number,
       designation:savedUser.designation,
+      user_type:savedUser.user_type,
       status:savedUser.status,
+      company_id:savedUser.company_details.company_id,
+      email_domain:savedUser.company_details.email_domain,
+      company_name:savedUser.company_details.company_name,
+      access_code:savedUser.company_details.access_code
       
-      // profile_image:savedUser.profile_image,
-      // dateOfBirth:savedUser.dateOfBirth,
-      // sex:savedUser.sex,
-      // password: savedUser.password,
-      // confirm_password: savedUser.confirm_password,
     };
-    const verificationToken= generateToken(userInfo.id);
 
-    await emailer.sendVerificationEmail(req.body.locale || 'en', 
-      userInfo,"emailVerification",verificationToken);
+    await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
+      userInfo,"accessCodeByCompanyToTeamMember");
     
     res.status(201).json({
-       userInfo: userInfo, 
-       token:verificationToken, 
-       message: 'Email sent for verification successfully' });
+      code:201,
+      // userInfo: userInfo, 
+       message:'Team Member has been Added and Access code has been sent on work Email' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+   // console.error(error);
+    utils.handleError(res, error)
   }
 };
 
-//--------
-const generateNumericOTP = () => {
-  return Math.floor(1000 + Math.random() * 9000);
+//--------get All Team Member List--------
+exports.getTeamMembersByBusinessTeam = async (req, res) => {
+  try {
+    const { work_email, status, limit = 10, offset = 0 } = req.query;
+
+    const query = {};
+    //const company_domain = req.user.email_domain;
+
+   // if (work_email) query.work_email = work_email;
+    if (status) query.status = status;
+    //query["company_details.email_domain"] = company_domain;
+
+
+    const paginationLimit = parseInt(limit, 10);
+    const paginationOffset = parseInt(offset, 0);
+
+    const totalCount = await TeamMember.countDocuments(query);
+    const teamMembers = await TeamMember.find(query)
+      //.populate('company_details.company_id', 'name email_domain')
+      .skip(paginationOffset)
+      .limit(paginationLimit);
+
+    const response = teamMembers.map((member) => ({
+      id: member._id,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      work_email: member.work_email,
+      phone_number: member.phone_number,
+      designation: member.designation,
+      user_type: member.user_type,
+      status: member.status,
+      company_details: member.company_details,
+    }));
+
+    res.status(200).json({
+      code:200,
+      totalCount,
+      limit: paginationLimit,
+      offset: paginationOffset,
+      message: "Team members retrieved successfully",
+      teamMembers: response,
+    });
+  } catch (error) {
+   // console.error("Error fetching team members:", error);
+    utils.handleError(res, error);
+  }
+};
+//--------------get TEAM MEMBER By ID------------
+exports.getTeamMemberByID = async (req, res) => {
+  try {
+    const { _id } = req.query;
+    //console.log('idd',req.query)
+    if (!_id) {
+      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    }
+    const teamMember = await TeamMember.findById(_id)
+      //.populate('company_details.company_id', 'name email_domain');
+
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+
+    const response = {
+      id: teamMember._id,
+      first_name: teamMember.first_name,
+      last_name: teamMember.last_name,
+      work_email: teamMember.work_email,
+      phone_number: teamMember.phone_number,
+      designation: teamMember.designation,
+      user_type: teamMember.user_type,
+      status: teamMember.status,
+      company_details: teamMember.company_details,
+    };
+
+    res.status(200).json({
+      code:200,
+      message: 'Team member retrieved successfully',
+      teamMember: response,
+    });
+  } catch (error) {
+    //console.error('Error fetching team member by ID:', error);
+    utils.handleError(res, error);
+  }
+};
+
+//----------------Update Team Member--------------
+exports.updateTeamMember = async (req, res) => {
+  try {
+    const updateData = req.body; 
+    //console.log('Update request for team member with ID:', updateData);
+
+    
+    if (!updateData._id) {
+      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    }
+
+    const teamMember = await TeamMember.findByIdAndUpdate(
+      updateData._id, 
+      updateData, 
+      {
+        new: true,
+        runValidators: true, 
+      }
+    )
+    //.populate('company_details.company_id', 'name email_domain');
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+    const response = {
+      id: teamMember._id,
+      first_name: teamMember.first_name,
+      last_name: teamMember.last_name,
+      work_email: teamMember.work_email,
+      phone_number: teamMember.phone_number,
+      designation: teamMember.designation,
+      user_type: teamMember.user_type,
+      status: teamMember.status,
+      company_details: teamMember.company_details,
+    };
+
+    res.status(200).json({
+      code:200,
+      message: 'Team member updated successfully',
+      teamMember: response,
+    });
+  } catch (error) {
+    //console.error('Error updating team member by ID:', error);
+    utils.handleError(res, error);
+  }
 };
 
 
+
+//--------------delete Team Member By ID-----
+exports.deleteTeamMemberByID = async (req, res) => {
+  try {
+    const { _id } = req.params; 
+    console.log('idd',req.params)
+    console.log('Delete request for team member with ID:', _id);
+
+    if (!_id) {
+      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    }
+
+    const teamMember = await TeamMember.findByIdAndDelete(_id);
+
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+
+    res.status(200).json({
+      code:200,
+      message: 'Team member deleted successfully',
+     // deletedTeamMemberId: _id
+    });
+  } catch (error) {
+    console.error('Error deleting team member by ID:', error);
+    utils.handleError(res, error);
+  }
+};
+
+//-------------------------------------------------------
 exports.deleteCorporateCardHolders = async (req, res) => {
   try {
 

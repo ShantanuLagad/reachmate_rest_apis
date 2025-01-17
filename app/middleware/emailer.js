@@ -137,7 +137,7 @@ module.exports = {
     return new Promise(async (resolve, reject) => {
       try {
         user = JSON.parse(JSON.stringify(user));
-        console.log("user========", user,'tokennnnn>>>>',Token)
+        //console.log("user========", user,'tokennnnn>>>>',Token)
         //const token = jwt.sign({ data: user._id, }, process.env.JWT_SECRET, { expiresIn: "24h" });
         if (!user.first_name) {
           user.first_name = "user";
@@ -219,7 +219,6 @@ module.exports = {
             name: `${user.first_name} ${user.last_name}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-            
             otp:otpHtml
           },
           function (err) {
@@ -235,6 +234,46 @@ module.exports = {
       } catch (err) {
         console.error("Error in sendAccessCodeOTP_Email:", err);
         reject(buildErrObject(422, err.message || err)); 
+      }
+    })
+  },
+
+  //------------------------Send Access code by company(BUsiness Team) to Team Member--------
+  async sendAccessCodeToTeamMemberByCompany(locale, user, template) {
+    return new Promise(async (resolve, reject) => {
+      try {
+       // console.log("user========", user)
+        user = JSON.parse(JSON.stringify(user));
+        //const token = jwt.sign({ data: user._id, }, process.env.JWT_SECRET, { expiresIn: "24h" });
+        if (!user.first_name) {
+          user.first_name = "user";
+        }
+        if (!user.last_name) {
+          user.last_name = "";
+        }
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.work_email,
+            subject: `Access Code - ${process.env.APP_NAME}`,
+            name: `${user.first_name} ${user.last_name}`,
+            website_url: process.env.PRODUCTION_WEBSITE_URL,
+            company_name:user.company_name,
+            access_code:user.access_code,
+            logo:`${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+            } else {
+              console.log("VERIFICATION EMAIL SENT");
+              resolve(true);
+            }
+
+          }
+        );
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
       }
     })
   },

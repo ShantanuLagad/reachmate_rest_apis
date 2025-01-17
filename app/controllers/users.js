@@ -783,14 +783,14 @@ function sendInvoiceEmailForTransaction(mailOptions) {
 async function checkSusbcriptionIsActive(user_id) {
 
   const checkIsTrialExits = await Trial.findOne({ user_id });
-
+ console.log('endd date>>',checkIsTrialExits.end_at)
   if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
     return true
   }
 
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
-  console.log("subcription", subcription)
+  console.log("subcription", subcription,'subcription.end_at',subcription.end_at,'subcription.status',subcription.status)
   if (!subcription) return false
   if (subcription.status === "created") return false
   if (subcription.end_at < new Date()) return false
@@ -1669,11 +1669,28 @@ exports.matchAccessCode = async (req, res) => {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
     const email_domain = extractDomainFromEmail(email);
-     console.log('email domain',email_domain)
+    // console.log('email domain',email_domain, 'email>>',user.email)
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-   
+     //----------------------
+      const companyAccessDetails = {
+        company_id: company._id,
+        email_domain: company.email_domain,
+        company_name: company.company_name,
+        access_code: company.access_code,
+      };
+  
+      const isAlreadyAdded = user.companyAccessCardDetails.some((detail) =>
+        detail.company_id.toString() === company._id.toString()
+      );
+  
+      if (!isAlreadyAdded) {
+        user.companyAccessCardDetails.push(companyAccessDetails);
+        await user.save();
+      }
+     //----------------------
+
     const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
     if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
 
@@ -1688,11 +1705,13 @@ exports.matchAccessCode = async (req, res) => {
       id: user._id,
       first_name: user.first_name,
       last_name: user.last_name,
-      email: user.email,
+      email: email,
       otp:otp,
       //expirationTime:expirationTime
       }, "matchAccessCodeOTP");
-    res.status(200).json({ message: 'OTP sent successfully!' });
+    res.status(200).json({ 
+      code:200,
+      message: 'OTP sent successfully!' });
   } catch (error) {
     utils.handleError(res, error)
     // console.error("Error in matchAccessCode API:", error);
@@ -1703,15 +1722,26 @@ exports.matchAccessCode = async (req, res) => {
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
-
+    //console.log('verif OTP and fetch company',req.body)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
 
     // const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
-    const otpRecord = await Otp.findOne({ email, otp, used: false });
+    const otpRecord = await Otp.findOne({ email });
+    //console.log('verif OTP RECORD',otpRecord)
+
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired OTP.' });
+      return res.status(400).json({ message: 'No OTP found for this email.OTP was sent on' });
+    }
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+    if (otpRecord.used) {
+      return res.status(400).json({ message: 'This OTP has already been used.' });
+    }
+    if (otpRecord.expired && otpRecord.expired < new Date()) {
+      return res.status(400).json({ message: 'This OTP has expired.' });
     }
 
     otpRecord.used = true;
@@ -1727,15 +1757,52 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     //   otpRecord.save(),
     // ]);
 
-    res.status(200).json({ message: 'OTP verified successfully!', data: company });
+    res.status(200).json({ 
+      code:200,
+      message: 'OTP verified successfully!', data: company });
   } catch (error) {
     utils.handleError(res, error);
   }
 };
 
 
-//--------------------------
+//--------------------------GET ALL ACCESS CARDS OF A USER--------
 
+exports.getAllAccessCards = async (req, res) => {
+  try {
+    const userId = req.user._id; 
+
+    const user = await User.findById(userId).select('companyAccessCardDetails');
+    if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
+      return res.status(404).json({ message: 'No company access cards found.' });
+    }
+
+    const companyConditions = user.companyAccessCardDetails.map((detail) => ({
+      email_domain: detail.email_domain,
+      access_code: detail.access_code,
+    }));
+
+    const companies = await Company.find(
+      { $or: companyConditions },
+      { password: 0, decoded_password: 0 } 
+    );
+
+    if (companies.length === 0) {
+      return res.status(404).json({ message: 'No companies found for the access cards.' });
+    }
+
+    res.status(200).json({
+      code:200,
+      message: 'Access Cards retrieved successfully.',
+      count:companies.length,
+      data: companies,
+    });
+  } catch (error) {
+    //console.error('Error in getAllAccessCards API:', error);
+    utils.handleError(res, error);
+  }
+};
+//----------------------------------------------------------------
 exports.isPaidByCompany = async (req, res) => {
   try {
 
@@ -2356,6 +2423,7 @@ exports.enableOrDisableLink = async (req, res) => {
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    console.log('isSubscriptionActive >>>',isSubscriptionActive)
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
@@ -3107,11 +3175,13 @@ exports.addNotificaiton = async (req, res) => {
 
 async function isSubscriptionActiveOrNot(user) {
   try {
+    //console.log('user>>>>----',user)
     const user_id = user._id;
     var subcriptionActive = false
     if (user.user_type === "personal") {
       subcriptionActive = await checkSusbcriptionIsActive(user_id)
     } else if (user.user_type === "corporate") {
+
       const card = await CardDetials.findOne({ owner_id: user_id });
       if (!card) return false
       const company_id = card.company_id;
@@ -3121,6 +3191,7 @@ async function isSubscriptionActiveOrNot(user) {
       if (isSubscriptionPaidByCompany) {
         //Employee is subcription is paid by company
         subcriptionActive = await checkSusbcriptionIsActive(company_id)
+
       } else {
         //Employee is subcription is not paid by company
         //check for waiting period 
@@ -3131,14 +3202,18 @@ async function isSubscriptionActiveOrNot(user) {
           subcriptionActive = await checkSusbcriptionIsActive(user_id)
         }
       }
-    }
+     // console.log('end dateee',waiting_end_time)
 
+    }
+    //console.log('user subcriptionActive >>>>----',user)
     return subcriptionActive
   } catch (error) {
     console.log(error)
     return false
   }
 }
+
+
 
 
 exports.isSubscriptionActive = async (req, res) => {
