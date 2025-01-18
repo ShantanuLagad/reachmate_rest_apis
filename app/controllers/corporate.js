@@ -811,12 +811,17 @@ exports.getTeamMemberByID = async (req, res) => {
 exports.updateTeamMember = async (req, res) => {
   try {
     const updateData = req.body; 
+    let emailChanged=false;
     //console.log('Update request for team member with ID:', updateData);
-
-    
-    if (!updateData._id) {
-      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
-    }
+    if (!updateData._id) return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    const existedData = await TeamMember.findById(updateData._id)
+    if (updateData.work_email && updateData.work_email !== existedData.work_email) {
+          const emailExists = await TeamMember.exists({ work_email: updateData.work_email });
+          if (emailExists) {
+            return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+          }
+          emailChanged = true; 
+        }
 
     const teamMember = await TeamMember.findByIdAndUpdate(
       updateData._id, 
@@ -841,10 +846,13 @@ exports.updateTeamMember = async (req, res) => {
       status: teamMember.status,
       company_details: teamMember.company_details,
     };
-
+    if(emailChanged){
+      await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
+        response,"accessCodeByCompanyToTeamMember");
+    }
     res.status(200).json({
       code:200,
-      message: 'Team member updated successfully',
+      message: emailChanged ? 'Team member updated successfully.Access code has been sent on work Email':'Team member updated successfully',
       teamMember: response,
     });
   } catch (error) {

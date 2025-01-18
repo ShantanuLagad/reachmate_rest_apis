@@ -258,8 +258,8 @@ module.exports = {
             subject: `Access Code - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
-            company_name:user.company_name,
-            access_code:user.access_code,
+            company_name:user.company_name ? user.company_name:user.company_details.company_name,
+            access_code:user.access_code ? user.access_code :user.company_details.access_code,
             logo:`${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
           function (err) {
