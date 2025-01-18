@@ -1663,34 +1663,16 @@ exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
     const userId = req.user._id; 
-
+    console.log('USER>>>',req.user)
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
-    const email_domain = extractDomainFromEmail(email);
-    // console.log('email domain',email_domain, 'email>>',user.email)
+    const email_domain = extractDomainFromEmail(email) ? extractDomainFromEmail(email) :email.split('@')[1];
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-     //----------------------
-      const companyAccessDetails = {
-        company_id: company._id,
-        email_domain: company.email_domain,
-        company_name: company.company_name,
-        access_code: company.access_code,
-      };
-  
-      const isAlreadyAdded = user.companyAccessCardDetails.some((detail) =>
-        detail.company_id.toString() === company._id.toString()
-      );
-      if (isAlreadyAdded) return utils.handleError(res, { message: "Card already created", code: 400 })
-     
-        if (!isAlreadyAdded) {
-        user.companyAccessCardDetails.push(companyAccessDetails);
-        await user.save();
-      }
-     //----------------------
+   
 
     //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
    // if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
@@ -1723,13 +1705,17 @@ exports.matchAccessCode = async (req, res) => {
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    //console.log('verif OTP and fetch company',req.body)
+    const userId = req.user._id; 
+
+    console.log('verif OTP and fetch company',req.body)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
-
     // const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
-    const otpRecord = await Otp.findOne({ email });
+    const otpRecord = await Otp.findOne({ 
+      email, 
+      used: false
+    }).sort({ createdAt: -1 });     
     //console.log('verif OTP RECORD',otpRecord)
 
     if (!otpRecord) {
@@ -1745,14 +1731,37 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(400).json({ message: 'This OTP has expired.' });
     }
 
-    otpRecord.used = true;
-
-    const emailDomain = email.split('@')[1];
-    const company = await Company.findOne({ email_domain: emailDomain }, { password: 0, decoded_password: 0 });
-    if (!company) {
-      return res.status(404).json({ message: 'Company not found.' });
+    const email_domain = extractDomainFromEmail(email) ? extractDomainFromEmail(email) :email.split('@')[1];
+    const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
+    if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+   // if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
+     //----------------------
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
-
+      const companyAccessDetails = {
+        company_id: company._id,
+        email_domain: company.email_domain,
+        company_name: company.company_name,
+        access_code: company.access_code,
+      };
+  
+      const isAlreadyAdded = user.companyAccessCardDetails.some((detail) =>
+        detail.company_id.toString() === company._id.toString()
+      );
+      if (isAlreadyAdded) return utils.handleError(res, { message: "Card already created", code: 400 })
+     
+        if (!isAlreadyAdded) {
+        user.companyAccessCardDetails.push(companyAccessDetails);
+        await user.save();
+      }
+     //----------------------
+    otpRecord.used = true;
+    await otpRecord.save();
+    //-------
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await Otp.deleteMany({ used: true, createdAt: { $lt: threeDaysAgo } });
     // await Promise.all([
     //   Otp.deleteMany({ expired: { $lt: new Date() }, used: true }),
     //   otpRecord.save(),
