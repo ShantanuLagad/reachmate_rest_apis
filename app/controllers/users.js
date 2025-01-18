@@ -68,6 +68,7 @@ const { stat } = require('fs/promises');
 const { subscribe } = require('diagnostics_channel');
 const { error } = require('console');
 const { start } = require('repl');
+const TeamMember = require('../models/teamMember');
 /*********************
  * Private functions *
  *********************/
@@ -1432,13 +1433,16 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 exports.addPersonalCard = async (req, res) => {
   try {
+    const user=req.user
+    console.log('USerrr',user)
     const owner_id = req.user._id;
     // const owner_id = req.body.owner_id
 
     //-----to check that user has only one card
     // const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
     // if (isCardExist) return utils.handleError(res, { message: "Card already create", code: 400 })
-
+    const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+    console.log('cardd is first card',isFirstCard)
     const data = req.body;
     const card = {
       owner_id,
@@ -1474,10 +1478,13 @@ exports.addPersonalCard = async (req, res) => {
         x: data.social_links.x,
         instagram: data.social_links.instagram,
         youtube: data.social_links.youtube,
-      }
+      },
+      primary_card: isFirstCard,
     }
     const cardData = new CardDetials(card)
     await cardData.save()
+
+    console.log('added card>>>>>',cardData)
 
     //--------------------------------------
     await User.findByIdAndUpdate(owner_id, {
@@ -1672,7 +1679,9 @@ exports.matchAccessCode = async (req, res) => {
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-   
+    //----------
+    const isTeamMemberExist = await TeamMember.findOne({ email })
+    if (!isTeamMemberExist) return utils.handleError(res, { message: "Team Member does not exist", code: 404 });
 
     //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
    // if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
@@ -1781,7 +1790,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 exports.getAllAccessCards = async (req, res) => {
   try {
     const userId = req.user._id; 
-
+ console.log('get all access code card',req.user)
     const user = await User.findById(userId).select('companyAccessCardDetails');
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
       return res.status(404).json({ message: 'No company access cards found.' });
