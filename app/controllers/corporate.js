@@ -821,7 +821,7 @@ exports.updateTeamMember = async (req, res) => {
             return res.status(400).json({ errors: { msg: 'Email already exists.' } });
           }
           emailChanged = true; 
-        }
+    }
 
     const teamMember = await TeamMember.findByIdAndUpdate(
       updateData._id, 
@@ -861,8 +861,27 @@ exports.updateTeamMember = async (req, res) => {
   }
 };
 
-
-
+//----------team member status update-----
+exports.updateTeamMemberStatus = async (req, res) => {
+  try {
+    const { _id } = req.body;
+    if (!_id) return res.status(400).json({ message: 'Team Member ID (_id) is required.' });
+    const existedData = await TeamMember.findById(_id);
+    if (!existedData) return res.status(404).json({ message: 'Team member not found.' });
+    console.log('Existing Data:', existedData);
+    existedData.status =existedData.status==='active'?'inactive':'active' ;
+    const updatedTeamMember = await existedData.save();
+    console.log('Updated Status:', updatedTeamMember.status);
+    res.status(200).json({
+      message: 'Team member status updated successfully',
+      status:updatedTeamMember.status
+      //updatedTeamMember,
+    });
+  } catch (err) {
+    console.error('Error updating team member status:', err);
+    utils.handleError(res, err);
+  }
+};
 //--------------delete Team Member By ID-----
 exports.deleteTeamMemberByID = async (req, res) => {
   try {

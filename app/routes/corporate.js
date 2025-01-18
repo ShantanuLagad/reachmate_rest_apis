@@ -199,7 +199,13 @@ router.delete(
   trimRequest.all,
   controller.deleteTeamMemberByID
 )
-
+//----update status Team Member
+router.patch(
+  "/updateTeamMemberStatus",
+  requireAuth,
+  trimRequest.all,
+  controller.updateTeamMemberStatus
+)
 
 
 //--------------------

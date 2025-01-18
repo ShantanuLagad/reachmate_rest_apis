@@ -1684,15 +1684,16 @@ exports.matchAccessCode = async (req, res) => {
       const isAlreadyAdded = user.companyAccessCardDetails.some((detail) =>
         detail.company_id.toString() === company._id.toString()
       );
-  
-      if (!isAlreadyAdded) {
+      if (isAlreadyAdded) return utils.handleError(res, { message: "Card already created", code: 400 })
+     
+        if (!isAlreadyAdded) {
         user.companyAccessCardDetails.push(companyAccessDetails);
         await user.save();
       }
      //----------------------
 
-    const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
-    if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
+    //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
+   // if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
 
     const otp = generateNumericOTP();
    // const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
