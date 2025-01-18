@@ -1681,7 +1681,7 @@ exports.matchAccessCode = async (req, res) => {
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
     const isTeamMemberExist = await TeamMember.findOne({ email })
-    if (!isTeamMemberExist) return utils.handleError(res, { message: "Team Member does not exist", code: 404 });
+    if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
 
     //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
    // if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
