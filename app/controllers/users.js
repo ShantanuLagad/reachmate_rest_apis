@@ -1614,7 +1614,7 @@ exports.editCardDetails = async (req, res) => {
     const owner_id = req.user._id; // Current user ID
     const card_id = req.body._id; // Card or Company ID
     const data = req.body;
-    const type = req.body.type; // "corporate" or "individual"
+    const type = req.body.cardType; // "corporate" or "individual"
 
     if (!card_id) {
       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
