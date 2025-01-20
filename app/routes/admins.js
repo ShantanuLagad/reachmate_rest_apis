@@ -352,12 +352,7 @@ router.get(
   controller.chartData
 )
 
-router.post(
-  "/sendEmailOnCompany",
-  trimRequest.all,
-  requireAuth,
-  controller.sendEmailOnCompany
-)
+
 
 router.post(
   "/getSubscription",

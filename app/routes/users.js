@@ -405,12 +405,20 @@ router.post(
   trimRequest.all,
   controller.cancelScheduledUpdate
 )
-
+//--------BT registration
 router.post(
   "/registration",
   trimRequest.all,
   controller.registration
 )
+
+//----sendEmailOnCompany to BT----
+// router.post(
+//   "/sendEmailOnCompany",
+//   trimRequest.all,
+//   requireAuth,
+//   controller.sendEmailOnCompany
+// )
 router.post(
   "/contactUs",
   trimRequest.all,

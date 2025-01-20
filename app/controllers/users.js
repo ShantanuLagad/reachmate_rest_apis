@@ -69,6 +69,8 @@ const { subscribe } = require('diagnostics_channel');
 const { error } = require('console');
 const { start } = require('repl');
 const TeamMember = require('../models/teamMember');
+const UserAccess = require('../models/userAccess');
+const { generateToken } = require('./corporate');
 /*********************
  * Private functions *
  *********************/
@@ -1497,7 +1499,8 @@ exports.addPersonalCard = async (req, res) => {
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
-    res.json({ code: 200, message: "Card Save successfully"
+    res.json({ code: 200, message: "Card Save successfully",
+      cardData:cardData
      })
   } catch (error) {
     console.log(error)
@@ -1558,87 +1561,162 @@ exports.addPersonalCard = async (req, res) => {
 // };
 
 //------when there are multiple cards of a single user
+// exports.editCardDetails = async (req, res) => {
+//   try {
+//     const owner_id = req.user._id; 
+//     const card_id = req.body._id; 
+//     const data = req.body;
+
+//     if (!card_id) {
+//       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
+//     }
+//     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
+
+//     if (existingCard) {
+      
+//       for (const field in data) {
+//         if (field === 'bio') {
+//           for (const bioField in data.bio) {
+//             existingCard.bio[bioField] = data.bio[bioField];
+//           }
+//         } else if (field === 'contact_details') {
+//           for (const contactField in data.contact_details) {
+//             existingCard.contact_details[contactField] = data.contact_details[contactField];
+//           }
+//         } else if (field === 'address') {
+//           for (const addressField in data.address) {
+//             existingCard.address[addressField] = data.address[addressField];
+//           }
+//         } else if (field === 'social_links') {
+//           for (const socialField in data.social_links) {
+//             existingCard.social_links[socialField] = data.social_links[socialField];
+//           }
+//         } else {
+//           existingCard[field] = data[field];
+//         }
+//       }
+
+      
+//       existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
+
+//       await existingCard.save();
+//       res.json({ code: 200, message: "Card updated successfully" });
+//     } else {
+//       res.json({ code: 404, message: "Card not found" });
+//     }
+//   } catch (error) {
+//     utils.handleError(res, error);
+//   }
+// };
+
 exports.editCardDetails = async (req, res) => {
   try {
-    const owner_id = req.user._id; 
-    const card_id = req.body._id; 
+    const owner_id = req.user._id; // Current user ID
+    const card_id = req.body._id; // Card or Company ID
     const data = req.body;
+    const type = req.body.type; // "corporate" or "individual"
 
     if (!card_id) {
       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
     }
-    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
 
-    if (existingCard) {
-      
-      for (const field in data) {
-        if (field === 'bio') {
-          for (const bioField in data.bio) {
-            existingCard.bio[bioField] = data.bio[bioField];
-          }
-        } else if (field === 'contact_details') {
-          for (const contactField in data.contact_details) {
-            existingCard.contact_details[contactField] = data.contact_details[contactField];
-          }
-        } else if (field === 'address') {
-          for (const addressField in data.address) {
-            existingCard.address[addressField] = data.address[addressField];
-          }
-        } else if (field === 'social_links') {
-          for (const socialField in data.social_links) {
-            existingCard.social_links[socialField] = data.social_links[socialField];
-          }
-        } else {
-          existingCard[field] = data[field];
-        }
+    let model = null;
+    let existingEntity = null;
+
+    if (type === "individual") {
+      // Look in CardDetails for individual type
+      existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
+      model = CardDetials;
+    } else if (type === "corporate") {
+      // First, look in CardDetails
+      existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
+      if (!existingEntity) {
+        // If not found in CardDetails, look in Company
+        existingEntity = await Company.findOne({ _id: card_id });
+        model = Company;
       }
-
-      
-      existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
-
-      await existingCard.save();
-      res.json({ code: 200, message: "Card updated successfully" });
     } else {
-      res.json({ code: 404, message: "Card not found" });
+      return res.status(400).json({ code: 400, message: "Invalid type. Allowed values: 'individual', 'corporate'." });
     }
+
+    if (!existingEntity) {
+      return res.status(404).json({ code: 404, message: "Entity not found" });
+    }
+
+    // Update fields dynamically
+    for (const field in data) {
+      if (field === 'bio') {
+        for (const bioField in data.bio) {
+          existingEntity.bio[bioField] = data.bio[bioField];
+        }
+      } else if (field === 'contact_details') {
+        for (const contactField in data.contact_details) {
+          existingEntity.contact_details[contactField] = data.contact_details[contactField];
+        }
+      } else if (field === 'address') {
+        for (const addressField in data.address) {
+          existingEntity.address[addressField] = data.address[addressField];
+        }
+      } else if (field === 'social_links') {
+        for (const socialField in data.social_links) {
+          existingEntity.social_links[socialField] = data.social_links[socialField];
+        }
+      } else {
+        existingEntity[field] = data[field];
+      }
+    }
+
+    // Update the full_name in the bio for both types if bio exists
+    if (existingEntity.bio) {
+      existingEntity.bio.full_name = `${existingEntity.bio.first_name}${existingEntity.bio.last_name ? ` ${existingEntity.bio.last_name}` : ""}`;
+    }
+
+    await existingEntity.save();
+    res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Card"} updated successfully` });
+
   } catch (error) {
+    console.error(error);
     utils.handleError(res, error);
   }
 };
+
 
 //---------make Individual card Primary
 exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
     const card_id = req.body._id;
-
-    
-    if (!card_id) {
-      return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
-    }
-
-    
+    if (!card_id)return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
-
+    let existingAccessCard;
     if (!existingCard) {
-      return res.status(404).json({ code: 404, message: "Card not found" });
+      existingAccessCard = await Company.findOne({ _id: card_id });
+      if (!existingAccessCard) {
+        return res.status(404).json({ code: 404, message: "Card not found" });
+      }
     }
-
-    
     await CardDetials.updateMany(
       { owner_id, _id: { $ne: card_id } },
       { $set: { primary_card: false } }
     );
-
-    
-    existingCard.primary_card = true;
-    await existingCard.save();
-
+    await Company.updateMany(
+      { _id: { $ne: card_id } },
+      { $set: { primary_card: false } }
+    );
+    if (existingCard) {
+      existingCard.primary_card = true;
+      await existingCard.save();
+    } else if (existingAccessCard) {
+      existingAccessCard.primary_card = true;
+      await existingAccessCard.save();
+    }
     res.json({ code: 200, message: "Primary card updated successfully" });
   } catch (error) {
+    console.error("Error updating primary card:", error);
     utils.handleError(res, error);
   }
 };
+
 
 // exports.matchAccessCode = async (req, res) => {
 //   try {
@@ -1680,7 +1758,7 @@ exports.matchAccessCode = async (req, res) => {
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
-    const isTeamMemberExist = await TeamMember.findOne({ email })
+    const isTeamMemberExist = await TeamMember.findOne({work_email: email })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
 
     //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
@@ -1689,7 +1767,7 @@ exports.matchAccessCode = async (req, res) => {
     const otp = generateNumericOTP();
    // const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
    // const otpData = new Otp({ email, otp, expired: expirationTime });
-
+   await Otp.deleteMany({ email });
    const otpData = new Otp({ email, otp});
     await otpData.save();
 
@@ -1714,75 +1792,77 @@ exports.matchAccessCode = async (req, res) => {
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const userId = req.user._id; 
+    const userId = req.user._id;
 
-    console.log('verif OTP and fetch company',req.body)
+    console.log('Verifying OTP and fetching company:', req.body);
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
-    // const otpRecord = await Otp.findOne({ email, otp, used: false, expired: { $gte: new Date() } });
-    const otpRecord = await Otp.findOne({ 
-      email, 
-      used: false
-    }).sort({ createdAt: -1 });     
-    //console.log('verif OTP RECORD',otpRecord)
 
+    const otpRecord = await Otp.findOne({ email, used: false })
+      .sort({ createdDate: -1 }); 
     if (!otpRecord) {
-      return res.status(400).json({ message: 'No OTP found for this email.OTP was sent on' });
+      return res.status(404).json({ message: 'OTP not found or already used.' });
     }
+
     if (otpRecord.otp !== otp) {
       return res.status(400).json({ message: 'Invalid OTP.' });
     }
-    if (otpRecord.used) {
-      return res.status(400).json({ message: 'This OTP has already been used.' });
-    }
-    if (otpRecord.expired && otpRecord.expired < new Date()) {
+    if (Date.now() > otpRecord.expired) {
       return res.status(400).json({ message: 'This OTP has expired.' });
     }
 
-    const email_domain = extractDomainFromEmail(email) ? extractDomainFromEmail(email) :email.split('@')[1];
-    const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
-    if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
-   // if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-     //----------------------
+    const emailDomain = email.split('@')[1];
+    const company = await Company.findOne(
+      { email_domain: emailDomain },
+      { password: 0, decoded_password: 0 }
+    );
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found.' });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ errors: { msg: 'User not found.' } });
+      return res.status(404).json({ message: 'User not found.' });
     }
-      const companyAccessDetails = {
-        company_id: company._id,
-        email_domain: company.email_domain,
-        company_name: company.company_name,
-        access_code: company.access_code,
-      };
-  
-      const isAlreadyAdded = user.companyAccessCardDetails.some((detail) =>
-        detail.company_id.toString() === company._id.toString()
-      );
-      if (isAlreadyAdded) return utils.handleError(res, { message: "Card already created", code: 400 })
-     
-        if (!isAlreadyAdded) {
-        user.companyAccessCardDetails.push(companyAccessDetails);
-        await user.save();
-      }
-     //----------------------
+
+    const companyAccessDetails = {
+      company_id: company._id,
+      email_domain: company.email_domain,
+      company_name: company.company_name,
+      access_code: company.access_code,
+    };
+
+    const isAlreadyAdded = user.companyAccessCardDetails.some(
+      (detail) => detail.company_id.toString() === company._id.toString()
+    );
+
+    if (!isAlreadyAdded) {
+      const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+      company.primary_card = isFirstCard;
+      await company.save();
+
+      user.companyAccessCardDetails.push(companyAccessDetails);
+      await user.save();
+    }
+
     otpRecord.used = true;
     await otpRecord.save();
-    //-------
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-    await Otp.deleteMany({ used: true, createdAt: { $lt: threeDaysAgo } });
-    // await Promise.all([
-    //   Otp.deleteMany({ expired: { $lt: new Date() }, used: true }),
-    //   otpRecord.save(),
-    // ]);
 
-    res.status(200).json({ 
-      code:200,
-      message: 'OTP verified successfully!', data: company });
+    res.status(200).json({
+      message: isAlreadyAdded
+        ? 'Card was already created.'
+        : 'OTP verified successfully!',
+      data: company,
+    });
   } catch (error) {
-    utils.handleError(res, error);
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ message: 'Internal server error.', error });
   }
 };
+
+
 
 
 //--------------------------GET ALL ACCESS CARDS OF A USER--------
@@ -3954,9 +4034,10 @@ exports.cancelScheduledUpdate = async (req, res) => {
   }
 }
 
+//-------------Business team(corp. Admin) Register------------
 exports.registration = async (req, res) => {
   try {
-    const { first_name, last_name, email, country_code, mobile_number, company_name, country, how_can_we_help_you } = req.body;
+    const { first_name, last_name, email, country_code, mobile_number, company_name, country, how_can_we_help_you,production } = req.body;
 
     const isEmailExistInCompany = await Company.findOne({ email: email });
     if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })
@@ -3990,12 +4071,91 @@ exports.registration = async (req, res) => {
     const register = new Registration(data);
     await register.save()
 
+    const userInfo = {
+      id: savedUser._id,
+      first_name:register.first_name ,
+      last_name:register.last_name ,
+      email:register. email,
+      country_code:register. country_code,
+      mobile_number:register.mobile_number ,
+      company_name:register.company_name ,
+      country:register.country ,
+      how_can_we_help_you:register.how_can_we_help_you,
+    };
+    // const verificationToken= generateToken(userInfo.id);
+    // await emailer.setPasswordBusinessTeamEmail(req.body.locale || 'en', 
+    //       userInfo,"registerBusinessTeamVerification",verificationToken);
+    
+    const locale = req.getLocale()
+    const dataForMail = {
+      subject: 'Approval Granted: Your Reachmate Account Creation Request',
+      company_name: `${userInfo.first_name} ${userInfo.last_name}`,
+      email: userInfo.email,
+      link: `${production === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${userInfo.email}`
+    }
+
+    emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
+
     res.json({ message: "Registeration successfully", code: 200 })
   } catch (error) {
     console.log
     utils.handleError(res, error)
   }
 }
+//-----------------
+// exports.sendEmailOnCompany = async (req, res) => {
+//   try {
+//     const { _id, status, prodcution } = req.body;
+
+
+//     if (!["accepted", "declined"].includes(status)) return handleError(res, { message: "Invalid status", code: 400 });
+
+//     const registration = await Registration.findById(_id);
+//     if (!registration) return handleError(res, { message: "Company request not found", code: 404 });
+//     if (registration.status !== "pending") return handleError(res, { message: `Company request already ${registration.status}`, code: 400 });
+
+//     await Registration.findByIdAndUpdate(_id, { status: status });
+
+//     const locale = req.getLocale()
+
+//     if (status === "accepted") {
+//       const dataForMail = {
+//         subject: 'Approval Granted: Your Reachmate Account Creation Request',
+//         company_name: `${registration.first_name} ${registration.last_name}`,
+//         email: registration.email,
+//         link: `${prodcution === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${registration.email}`
+//       }
+
+//       emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
+     
+//       res.json({ message: "Approval email has been sent successfully", code: 200 })
+//     } else {
+//       res.json({ message: `Company request have been ${status}`, code: 200 })
+//     }
+
+//   } catch (error) {
+//     handleError(res, error);
+//   }
+// }
+
+//-----------Set Password For Business Team Admin-------
+// exports.setPassword = async (req, res) => {
+//   try {
+//     const { token, password } = req.body;
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await Registration.findOne({ email: decoded.email });
+
+//     if (!user) return utils.handleError(res, { message: 'Invalid or expired token', code: 400 });
+
+//     user.password = await auth.hashPassword(password);
+//     await user.save();
+
+//     res.json({ message: 'Password set successfully', code: 200 });
+//   } catch (error) {
+//     utils.handleError(res, error);
+//   }
+// };
 
 
 exports.contactUs = async (req, res) => {

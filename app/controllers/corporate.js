@@ -146,6 +146,7 @@ const generateToken = (_id, role, remember_me) => {
     )
   )
 }
+exports.generateToken = generateToken
 
 const saveUserAccessAndReturnToken = async (req, user, remember_me) => {
   return new Promise((resolve, reject) => {
@@ -366,7 +367,7 @@ exports.changePassword = async (req, res) => {
   }
 }
 
-
+//--------------Corp. Business admin Login
 exports.login = async (req, res) => {
   try {
     const data = req.body;
@@ -1854,67 +1855,6 @@ exports.cancelScheduledUpdate = async (req, res) => {
 //     utils.handleError(res, error)
 //   }
 // }
-
-
-exports.createCompanyAccount = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const isEmailExist = await Company.findOne({ email: email });
-    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
-
-    const emailDomain = extractDomainFromEmail(email);
-    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
-    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
-
-
-    const isApprovedByAdmin = await Registration.findOne({ email: email });
-    if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
-
-    // const access_code = generator.generate({
-    //   length: 6,
-    //   numbers: true,
-    //   uppercase: true
-    // });
-    
-    const access_code = generateAccessCode();
-
-
-    const dataForCompany = {
-      email: email,
-      access_code: access_code.toUpperCase(),
-      password: password,
-      decoded_password: password,
-      email_domain: emailDomain,
-      company_name: isApprovedByAdmin.company_name,
-      type: "admin",
-      bio: {
-        first_name: isApprovedByAdmin.first_name,
-        last_name: isApprovedByAdmin.last_name,
-        full_name: `${isApprovedByAdmin?.first_name}${isApprovedByAdmin?.last_name ? ` ${isApprovedByAdmin?.last_name}` : ""}`,
-      },
-      contact_details: {
-        country_code: isApprovedByAdmin?.country_code ?? "",
-        mobile_number: isApprovedByAdmin?.mobile_number ?? "",
-      },
-      address: {
-        country: isApprovedByAdmin.country
-      }
-    }
-
-    const company = new Company(dataForCompany);
-    await company.save();
-
-    const userObj = company.toJSON()
-
-    res.json({ message: "Company registered successfully", ...(await saveUserAccessAndReturnToken(req, userObj, true)), code: 200 })
-  } catch (error) {
-    console.log(error)
-    utils.handleError(res, error)
-  }
-}
-
-
 
 exports.createSubAdmin = async (req, res) => {
   try {

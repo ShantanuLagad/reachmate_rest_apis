@@ -48,6 +48,10 @@ const CompanySchema = new mongoose.Schema(
       type: String,
       enum: ["both", "name", "logo"],
     },
+    primary_card : {
+      type:Boolean,
+      default:false
+  },
     company_id: {
       type: mongoose.Schema.Types.ObjectId,
     },

@@ -2196,40 +2196,6 @@ exports.chartData = async (req, res) => {
 }
 
 
-exports.sendEmailOnCompany = async (req, res) => {
-  try {
-    const { _id, status, prodcution } = req.body;
-
-
-    if (!["accepted", "declined"].includes(status)) return handleError(res, { message: "Invalid status", code: 400 });
-
-    const registration = await Registration.findById(_id);
-    if (!registration) return handleError(res, { message: "Company request not found", code: 404 });
-    if (registration.status !== "pending") return handleError(res, { message: `Company request already ${registration.status}`, code: 400 });
-
-    await Registration.findByIdAndUpdate(_id, { status: status });
-
-    const locale = req.getLocale()
-
-    if (status === "accepted") {
-
-      const dataForMail = {
-        subject: 'Approval Granted: Your Reachmate Account Creation Request',
-        company_name: `${registration.first_name} ${registration.last_name}`,
-        email: registration.email,
-        link: `${prodcution === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${registration.email}`
-      }
-
-      emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
-      res.json({ message: "Approval email has been sent successfully", code: 200 })
-    } else {
-      res.json({ message: `Company request have been ${status}`, code: 200 })
-    }
-
-  } catch (error) {
-    handleError(res, error);
-  }
-}
 
 
 // exports.actionOnCompanyRequest = async (req , res) => {

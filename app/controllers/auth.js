@@ -20,6 +20,7 @@ const Subscription = require("../models/subscription");
 const CardDetials = require('../models/cardDetials')
 const PaidByCompany = require("../models/paid_by_company")
 const VerificationToken = require('../models/verificationToken');
+const Company = require("../models/company")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -452,6 +453,82 @@ const registerUser = async req => {
       resolve(item)
     })
   })
+}
+
+//------------
+//-----------Set Password For Business Team Admin-------
+exports.createCompanyAccount = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const isEmailExist = await Company.findOne({ email: email });
+    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
+
+    const emailDomain = extractDomainFromEmail(email);
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
+
+
+    const isEmailRegistered = await Registration.findOne({ email: email });
+    // if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
+
+    // const access_code = generator.generate({
+    //   length: 6,
+    //   numbers: true,
+    //   uppercase: true
+    // });
+    
+    const access_code = generateAccessCode();
+
+
+    const dataForCompany = {
+      email: email,
+      access_code: access_code.toUpperCase(),
+      password: password,
+      decoded_password: password,
+      email_domain: emailDomain,
+      company_name: isEmailRegistered.company_name,
+      type: "admin",
+      bio: {
+        first_name: isEmailRegistered.first_name,
+        last_name: isEmailRegistered.last_name,
+        full_name: `${isEmailRegistered?.first_name}${isEmailRegistered?.last_name ? ` ${isEmailRegistered?.last_name}` : ""}`,
+      },
+      contact_details: {
+        country_code: isEmailRegistered?.country_code ?? "",
+        mobile_number: isEmailRegistered?.mobile_number ?? "",
+      },
+      address: {
+        country: isEmailRegistered.country
+      }
+    }
+
+    const company = new Company(dataForCompany);
+    await company.save();
+
+    const userObj = company.toJSON()
+
+    res.json({ message: "Company registered successfully", ...(await saveUserAccessAndReturnToken(req, userObj, true)), code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+function extractDomainFromEmail(email) {
+  // Split the email address at the "@" symbol
+  const parts = email.split('@');
+ //console.log('email parts',parts)
+  // Check if the email has the correct format
+  if (parts.length !== 2) {
+    console.error('Invalid email address format');
+    return null;
+  }
+
+  // Extract and return the domain part
+  const domain = parts[1];
+  return domain;
 }
 
 /**

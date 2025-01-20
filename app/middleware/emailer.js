@@ -131,7 +131,7 @@ module.exports = {
     prepareToSendEmail(user, subject, htmlMessage)
   },
 
-  //------------------------------SEND EMAIL VERIFICATION URL----------
+  //---------------------User---------SEND EMAIL VERIFICATION URL----------
 
   async sendVerificationEmail(locale, user, template,Token) {
     return new Promise(async (resolve, reject) => {
@@ -159,7 +159,7 @@ module.exports = {
             to: user.email,
             subject: `Verify Email - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
-            verification_link: `https://reachmate.vercel.app/emailVerified?token=${Token}`,
+            verification_link: `${process.env.PRODUCTION_WEBSITE_URL}/emailVerified?token=${Token}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
@@ -267,6 +267,51 @@ module.exports = {
               console.log("There was an error sending the email" + err);
             } else {
               console.log("VERIFICATION EMAIL SENT");
+              resolve(true);
+            }
+
+          }
+        );
+      } catch (err) {
+        reject(buildErrObject(422, err.message));
+      }
+    })
+  },
+
+  //--------------------Register Business Team Set Password---------
+  async setPasswordBusinessTeamEmail(locale, user, template,Token) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        user = JSON.parse(JSON.stringify(user));
+        //console.log("user========", user,'tokennnnn>>>>',Token)
+        //const token = jwt.sign({ data: user._id, }, process.env.JWT_SECRET, { expiresIn: "24h" });
+        if (!user.first_name) {
+          user.first_name = "user";
+        }
+        if (!user.last_name) {
+          user.last_name = "";
+        }
+        const verificationToken = new VerificationToken({
+          email: user.email,
+          token: Token
+        });
+        await verificationToken.save();
+        app.mailer.send(
+          `${locale}/${template}`,
+          {
+            to: user.email,
+            subject: `Set Password - ${process.env.APP_NAME}`,
+            name: `${user.first_name} ${user.last_name}`,
+            verification_link: `${process.env.PRODUCTION_WEBSITE_URL}/CreateAccount?token=${Token}`,
+            company_name:user.company_name,
+            website_url: process.env.PRODUCTION_WEBSITE_URL,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+          },
+          function (err) {
+            if (err) {
+              console.log("There was an error sending the email" + err);
+            } else {
+              console.log("SET PASSWORD EMAIL SENT");
               resolve(true);
             }
 

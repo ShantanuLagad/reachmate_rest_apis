@@ -194,5 +194,11 @@ router.post("/token",
   requireAuth,
   controller.token
 )
+//--------setPassword and create Company
+router.post(
+  "/createCompanyAccount",
+  trimRequest.all,
+  controller.createCompanyAccount
+)
 
 module.exports = router

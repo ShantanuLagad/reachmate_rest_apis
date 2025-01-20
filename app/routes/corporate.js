@@ -295,14 +295,6 @@ router.post(
   trimRequest.all,
   controller.cancelScheduledUpdate
 )
-
-router.post(
-  "/createCompanyAccount",
-  trimRequest.all,
-  controller.createCompanyAccount
-)
-
-
 router.post(
   "/createSubAdmin",
   trimRequest.all,
