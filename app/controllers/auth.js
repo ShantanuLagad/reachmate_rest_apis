@@ -21,6 +21,7 @@ const CardDetials = require('../models/cardDetials')
 const PaidByCompany = require("../models/paid_by_company")
 const VerificationToken = require('../models/verificationToken');
 const Company = require("../models/company")
+const Registration = require("../models/registration")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -456,6 +457,34 @@ const registerUser = async req => {
 }
 
 //------------
+function generateAccessCode() {
+  // Generate 4 random characters
+  var chars = '';
+  var charLength = 4;
+  for (var i = 0; i < charLength; i++) {
+      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  }
+  
+  // Generate 2 random digits
+  var digits = '';
+  var digitLength = 2;
+  for (var j = 0; j < digitLength; j++) {
+      digits += Math.floor(Math.random() * 10);
+  }
+  
+  // Combine characters and digits
+  var code = chars + digits;
+  // Convert to array to shuffle
+  var codeArray = code.split('');
+  for (var k = codeArray.length - 1; k > 0; k--) {
+      var randIndex = Math.floor(Math.random() * (k + 1));
+      var temp = codeArray[k];
+      codeArray[k] = codeArray[randIndex];
+      codeArray[randIndex] = temp;
+  }
+  code = codeArray.join('');
+  return code;
+}
 //-----------Set Password For Business Team Admin-------
 exports.createCompanyAccount = async (req, res) => {
   try {
@@ -506,15 +535,13 @@ exports.createCompanyAccount = async (req, res) => {
     const company = new Company(dataForCompany);
     await company.save();
 
-    const userObj = company.toJSON()
-
-    res.json({ message: "Company registered successfully", ...(await saveUserAccessAndReturnToken(req, userObj, true)), code: 200 })
+    res.json({ message: "Company registered successfully.",  code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
 }
-
+//-------------------------------------------------------
 
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol

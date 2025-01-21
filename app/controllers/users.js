@@ -1139,20 +1139,16 @@ exports.changePassword = async (req, res) => {
     const userId = req.user._id;
     const { oldPassword, newPassword } = req.body;
 
-    // Validate if oldPassword and newPassword are provided
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ code: 400, message: "Both oldPassword and newPassword are required." });
     }
 
-    // Fetch the user from the database
     const user = await User.findById(userId);
 
-    // Validate if the user exists
     if (!user) {
       return res.status(404).json({ code: 404, message: "User not found." });
     }
 
-    // Validate the old password
     const isPasswordMatch = await auth.checkPassword(oldPassword, user)
     if (!isPasswordMatch) {
       return res.status(401).json({ code: 401, message: "Old password is incorrect." });
@@ -1160,7 +1156,6 @@ exports.changePassword = async (req, res) => {
     } else {
 
 
-      // Update the password with the new one
       user.password = newPassword;
       await user.save();
       res.json({ code: 200, message: "Password changed successfully." });
@@ -1438,11 +1433,7 @@ exports.addPersonalCard = async (req, res) => {
     const user=req.user
     console.log('USerrr',user)
     const owner_id = req.user._id;
-    // const owner_id = req.body.owner_id
-
-    //-----to check that user has only one card
-    // const isCardExist = await CardDetials.findOne({ owner_id: owner_id });
-    // if (isCardExist) return utils.handleError(res, { message: "Card already create", code: 400 })
+    
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
     console.log('cardd is first card',isFirstCard)
     const data = req.body;
@@ -1508,113 +1499,14 @@ exports.addPersonalCard = async (req, res) => {
   }
 }
 
-//----------when there is single card for one user
-// exports.editCardDetails = async (req, res) => {
-//   try {
-//     // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-//     // if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
-//     const owner_id = req.user._id;
-//     const data = req.body;
-//     const existingCard = await CardDetials.findOne({ owner_id });
-
-//     if (existingCard) {
-//       // Update existing card details dynamically based on provided fields
-//       for (const field in data) {
-//         if (field === 'bio') {
-//           // Update bio fields
-//           for (const bioField in data.bio) {
-//             existingCard.bio[bioField] = data.bio[bioField];
-//           }
-//         } else if (field === 'contact_details') {
-//           // Update contact details fields
-//           for (const contactField in data.contact_details) {
-//             existingCard.contact_details[contactField] = data.contact_details[contactField];
-//           }
-//         } else if (field === 'address') {
-//           // Update address fields
-//           for (const addressField in data.address) {
-//             existingCard.address[addressField] = data.address[addressField];
-//           }
-//         } else if (field === 'social_links') {
-//           // Update social links fields
-//           for (const socialField in data.social_links) {
-//             existingCard.social_links[socialField] = data.social_links[socialField];
-//           }
-//         } else {
-//           // Update other top-level fields
-//           existingCard[field] = data[field];
-//         }
-//       }
-
-//       existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
-
-//       await existingCard.save();
-//       res.json({ code: 200, message: "Card updated successfully" });
-//     } else {
-
-//       res.json({ code: 404, message: "Card not found" });
-//     }
-//   } catch (error) {
-//     utils.handleError(res, error);
-//   }
-// };
-
-//------when there are multiple cards of a single user
-// exports.editCardDetails = async (req, res) => {
-//   try {
-//     const owner_id = req.user._id; 
-//     const card_id = req.body._id; 
-//     const data = req.body;
-
-//     if (!card_id) {
-//       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
-//     }
-//     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
-
-//     if (existingCard) {
-      
-//       for (const field in data) {
-//         if (field === 'bio') {
-//           for (const bioField in data.bio) {
-//             existingCard.bio[bioField] = data.bio[bioField];
-//           }
-//         } else if (field === 'contact_details') {
-//           for (const contactField in data.contact_details) {
-//             existingCard.contact_details[contactField] = data.contact_details[contactField];
-//           }
-//         } else if (field === 'address') {
-//           for (const addressField in data.address) {
-//             existingCard.address[addressField] = data.address[addressField];
-//           }
-//         } else if (field === 'social_links') {
-//           for (const socialField in data.social_links) {
-//             existingCard.social_links[socialField] = data.social_links[socialField];
-//           }
-//         } else {
-//           existingCard[field] = data[field];
-//         }
-//       }
-
-      
-//       existingCard.bio.full_name = `${existingCard.bio.first_name}${existingCard.bio.last_name ? ` ${existingCard.bio.last_name}` : ""}`;
-
-//       await existingCard.save();
-//       res.json({ code: 200, message: "Card updated successfully" });
-//     } else {
-//       res.json({ code: 404, message: "Card not found" });
-//     }
-//   } catch (error) {
-//     utils.handleError(res, error);
-//   }
-// };
 
 exports.editCardDetails = async (req, res) => {
   try {
-    const owner_id = req.user._id; // Current user ID
-    const card_id = req.body._id; // Card or Company ID
+    const owner_id = req.user._id; 
+    const card_id = req.body._id; 
     const data = req.body;
-    const type = req.body.cardType; // "corporate" or "individual"
+    const type = req.body.cardType; 
 
     if (!card_id) {
       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
@@ -1624,14 +1516,11 @@ exports.editCardDetails = async (req, res) => {
     let existingEntity = null;
 
     if (type === "individual") {
-      // Look in CardDetails for individual type
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
       model = CardDetials;
     } else if (type === "corporate") {
-      // First, look in CardDetails
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
       if (!existingEntity) {
-        // If not found in CardDetails, look in Company
         existingEntity = await Company.findOne({ _id: card_id });
         model = Company;
       }
@@ -1643,7 +1532,6 @@ exports.editCardDetails = async (req, res) => {
       return res.status(404).json({ code: 404, message: "Entity not found" });
     }
 
-    // Update fields dynamically
     for (const field in data) {
       if (field === 'bio') {
         for (const bioField in data.bio) {
@@ -1665,14 +1553,12 @@ exports.editCardDetails = async (req, res) => {
         existingEntity[field] = data[field];
       }
     }
-
-    // Update the full_name in the bio for both types if bio exists
     if (existingEntity.bio) {
       existingEntity.bio.full_name = `${existingEntity.bio.first_name}${existingEntity.bio.last_name ? ` ${existingEntity.bio.last_name}` : ""}`;
     }
 
     await existingEntity.save();
-    res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Card"} updated successfully` });
+    res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Individual"} updated successfully` });
 
   } catch (error) {
     console.error(error);
@@ -1681,7 +1567,6 @@ exports.editCardDetails = async (req, res) => {
 };
 
 
-//---------make Individual card Primary
 exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
@@ -1718,26 +1603,6 @@ exports.makeIndividualCardPrimary = async (req, res) => {
 };
 
 
-// exports.matchAccessCode = async (req, res) => {
-//   try {
-//     const { email, access_code } = req.body;
-
-//     const email_domain = extractDomainFromEmail(email);
-//     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
-//     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
-
-//     // if (company.email === email) return utils.handleError(res, { message: "Can not create card on compnay email", code: 400 })
-
-//     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
-//     const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
-//     if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
-
-
-//     res.json({ code: 200, data: company })
-//   } catch (error) {
-//     utils.handleError(res, error)
-//   }
-// }
 
 
 const generateNumericOTP = () => {
@@ -1753,7 +1618,7 @@ exports.matchAccessCode = async (req, res) => {
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
-    const email_domain = extractDomainFromEmail(email) ? extractDomainFromEmail(email) :email.split('@')[1];
+    const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
@@ -1761,12 +1626,10 @@ exports.matchAccessCode = async (req, res) => {
     const isTeamMemberExist = await TeamMember.findOne({work_email: email })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
 
-    //const isCardExist = await CardDetials.findOne({ "contact_details.email": email })
-   // if (isCardExist) return utils.handleError(res, { message: "Card already created", code: 400 })
+    
 
     const otp = generateNumericOTP();
-   // const expirationTime = new Date(Date.now() + 5 * 60 * 1000); 
-   // const otpData = new Otp({ email, otp, expired: expirationTime });
+  
    await Otp.deleteMany({ email });
    const otpData = new Otp({ email, otp});
     await otpData.save();
@@ -1777,15 +1640,13 @@ exports.matchAccessCode = async (req, res) => {
       last_name: user.last_name,
       email: email,
       otp:otp,
-      //expirationTime:expirationTime
       }, "matchAccessCodeOTP");
     res.status(200).json({ 
       code:200,
       message: 'OTP sent successfully!' });
   } catch (error) {
     utils.handleError(res, error)
-    // console.error("Error in matchAccessCode API:", error);
-    //res.status(500).json({ message: 'Failed to send OTP', error: error.message || error });
+    
   }
 };
 
@@ -1865,7 +1726,6 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 
 
 
-//--------------------------GET ALL ACCESS CARDS OF A USER--------
 
 exports.getAllAccessCards = async (req, res) => {
   try {
@@ -4034,10 +3894,10 @@ exports.cancelScheduledUpdate = async (req, res) => {
   }
 }
 
-//-------------Business team(corp. Admin) Register------------
 exports.registration = async (req, res) => {
   try {
-    const { first_name, last_name, email, country_code, mobile_number, company_name, country, how_can_we_help_you,production } = req.body;
+    const { first_name, last_name, email, country_code, mobile_number, 
+      company_name, country, how_can_we_help_you,production } = req.body;
 
     const isEmailExistInCompany = await Company.findOne({ email: email });
     if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })
@@ -4055,8 +3915,6 @@ exports.registration = async (req, res) => {
     //   console.log("isPhoneNumberExist", isPhoneNumberExist)
     //   if (isPhoneNumberExist) return utils.handleError(res, { message: "You have already register", code: 400 });
     // }
-
-
     const data = {
       first_name,
       last_name,
@@ -4067,12 +3925,9 @@ exports.registration = async (req, res) => {
       country,
       how_can_we_help_you
     }
-
     const register = new Registration(data);
-    await register.save()
-
     const userInfo = {
-      id: savedUser._id,
+      id: register._id,
       first_name:register.first_name ,
       last_name:register.last_name ,
       email:register. email,
@@ -4082,81 +3937,31 @@ exports.registration = async (req, res) => {
       country:register.country ,
       how_can_we_help_you:register.how_can_we_help_you,
     };
-    // const verificationToken= generateToken(userInfo.id);
-    // await emailer.setPasswordBusinessTeamEmail(req.body.locale || 'en', 
-    //       userInfo,"registerBusinessTeamVerification",verificationToken);
-    
     const locale = req.getLocale()
+    const isProduction = process.env.NODE_ENV === 'production';
+    const baseURL = isProduction
+    ? process.env.PRODUCTION_WEBSITE_URL
+    : process.env.LOCAL_WEBSITE_URL;
+
     const dataForMail = {
-      subject: 'Approval Granted: Your Reachmate Account Creation Request',
-      company_name: `${userInfo.first_name} ${userInfo.last_name}`,
-      email: userInfo.email,
-      link: `${production === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${userInfo.email}`
-    }
+        subject: 'Your Reachmate Account Creation',
+        company_name: `${userInfo.first_name} ${userInfo.last_name}`,
+        email: userInfo.email,
+        link: `${baseURL}CreateAccount?email=${userInfo.email}`
+    };
+
 
     emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
-
-    res.json({ message: "Registeration successfully", code: 200 })
+    await register.save()
+    
+    res.json({ 
+      message: "Registeration successfully.Verification link has been sent on email to verify and set password. ",
+      code: 200 })
   } catch (error) {
     console.log
     utils.handleError(res, error)
   }
 }
-//-----------------
-// exports.sendEmailOnCompany = async (req, res) => {
-//   try {
-//     const { _id, status, prodcution } = req.body;
-
-
-//     if (!["accepted", "declined"].includes(status)) return handleError(res, { message: "Invalid status", code: 400 });
-
-//     const registration = await Registration.findById(_id);
-//     if (!registration) return handleError(res, { message: "Company request not found", code: 404 });
-//     if (registration.status !== "pending") return handleError(res, { message: `Company request already ${registration.status}`, code: 400 });
-
-//     await Registration.findByIdAndUpdate(_id, { status: status });
-
-//     const locale = req.getLocale()
-
-//     if (status === "accepted") {
-//       const dataForMail = {
-//         subject: 'Approval Granted: Your Reachmate Account Creation Request',
-//         company_name: `${registration.first_name} ${registration.last_name}`,
-//         email: registration.email,
-//         link: `${prodcution === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${registration.email}`
-//       }
-
-//       emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
-     
-//       res.json({ message: "Approval email has been sent successfully", code: 200 })
-//     } else {
-//       res.json({ message: `Company request have been ${status}`, code: 200 })
-//     }
-
-//   } catch (error) {
-//     handleError(res, error);
-//   }
-// }
-
-//-----------Set Password For Business Team Admin-------
-// exports.setPassword = async (req, res) => {
-//   try {
-//     const { token, password } = req.body;
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await Registration.findOne({ email: decoded.email });
-
-//     if (!user) return utils.handleError(res, { message: 'Invalid or expired token', code: 400 });
-
-//     user.password = await auth.hashPassword(password);
-//     await user.save();
-
-//     res.json({ message: 'Password set successfully', code: 200 });
-//   } catch (error) {
-//     utils.handleError(res, error);
-//   }
-// };
-
 
 exports.contactUs = async (req, res) => {
   try {

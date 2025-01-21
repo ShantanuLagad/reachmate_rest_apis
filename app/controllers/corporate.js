@@ -82,34 +82,7 @@ async function giveTrialIfNotGive(user_id) {
   return value
 }
 
-function generateAccessCode() {
-  // Generate 4 random characters
-  var chars = '';
-  var charLength = 4;
-  for (var i = 0; i < charLength; i++) {
-      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
-  }
-  
-  // Generate 2 random digits
-  var digits = '';
-  var digitLength = 2;
-  for (var j = 0; j < digitLength; j++) {
-      digits += Math.floor(Math.random() * 10);
-  }
-  
-  // Combine characters and digits
-  var code = chars + digits;
-  // Convert to array to shuffle
-  var codeArray = code.split('');
-  for (var k = codeArray.length - 1; k > 0; k--) {
-      var randIndex = Math.floor(Math.random() * (k + 1));
-      var temp = codeArray[k];
-      codeArray[k] = codeArray[randIndex];
-      codeArray[randIndex] = temp;
-  }
-  code = codeArray.join('');
-  return code;
-}
+
 
 
 function extractDomainFromEmail(email) {
@@ -367,7 +340,6 @@ exports.changePassword = async (req, res) => {
   }
 }
 
-//--------------Corp. Business admin Login
 exports.login = async (req, res) => {
   try {
     const data = req.body;

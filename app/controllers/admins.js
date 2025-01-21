@@ -295,7 +295,7 @@ exports.forgotPassword = async (req, res) => {
     const emailData = {
       email: user.email,
       name: user.name,
-      url: data.production === false ? `${process.env.LOCAL_FRONTEND_URL}ui/Resetpassword/${token}` : `${process.env.PRODUCTION_FRONTEND_URL}ui/Resetpassword/${token}`
+      url: data.production === false ? `${process.env.LOCAL_ADMIN_URL}ui/Resetpassword/${token}` : `${process.env.PRODUCTION_FRONTEND_URL}ui/Resetpassword/${token}`
     }
 
     console.log("url==============", emailData.url)
