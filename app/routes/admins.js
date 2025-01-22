@@ -206,7 +206,6 @@ router.post(
   controller.deleteAdminNotification
 )
 
-
 router.delete(
   "/deletePersonalCardHolders/:user_id",
   requireAuth,

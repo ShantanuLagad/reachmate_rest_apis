@@ -151,7 +151,10 @@ module.exports = {
           token: Token
         });
         await verificationToken.save();
-
+        const isProduction = process.env.NODE_ENV === 'production';
+        const baseURL = isProduction
+        ? process.env.PRODUCTION_WEBSITE_URL
+        : process.env.LOCAL_WEBSITE_URL;
 
         app.mailer.send(
           `${locale}/${template}`,
@@ -159,7 +162,7 @@ module.exports = {
             to: user.email,
             subject: `Verify Email - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
-            verification_link: `${process.env.PRODUCTION_WEBSITE_URL}/emailVerified?token=${Token}`,
+            verification_link: `${baseURL}/emailVerified?token=${Token}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
@@ -296,13 +299,17 @@ module.exports = {
           token: Token
         });
         await verificationToken.save();
+        const isProduction = process.env.NODE_ENV === 'production';
+        const baseURL = isProduction
+        ? process.env.PRODUCTION_WEBSITE_URL
+        : process.env.LOCAL_WEBSITE_URL;
         app.mailer.send(
           `${locale}/${template}`,
           {
             to: user.email,
             subject: `Set Password - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
-            verification_link: `${process.env.PRODUCTION_WEBSITE_URL}/CreateAccount?token=${Token}`,
+            verification_link: `${baseURL}/CreateAccount?token=${Token}`,
             company_name:user.company_name,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`

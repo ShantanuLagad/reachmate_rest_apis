@@ -1499,8 +1499,6 @@ exports.addPersonalCard = async (req, res) => {
   }
 }
 
-
-
 exports.editCardDetails = async (req, res) => {
   try {
     const owner_id = req.user._id; 
@@ -1566,7 +1564,6 @@ exports.editCardDetails = async (req, res) => {
   }
 };
 
-
 exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
@@ -1602,9 +1599,6 @@ exports.makeIndividualCardPrimary = async (req, res) => {
   }
 };
 
-
-
-
 const generateNumericOTP = () => {
   return Math.floor(1000 + Math.random() * 9000); 
 };
@@ -1613,7 +1607,7 @@ exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
     const userId = req.user._id; 
-    console.log('USER>>>',req.user)
+    //console.log('USER>>>',req.user)
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
@@ -1625,8 +1619,6 @@ exports.matchAccessCode = async (req, res) => {
     //----------
     const isTeamMemberExist = await TeamMember.findOne({work_email: email })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
-
-    
 
     const otp = generateNumericOTP();
   
@@ -1655,7 +1647,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     const { email, otp } = req.body;
     const userId = req.user._id;
 
-    console.log('Verifying OTP and fetching company:', req.body);
+    //console.log('Verifying OTP and fetching company:', req.body);
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
@@ -1718,19 +1710,15 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       data: company,
     });
   } catch (error) {
-    console.error('Error verifying OTP:', error);
+    //console.error('Error verifying OTP:', error);
     res.status(500).json({ message: 'Internal server error.', error });
   }
 };
 
-
-
-
-
 exports.getAllAccessCards = async (req, res) => {
   try {
     const userId = req.user._id; 
- console.log('get all access code card',req.user)
+ //console.log('get all access code card',req.user)
     const user = await User.findById(userId).select('companyAccessCardDetails');
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
       return res.status(404).json({ message: 'No company access cards found.' });
@@ -1904,7 +1892,7 @@ exports.addCorporateCard = async (req, res) => {
     }
 
   } catch (error) {
-    console.log(error)
+   // console.log(error)
     utils.handleError(res, error)
   }
 }
@@ -2305,7 +2293,7 @@ exports.getProfile = async (req, res) => {
 
     res.status(200).json({ data:userInfo });
   } catch (error) {
-    console.error(error);
+   // console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
   }
 };
@@ -2341,7 +2329,6 @@ exports.accountPrivacy = async (req, res) => {
 }
 
 exports.enableOrDisableLink = async (req, res) => {
-
   try {
     const link_type = req.body.type;
     const owner_id = req.user._id;
@@ -2371,7 +2358,7 @@ exports.enableOrDisableLink = async (req, res) => {
 
     res.json({ code: 200, message: "Link status changed successfully" })
   } catch (error) {
-    console.log(error)
+   // console.log(error)
     utils.handleError(res, error)
   }
 
@@ -2382,7 +2369,7 @@ exports.enableOrDisableLink = async (req, res) => {
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    console.log('isSubscriptionActive >>>',isSubscriptionActive)
+    //console.log('isSubscriptionActive >>>',isSubscriptionActive)
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
@@ -2600,10 +2587,10 @@ exports.getCard = async (req, res) => {
 exports.getPersonalCards = async (req, res) => {
   try {
     const userId = req.user._id; 
-    console.log("User ID:", userId);
+   // console.log("User ID:", userId);
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      console.error("Invalid User ID format:", userId);
+     // console.error("Invalid User ID format:", userId);
       return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
     }
 
@@ -2613,13 +2600,13 @@ exports.getPersonalCards = async (req, res) => {
     });
 
     if (!personalCards || personalCards.length === 0) {
-      console.log("No personal cards found for user:", userId);
+     // console.log("No personal cards found for user:", userId);
       return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
     }
 
     res.status(200).json({ data: personalCards });
   } catch (error) {
-    console.error("Error fetching personal cards:", error);
+    //console.error("Error fetching personal cards:", error);
     res.status(500).json({ errors: { msg: "Server error" } });
   }
 };
@@ -2630,28 +2617,28 @@ exports.getCountries = async (req, res) => {
     const data = Country.getAllCountries();
     res.json({ data: data, code: 200 })
   } catch (error) {
-    console.log(error)
+   // console.log(error)
     utils.handleError(res, error)
   }
 }
 
 exports.getStates = async (req, res) => {
   try {
-    console.log("req.query", req.query)
+   // console.log("req.query", req.query)
     var countryCode = req.query.countryCode;
 
     if (!countryCode) {
       const countryName = req.query.countryName
-      console.log("countryName", countryName)
+     // console.log("countryName", countryName)
       countryCode = getCode(countryName)
     }
 
-    console.log("countryCode", countryCode)
+    //console.log("countryCode", countryCode)
 
     const data = State.getStatesOfCountry(countryCode)
     res.json({ data: data, code: 200 })
   } catch (error) {
-    console.log(error)
+    //console.log(error)
     utils.handleError(res, error)
   }
 }
@@ -2707,11 +2694,12 @@ exports.helpsupport = async (req, res) => {
   try {
     const data = req.body;
     const user_id = req.user._id;
-
+    console.log('user check from users',req.user.user_type)
     const add = await Support.create(
       {
         user_id: user_id,
-        message: data?.message
+        message: data?.message,
+        userType:req.user.user_type
       }
     );
 
@@ -2733,7 +2721,8 @@ exports.feedback = async (req, res) => {
     const feedback = await Feedback.create(
       {
         user_id: user_id,
-        message: data?.message
+        message: data?.message,
+        userType:req.user.user_type
       }
     );
 
@@ -3897,7 +3886,7 @@ exports.cancelScheduledUpdate = async (req, res) => {
 exports.registration = async (req, res) => {
   try {
     const { first_name, last_name, email, country_code, mobile_number, 
-      company_name, country, how_can_we_help_you,production } = req.body;
+      company_name, country, how_can_we_help_you } = req.body;
 
     const isEmailExistInCompany = await Company.findOne({ email: email });
     if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })

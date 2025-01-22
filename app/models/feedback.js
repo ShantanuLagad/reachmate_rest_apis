@@ -12,6 +12,10 @@ const feedbackSchema = new mongoose.Schema(
       message: {
         type: String,
         required : true,
+      },
+      userType:{
+        type : String,
+        enum : ["admin","sub admin","personal" , "corporate"]
       }
     },
     {

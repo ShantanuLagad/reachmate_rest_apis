@@ -19,6 +19,10 @@ const supportSchema = new mongoose.Schema(
       replied : {
         type : Boolean,
         default : false
+      },
+      userType:{
+        type : String,
+        enum : ["admin","sub admin","personal" , "corporate"]
       }
     },
     {

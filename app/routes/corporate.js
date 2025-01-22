@@ -329,5 +329,28 @@ router.post(
   trimRequest.all,
   controller.editBillingAddress
 )
-
+router.post(
+  '/helpsupport',
+  requireAuth,
+  trimRequest.all,
+  controller.helpsupport
+)
+router.post(
+  '/feedback',
+  requireAuth,
+  trimRequest.all,
+  controller.feedback
+)
+router.delete(
+  "/deleteAccount",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteAccount
+)
+router.post(
+  "/changeNotificaitonSetting",
+  requireAuth,
+  trimRequest.all,
+  controller.changeNotificaitonSetting
+)
 module.exports = router

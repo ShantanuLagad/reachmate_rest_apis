@@ -25,6 +25,9 @@ const fs = require('fs');
 var generator = require('generate-password');
 const moment = require("moment")
 const TeamMember=require("../models/teamMember")
+const Support = require('../models/support')
+const Feedback = require('../models/feedback')
+
 const {
   uploadFile,
   uploadFileToLocal,
@@ -57,8 +60,6 @@ async function checkSusbcriptionIsActive(user_id) {
   if (subcription.end_at < new Date()) return false
   return true
 }
-
-
 async function giveTrialIfNotGive(user_id) {
   const isTrialGiven = await Trial.findOne({ user_id: user_id });
 
@@ -81,9 +82,6 @@ async function giveTrialIfNotGive(user_id) {
 
   return value
 }
-
-
-
 
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
@@ -1056,6 +1054,20 @@ exports.getNotification = async (req, res) => {
   }
 };
 
+exports.changeNotificaitonSetting = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const user = await User.findById(user_id);
+    user.notification = !user.notification;
+    await user.save()
+
+    res.json({ message: `Notificaton ${user.notification ? "enabled" : "disabled"} successfully`, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
 exports.deleteNotification = async (req, res) => {
   try {
     let company_id = req.user._id;
@@ -2013,7 +2025,6 @@ exports.addSubscription = async (req, res) => {
   }
 }
 
-
 exports.editBillingAddress = async (req, res) => {
   try {
     const company_id = req.user._id;
@@ -2043,3 +2054,77 @@ exports.editBillingAddress = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+exports.helpsupport = async (req, res) => {
+  try {
+    const data = req.body;
+    const user_id = req.user._id;
+    console.log('User type check',req.user)
+    const add = await Support.create(
+      {
+        user_id: user_id,
+        message: data?.message,
+        userType:req.user.type
+      }
+    );
+
+    res.json({
+      code: 200,
+      message: add,
+    });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+};
+
+exports.feedback = async (req, res) => {
+  try {
+    const data = req.body;
+    const user_id = req.user._id;
+    console.log('feedback user',)
+    const feedback = await Feedback.create(
+      {
+        user_id: user_id,
+        message: data?.message,
+        userType: req.user.type
+      }
+    );
+    res.json({
+      code: 200,
+      message: feedback,
+    });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const company_email=req.user.email
+    console.log('User',user_id)
+    await Company.deleteOne({ _id: user_id });
+    await Registration.deleteOne({email:company_email})
+    await CardDetials.deleteOne({ owner_id: user_id })
+
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+    if (isSubcriptionExist) {
+      const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+      const status = subcription.status
+      if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
+        if (subcription.has_scheduled_changes === true) {
+          await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
+        }
+        await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false);
+      }
+    }
+    res.json({ message: "Your account is deleted successfully" });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+}
+
