@@ -1058,7 +1058,7 @@ exports.changeNotificaitonSetting = async (req, res) => {
   try {
     const user_id = req.user._id;
 
-    const user = await User.findById(user_id);
+    const user = await Company.findById(user_id);
     user.notification = !user.notification;
     await user.save()
 
@@ -1067,6 +1067,44 @@ exports.changeNotificaitonSetting = async (req, res) => {
     utils.handleError(res, error);
   }
 }
+
+// exports.changeNotificaitonSetting = async (req, res) => {
+//   try {
+//     const receiver_id  = req.user._id; // ID of the receiver (user or company) whose notifications to toggle
+//    console.log('receiver_id',receiver_id)
+//     if (!receiver_id) {
+//       return res.status(400).json({ message: "Receiver ID is required", code: 400 });
+//     }
+
+//     // Ensure the request is from an admin
+//     if (req.user.type !== "admin") {
+//       return res.status(403).json({ message: "Access denied. Admin only.", code: 403 });
+//     }
+
+//     // Find notifications for the given receiver_id
+//     const notifications = await Notification.find({ receiver_id: mongoose.Types.ObjectId(receiver_id) });
+
+//     // if (notifications.length === 0) {
+//     //   return res.status(404).json({ message: "No notifications found for the given receiver", code: 404 });
+//     // }
+
+//     // Toggle the `is_admin` flag for all notifications for the receiver
+//     const currentStatus = notifications[0].is_admin; // Assume all notifications have the same status
+//     await Notification.updateMany(
+//       { receiver_id: mongoose.Types.ObjectId(receiver_id) },
+//       { $set: { is_admin: !currentStatus } }
+//     );
+
+//     res.json({
+//       message: `Notifications for receiver ${receiver_id} ${!currentStatus ? "enabled" : "disabled"} for admin.`,
+//       code: 200,
+//     });
+//   } catch (error) {
+//     console.error("Error changing notification settings:", error);
+//     utils.handleError(res, error);
+//   }
+// };
+
 
 exports.deleteNotification = async (req, res) => {
   try {

@@ -51,13 +51,17 @@ const CompanySchema = new mongoose.Schema(
     primary_card : {
       type:Boolean,
       default:false
-  },
+    },
     company_id: {
       type: mongoose.Schema.Types.ObjectId,
     },
     type: {
       type: String,
       enum: ["admin", "sub admin"]
+    },
+    notification : {
+      type : Boolean,
+      default : true,
     },
     bio: {
       first_name: {

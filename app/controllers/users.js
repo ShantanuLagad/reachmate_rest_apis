@@ -1685,6 +1685,12 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       email_domain: company.email_domain,
       company_name: company.company_name,
       access_code: company.access_code,
+      accessCard_social_links:{
+        linkedin: "",
+        x:"",
+        instagram:"",
+        youtube: ""
+      }
     };
 
     const isAlreadyAdded = user.companyAccessCardDetails.some(

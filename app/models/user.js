@@ -106,7 +106,25 @@ const UserSchema = new mongoose.Schema(
         company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
         email_domain: { type: String }, 
         company_name: { type: String }, 
-        access_code:{type:String}
+        access_code:{type:String},
+        accessCard_social_links: {
+          linkedin: {
+            type: String,
+            default: ""
+          },
+          x: {
+            type: String,
+            default: ""
+          },
+          instagram: {
+            type: String,
+            default: ""
+          },
+          youtube: {
+            type: String,
+            default: ""
+          }
+        },
       },
     ],
   },
