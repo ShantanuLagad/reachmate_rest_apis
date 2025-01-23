@@ -1721,13 +1721,48 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
   }
 };
 
+// exports.getAllAccessCards = async (req, res) => {
+//   try {
+//     const userId = req.user._id; 
+//  //console.log('get all access code card',req.user)
+//     const user = await User.findById(userId).select('companyAccessCardDetails');
+//     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
+//       return res.status(404).json({ message: 'No company access cards found.' });
+//     }
+
+//     const companyConditions = user.companyAccessCardDetails.map((detail) => ({
+//       email_domain: detail.email_domain,
+//       access_code: detail.access_code,
+//     }));
+
+//     const companies = await Company.find(
+//       { $or: companyConditions },
+//       { password: 0, decoded_password: 0 } 
+//     );
+
+//     if (companies.length === 0) {
+//       return res.status(404).json({ message: 'No companies found for the access cards.' });
+//     }
+
+//     res.status(200).json({
+//       code:200,
+//       message: 'Access Cards retrieved successfully.',
+//       count:companies.length,
+//       data: companies,
+//     });
+//   } catch (error) {
+//     //console.error('Error in getAllAccessCards API:', error);
+//     utils.handleError(res, error);
+//   }
+// };
+
 exports.getAllAccessCards = async (req, res) => {
   try {
-    const userId = req.user._id; 
- //console.log('get all access code card',req.user)
-    const user = await User.findById(userId).select('companyAccessCardDetails');
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select("companyAccessCardDetails");
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
-      return res.status(404).json({ message: 'No company access cards found.' });
+      return res.status(404).json({ message: "No company access cards found." });
     }
 
     const companyConditions = user.companyAccessCardDetails.map((detail) => ({
@@ -1737,87 +1772,47 @@ exports.getAllAccessCards = async (req, res) => {
 
     const companies = await Company.find(
       { $or: companyConditions },
-      { password: 0, decoded_password: 0 } 
+      { social_links: 0, password: 0, decoded_password: 0 }
     );
 
     if (companies.length === 0) {
-      return res.status(404).json({ message: 'No companies found for the access cards.' });
+      return res.status(404).json({ message: "No companies found for the access cards." });
     }
 
+    const enrichedCompanies = companies.map((company) => {
+      const userAccessCardDetail = user.companyAccessCardDetails.find(
+        (detail) => detail.email_domain === company.email_domain
+      );
+
+      return {
+        ...company.toObject(),
+        social_links: userAccessCardDetail?.accessCard_social_links || {
+          linkedin: "",
+          x: "",
+          instagram: "",
+          youtube: "",
+        },
+      };
+    });
+
     res.status(200).json({
-      code:200,
-      message: 'Access Cards retrieved successfully.',
-      count:companies.length,
-      data: companies,
+      code: 200,
+      message: "Access Cards retrieved successfully.",
+      count: enrichedCompanies.length,
+      data: enrichedCompanies,
     });
   } catch (error) {
-    //console.error('Error in getAllAccessCards API:', error);
+    console.error("Error in getAllAccessCards API:", error);
     utils.handleError(res, error);
   }
 };
 
 
-// exports.updateAccessCard = async (req, res) => {
-//   try {
-//     const updateData = req.body; 
-//     const data=req.user
-//     const {
-//       _id,
-//       first_name,
-//       last_name,
-//       accessCard_social_links:{ 
-//         linkedin,
-//         x,
-//         instagram,
-//         youtube,
-//       }
-//      } =req.body
-  
-//     if (!updateData._id) return res.status(400).json({ message: 'Team member ID (_id) is required.' });
-//     if(work_email && access_code){
-
-//     }
-//     const teamMember = await TeamMember.findByIdAndUpdate(
-//       updateData._id, 
-//       updateData, 
-//       {
-//         new: true,
-//         runValidators: true, 
-//       }
-//     )
-//     if (!teamMember) {
-//       return res.status(404).json({ message: 'Team member not found.' });
-//     }
-//     const response = {
-//       id: teamMember._id,
-//       first_name: teamMember.first_name,
-//       last_name: teamMember.last_name,
-//       work_email: teamMember.work_email,
-//       phone_number: teamMember.phone_number,
-//       designation: teamMember.designation,
-//       user_type: teamMember.user_type,
-//       status: teamMember.status,
-//       company_details: teamMember.company_details,
-//       accessCard_social_links:teamMember.accessCard_social_links
-
-//     };
-    
-//     res.status(200).json({
-//       code:200,
-//       message: 'Access Card updated successfully',
-//       teamMember: response,
-//     });
-//   } catch (error) {
-//     //console.error('Error updating team member by ID:', error);
-//     utils.handleError(res, error);
-//   }
-// };
-
 exports.updateAccessCard = async (req, res) => {
   try {
     const { first_name, last_name, work_email, accessCard_social_links } = req.body;
-    console.log('bodyyy',req.body)
-    console.log('USERRRR',req.user)
+    //console.log('bodyyy',req.body)
+    // console.log('USERRRR',req.user)
     const isMemberExists = await TeamMember.findOne({ work_email });
     if (!isMemberExists) {
       return res.status(404).json({ message: "Team member not found.", code: 404 });
@@ -1835,8 +1830,6 @@ exports.updateAccessCard = async (req, res) => {
     if (!isDomainExists) {
       return res.status(404).json({ message: "Company with this domain not found.", code: 404 });
     }
-
-
     const allowedSocialLinks = ["linkedin", "x", "instagram", "youtube"];
     const sanitizedSocialLinks = {};
     if (accessCard_social_links) {
@@ -1884,7 +1877,6 @@ exports.updateAccessCard = async (req, res) => {
     }
 
 
-    // Respond with the updated data
     res.status(200).json({
       code: 200,
       message: "Access Card updated successfully.",
