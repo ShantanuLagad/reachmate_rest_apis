@@ -696,18 +696,25 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 //--------get All Team Member List--------
 exports.getTeamMembersByBusinessTeam = async (req, res) => {
   try {
-    const { work_email, status, limit = 10, offset = 0 } = req.query;
+    const { work_email, status, limit = 10, offset = 0, search } = req.query;
 
     const query = {};
-    //const company_domain = req.user.email_domain;
+    // Uncomment and modify as per requirements
+    // const company_domain = req.user.email_domain;
+    // query["company_details.email_domain"] = company_domain;
 
-   // if (work_email) query.work_email = work_email;
     if (status) query.status = status;
-    //query["company_details.email_domain"] = company_domain;
-
+    if (search) {
+      query.$or = [
+        { first_name: { $regex: search, $options: "i" } },
+        { last_name: { $regex: search, $options: "i" } },
+        { work_email: { $regex: search, $options: "i" } },
+        { phone_number: { $regex: search, $options: "i" } },
+      ];
+    }
 
     const paginationLimit = parseInt(limit, 10);
-    const paginationOffset = parseInt(offset, 0);
+    const paginationOffset = parseInt(offset, 10);
 
     const totalCount = await TeamMember.countDocuments(query);
     const teamMembers = await TeamMember.find(query)
@@ -728,7 +735,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
     }));
 
     res.status(200).json({
-      code:200,
+      code: 200,
       totalCount,
       limit: paginationLimit,
       offset: paginationOffset,
@@ -736,10 +743,11 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       teamMembers: response,
     });
   } catch (error) {
-   // console.error("Error fetching team members:", error);
+    // console.error("Error fetching team members:", error);
     utils.handleError(res, error);
   }
 };
+
 //--------------get TEAM MEMBER By ID------------
 exports.getTeamMemberByID = async (req, res) => {
   try {
