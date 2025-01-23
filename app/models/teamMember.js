@@ -17,19 +17,6 @@ const teamMemberSchema = new mongoose.Schema({
     },
     lowercase: true,
   },
-  // email: {
-  //   type: String,
-  //   validate: {
-  //     validator: validator.isEmail,
-  //     message: "EMAIL_IS_NOT_VALID",
-  //   },
-  //   lowercase: true,
-  //   ref: 'Users',
-  // },
-  // owner_id: {
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: 'User',
-  // },
   designation: { 
     type: String
  },
@@ -50,7 +37,25 @@ const teamMemberSchema = new mongoose.Schema({
        company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company', required: true },
         email_domain: { type: String }, 
         company_name: { type: String }, 
-        access_code:{type:String}
+        access_code:{type:String},
+        accessCard_social_links: {
+          linkedin: {
+            type: String,
+            default: ""
+          },
+          x: {
+            type: String,
+            default: ""
+          },
+          instagram: {
+            type: String,
+            default: ""
+          },
+          youtube: {
+            type: String,
+            default: ""
+          }
+        },
     },
   
 },{

@@ -160,13 +160,19 @@ router.post(
   trimRequest.all,
   controller.verifyOtpAndFetchCompany
 )
-//-------------Get ALL ACCESS CARDS OF A USER
 router.get(
   '/getAllAccessCards',
   requireAuth,
   trimRequest.all,
   controller.getAllAccessCards
 )
+router.get(
+  '/updateAccessCard',
+  requireAuth,
+  trimRequest.all,
+  controller.updateAccessCard
+)
+
 
 router.post(
   "/isPaidByCompany",
@@ -473,5 +479,10 @@ router.post(
   trimRequest.all,
   controller.editBillingAddress
 )
-
+router.put(
+  "/updateAccessCard",
+  requireAuth,
+  trimRequest.all,
+  controller.updateAccessCard
+)
 module.exports = router

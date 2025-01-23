@@ -1755,6 +1755,153 @@ exports.getAllAccessCards = async (req, res) => {
     utils.handleError(res, error);
   }
 };
+
+
+// exports.updateAccessCard = async (req, res) => {
+//   try {
+//     const updateData = req.body; 
+//     const data=req.user
+//     const {
+//       _id,
+//       first_name,
+//       last_name,
+//       accessCard_social_links:{ 
+//         linkedin,
+//         x,
+//         instagram,
+//         youtube,
+//       }
+//      } =req.body
+  
+//     if (!updateData._id) return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+//     if(work_email && access_code){
+
+//     }
+//     const teamMember = await TeamMember.findByIdAndUpdate(
+//       updateData._id, 
+//       updateData, 
+//       {
+//         new: true,
+//         runValidators: true, 
+//       }
+//     )
+//     if (!teamMember) {
+//       return res.status(404).json({ message: 'Team member not found.' });
+//     }
+//     const response = {
+//       id: teamMember._id,
+//       first_name: teamMember.first_name,
+//       last_name: teamMember.last_name,
+//       work_email: teamMember.work_email,
+//       phone_number: teamMember.phone_number,
+//       designation: teamMember.designation,
+//       user_type: teamMember.user_type,
+//       status: teamMember.status,
+//       company_details: teamMember.company_details,
+//       accessCard_social_links:teamMember.accessCard_social_links
+
+//     };
+    
+//     res.status(200).json({
+//       code:200,
+//       message: 'Access Card updated successfully',
+//       teamMember: response,
+//     });
+//   } catch (error) {
+//     //console.error('Error updating team member by ID:', error);
+//     utils.handleError(res, error);
+//   }
+// };
+
+exports.updateAccessCard = async (req, res) => {
+  try {
+    const { first_name, last_name, work_email, accessCard_social_links } = req.body;
+    console.log('bodyyy',req.body)
+    console.log('USERRRR',req.user)
+    const isMemberExists = await TeamMember.findOne({ work_email });
+    if (!isMemberExists) {
+      return res.status(404).json({ message: "Team member not found.", code: 404 });
+    }
+    if (!work_email) {
+      return res.status(400).json({ message: "Work email is required.", code: 400 });
+    }
+
+    const emailDomain = work_email.split("@")[1];
+    if (!emailDomain) {
+      return res.status(400).json({ message: "Invalid email format.", code: 400 });
+    }
+
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    if (!isDomainExists) {
+      return res.status(404).json({ message: "Company with this domain not found.", code: 404 });
+    }
+
+
+    const allowedSocialLinks = ["linkedin", "x", "instagram", "youtube"];
+    const sanitizedSocialLinks = {};
+    if (accessCard_social_links) {
+      for (const key of allowedSocialLinks) {
+        if (accessCard_social_links[key] !== undefined) {
+          sanitizedSocialLinks[key] = accessCard_social_links[key];
+        }
+      }
+    }
+
+    const updateData = {
+      ...(first_name && { first_name }),
+      ...(last_name && { last_name }),
+      ...(Object.keys(sanitizedSocialLinks).length > 0 && {
+        "company_details.accessCard_social_links": sanitizedSocialLinks,
+      }),
+    };
+
+    const updatedTeamMember = await TeamMember.findOneAndUpdate(
+      { work_email },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTeamMember) {
+      return res.status(404).json({ message: "Team member not found.", code: 404 });
+    }
+
+    if (Object.keys(sanitizedSocialLinks).length > 0) {
+      const updatedUser = await User.findOneAndUpdate(
+        {
+          "companyAccessCardDetails.email_domain": emailDomain,
+        },
+        {
+          $set: {
+            "companyAccessCardDetails.$.accessCard_social_links": sanitizedSocialLinks,
+          },
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User with the given domain not found.", code: 404 });
+      }
+    }
+
+
+    // Respond with the updated data
+    res.status(200).json({
+      code: 200,
+      message: "Access Card updated successfully.",
+      teamMember: {
+        id: updatedTeamMember._id,
+        first_name: updatedTeamMember.first_name,
+        last_name: updatedTeamMember.last_name,
+        accessCard_social_links: updatedTeamMember.company_details?.accessCard_social_links || {},
+      },
+    });
+  } catch (error) {
+    console.error("Error updating access card:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
 //----------------------------------------------------------------
 exports.isPaidByCompany = async (req, res) => {
   try {
