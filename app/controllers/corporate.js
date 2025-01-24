@@ -792,7 +792,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       status: member.status,
       company_details: member.company_details,
     }));
-    
+
     if (totalCount === 0) {
       return res.status(200).json({
         code: 200,
@@ -930,32 +930,92 @@ exports.updateTeamMemberStatus = async (req, res) => {
   }
 };
 //--------------delete Team Member By ID-----
+// exports.deleteTeamMemberByID = async (req, res) => {
+//   try {
+//     const { _id } = req.params;
+//     console.log('Delete request for team member with ID:', _id);
+
+//     if (!_id) {
+//       return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+//     }
+
+//     // Delete the team member from the TeamMember collection
+//     const teamMember = await TeamMember.findByIdAndDelete(_id);
+
+//     if (!teamMember) {
+//       return res.status(404).json({ message: 'Team member not found.' });
+//     }
+
+//     // Remove the team member reference from all users
+//     const users = await User.updateMany(
+//       { "companyAccessCardDetails._id": _id },
+//       { $pull: { companyAccessCardDetails: { _id } } }
+//     );
+
+//     res.status(200).json({
+//       code: 200,
+//       message: 'Team member deleted successfully and references removed from users.',
+//       deletedTeamMemberId: _id,
+//       usersUpdatedCount: users.modifiedCount, // Optional: Returns the count of users updated
+//     });
+//   } catch (error) {
+//     console.error('Error deleting team member by ID:', error);
+//     utils.handleError(res, error);
+//   }
+// };
+
+
 exports.deleteTeamMemberByID = async (req, res) => {
   try {
-    const { _id } = req.params; 
-    console.log('idd',req.params)
+    const { _id } = req.params;
     console.log('Delete request for team member with ID:', _id);
 
     if (!_id) {
       return res.status(400).json({ message: 'Team member ID (_id) is required.' });
     }
 
-    const teamMember = await TeamMember.findByIdAndDelete(_id);
+    // Check if the provided _id is valid
+    if (!mongoose.Types.ObjectId.isValid(_id)) {
+      return res.status(400).json({ message: 'Invalid team member ID format.' });
+    }
 
+    const objectId = mongoose.Types.ObjectId(_id);
+
+    // Delete the team member from the TeamMember collection
+    const teamMember = await TeamMember.findByIdAndDelete(objectId);
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
     }
 
+    console.log('Deleted team member:', teamMember);
+
+    // Remove the team member reference from the specific user's companyAccessCardDetails array
+    const user = await User.findOneAndUpdate(
+      { "companyAccessCardDetails._id": objectId }, // Query to find the user
+      { $pull: { companyAccessCardDetails: { _id: objectId } } }, // Pull the matching object from the array
+      { new: true } // Return the updated document
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'No user found with the specified team member ID in companyAccessCardDetails.',
+      });
+    }
+
+    console.log('Updated user after removing team member:', user);
+
     res.status(200).json({
-      code:200,
-      message: 'Team member deleted successfully',
-     // deletedTeamMemberId: _id
+      code: 200,
+      message: 'Team member deleted successfully and reference removed from user.',
+      deletedTeamMemberId: _id,
+      updatedUser: user, // Optional: Return the updated user for verification
     });
   } catch (error) {
     console.error('Error deleting team member by ID:', error);
-    utils.handleError(res, error);
+    res.status(500).json({ message: 'Internal server error.', error });
   }
 };
+
 
 //-------------------------------------------------------
 exports.deleteCorporateCardHolders = async (req, res) => {

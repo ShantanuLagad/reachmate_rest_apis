@@ -90,6 +90,14 @@ router.post(
   trimRequest.all,
   controller.editCardDetails
 )
+
+router.get(
+  '/getCardAndUserDetails',
+  //requireAuth,
+  trimRequest.all,
+  controller.getCardAndUserDetails
+)  
+
 router.post(
   '/makeIndividualCardPrimary',
   requireAuth,
@@ -485,4 +493,5 @@ router.put(
   trimRequest.all,
   controller.updateAccessCard
 )
+
 module.exports = router

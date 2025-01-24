@@ -1564,6 +1564,70 @@ exports.editCardDetails = async (req, res) => {
   }
 };
 
+exports.getCardAndUserDetails = async (req, res) => {
+  try {
+    const owner_id = req.user._id; // Logged-in user's ID
+    const card_id = req.params.card_id; // Card ID from request params
+
+    if (!card_id) {
+      return res.status(400).json({ code: 400, message: "Card ID (card_id) is required." });
+    }
+
+    // Fetch user details (excluding sensitive fields like password)
+    const user = await User.findById(owner_id).select("-password -confirm_password");
+
+    if (!user) {
+      return res.status(404).json({ code: 404, message: "Logged-in user not found." });
+    }
+
+    // Determine the type of card and retrieve details
+    let cardDetails = await CardDetials.findOne({ _id: card_id, owner_id });
+    let cardType = "individual";
+
+    if (!cardDetails) {
+      cardDetails = await Company.findOne({ _id: card_id });
+      cardType = "corporate";
+    }
+
+    if (!cardDetails) {
+      return res.status(404).json({ code: 404, message: "Card not found." });
+    }
+
+    // Format the response
+    const response = {
+      user: {
+        _id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        full_name: user.full_name,
+        profile_image: user.profile_image,
+        user_type: user.user_type,
+        createdAt: user.createdAt,
+      },
+      card: {
+        _id: cardDetails._id,
+        cardType,
+        owner_id: cardDetails.owner_id,
+        bio: cardDetails.bio || {},
+        contact_details: cardDetails.contact_details || {},
+        address: cardDetails.address || {},
+        social_links: cardDetails.social_links || {},
+        createdAt: cardDetails.createdAt,
+        updatedAt: cardDetails.updatedAt,
+      },
+    };
+
+    res.status(200).json({ code: 200, message: "Card and user details retrieved successfully.", data: response });
+  } catch (error) {
+    console.error("Error in getCardAndUserDetails API:", error);
+    utils.handleError(res, error);
+  }
+};
+
+
+
+
 exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
@@ -1653,7 +1717,7 @@ exports.matchAccessCode = async (req, res) => {
 //       return res.status(400).json({ message: 'Invalid email format.' });
 //     }
 
-//     const otpRecord = await Otp.findOne({ email, used: false })
+//     const otpRecord = await Otp.findOne({ email})
 //       .sort({ createdDate: -1 }); 
 //     if (!otpRecord) {
 //       return res.status(404).json({ message: 'OTP not found or already used.' });
@@ -1721,17 +1785,120 @@ exports.matchAccessCode = async (req, res) => {
 //   }
 // };
 
+// exports.verifyOtpAndFetchCompany = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+//     const userId = req.user._id;
+//     console.log('USERRRRR:', req.user);
+//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+//       return res.status(400).json({ message: 'Invalid email format.' });
+//     }
+
+//     const otpRecord = await Otp.findOne({ email })
+//       .sort({ createdDate: -1 });
+//     if (!otpRecord) {
+//       return res.status(404).json({ message: 'OTP not found or already used.' });
+//     }
+
+//     if (otpRecord.otp !== otp) {
+//       return res.status(400).json({ message: 'Invalid OTP.' });
+//     }
+
+//     if (Date.now() > otpRecord.expired) {
+//       return res.status(400).json({ message: 'This OTP has expired.' });
+//     }
+
+//     const emailDomain = email.split('@')[1];
+
+//     // Find the company based on the email domain
+//     const company = await Company.findOne(
+//       { email_domain: emailDomain },
+//       { password: 0, decoded_password: 0,bio:0,social_links: 0 }
+//     );
+//     if (!company) {
+//       return res.status(404).json({ message: 'Company not found.' });
+//     }
+
+//     // Find the user based on userId
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found.' });
+//     }
+
+//     // Find the team member based on the email
+//     const teamMember = await TeamMember.findOne({ work_email: email });
+//     if (!teamMember) {
+//       return res.status(404).json({ message: 'Team member not found.' });
+//     }
+//     const bio = {
+//       first_name: teamMember.first_name,
+//       last_name: teamMember.last_name,
+//       full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+//       designation: teamMember.designation || "",
+//     };
+//     console.log('teammmmmm',teamMember)
+//     // Prepare company access details
+//     const companyAccessDetails = {
+//       company_id: company._id,
+//       email_domain: company.email_domain,
+//       company_name: company.company_name,
+//       access_code: company.access_code,
+//       _id:teamMember._id,
+//       accessCard_social_links: {
+//         linkedin: teamMember.social_links?.linkedin || "",
+//         x: teamMember.social_links?.x || "",
+//         instagram: teamMember.social_links?.instagram || "",
+//         youtube: teamMember.social_links?.youtube || "",
+//       },
+//     };
+//     console.log('companyAccessDetails',companyAccessDetails)
+//     // Check if the card is already added
+//     const isAlreadyAdded = user.companyAccessCardDetails.some(
+//       (detail) => detail.company_id.toString() === company._id.toString()
+//     );
+
+//     if (!isAlreadyAdded) {
+//       const isFirstCard =
+//         user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+//       company.primary_card = isFirstCard;
+//       await company.save();
+
+//       user.companyAccessCardDetails.push(companyAccessDetails);
+//       await user.save();
+//     }
+//     console.log('userrrrrrr>>>>>>>>>>',user)
+
+//     // Mark the OTP as used
+//     otpRecord.used = true;
+//     await otpRecord.save();
+
+//     res.status(200).json({
+//       message: isAlreadyAdded
+//         ? 'Card was already created.'
+//         : 'OTP verified successfully!',
+//       data: { bio,company },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Internal server error.', error });
+//   }
+// };
+
+
+
+
+
+
+
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const userId = req.user._id;
-    console.log('USERRRRR:', req.user);
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
 
-    const otpRecord = await Otp.findOne({ email })
-      .sort({ createdDate: -1 });
+    const otpRecord = await Otp.findOne({ email }).sort({ createdDate: -1 });
     if (!otpRecord) {
       return res.status(404).json({ message: 'OTP not found or already used.' });
     }
@@ -1749,37 +1916,36 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     // Find the company based on the email domain
     const company = await Company.findOne(
       { email_domain: emailDomain },
-      { password: 0, decoded_password: 0,bio:0,social_links: 0 }
+      { password: 0, decoded_password: 0, bio: 0, social_links: 0 }
     );
     if (!company) {
       return res.status(404).json({ message: 'Company not found.' });
     }
 
-    // Find the user based on userId
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Find the team member based on the email
     const teamMember = await TeamMember.findOne({ work_email: email });
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
     }
+
     const bio = {
       first_name: teamMember.first_name,
       last_name: teamMember.last_name,
       full_name: `${teamMember.first_name} ${teamMember.last_name}`,
       designation: teamMember.designation || "",
     };
-    console.log('teammmmmm',teamMember)
+
     // Prepare company access details
     const companyAccessDetails = {
       company_id: company._id,
       email_domain: company.email_domain,
       company_name: company.company_name,
       access_code: company.access_code,
-      _id:teamMember._id,
+      _id: teamMember._id,
       accessCard_social_links: {
         linkedin: teamMember.social_links?.linkedin || "",
         x: teamMember.social_links?.x || "",
@@ -1787,45 +1953,41 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
         youtube: teamMember.social_links?.youtube || "",
       },
     };
-    console.log('companyAccessDetails',companyAccessDetails)
-    // Check if the card is already added
-    const isAlreadyAdded = user.companyAccessCardDetails.some(
+
+    // Check if the company already exists in companyAccessCardDetails
+    const existingIndex = user.companyAccessCardDetails.findIndex(
       (detail) => detail.company_id.toString() === company._id.toString()
     );
 
-    if (!isAlreadyAdded) {
+    if (existingIndex > -1) {
+      // Update the existing entry with the new team member ID
+      user.companyAccessCardDetails[existingIndex] = companyAccessDetails;
+    } else {
+      // Add a new entry if it doesn't already exist
       const isFirstCard =
-        user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+        user.personal_cards.length === 0 &&
+        user.companyAccessCardDetails.length === 0;
       company.primary_card = isFirstCard;
       await company.save();
 
       user.companyAccessCardDetails.push(companyAccessDetails);
-      await user.save();
     }
 
-    // Mark the OTP as used
+    await user.save();
+
     otpRecord.used = true;
     await otpRecord.save();
 
     res.status(200).json({
-      message: isAlreadyAdded
-        ? 'Card was already created.'
-        : 'OTP verified successfully!',
-      data: { bio,company },
+      message: existingIndex > -1
+        ? 'Company access card updated successfully.'
+        : 'OTP verified and company access card created successfully!',
+      data: { bio, company },
     });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error.', error });
   }
 };
-
-
-
-
-
-
-
-
-
 
 
 exports.getAllAccessCards = async (req, res) => {
@@ -1860,7 +2022,8 @@ exports.getAllAccessCards = async (req, res) => {
         const teamMember = userAccessCardDetail?._id
           ? await TeamMember.findById(userAccessCardDetail._id)
           : null;
-    
+          console.log('userAccessCardDetail._id',userAccessCardDetail._id)
+          console.log('teammmmmm',teamMember)
         const bio = teamMember
           ? {
               first_name: teamMember.first_name,
@@ -1870,7 +2033,7 @@ exports.getAllAccessCards = async (req, res) => {
               work_email: teamMember.work_email,
             }
           : null;
-    
+            console.log('bio',bio)
         return {
           bio,
           ...company.toObject(),
@@ -4125,6 +4288,9 @@ exports.registration = async (req, res) => {
   try {
     const { first_name, last_name, email, country_code, mobile_number, 
       company_name, country, how_can_we_help_you } = req.body;
+
+      const isEmailExistInRegistration = await Registration.findOne({ email: email });
+    if (isEmailExistInRegistration) return utils.handleError(res, { message: "Email already Exists.", code: 400 })
 
     const isEmailExistInCompany = await Company.findOne({ email: email });
     if (isEmailExistInCompany) return utils.handleError(res, { message: "Email already Exists", code: 400 })
