@@ -752,13 +752,13 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
   try {
     const { work_email, status, limit = 10, offset = 0, search } = req.query;
 
-    const companyId = req.user._id; // Assuming req.user contains company_id
+    const companyId = req.user._id; 
     if (!companyId) {
       return res.status(400).json({ message: "Invalid request: Company ID is missing." });
     }
 
     const query = {
-      "company_details.company_id": companyId, // Filter by matching company_id
+      "company_details.company_id": companyId, 
     };
 
     if (status) query.status = status;
@@ -776,10 +776,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
     const paginationOffset = parseInt(offset, 10);
 
     const totalCount = await TeamMember.countDocuments(query);
-    if (totalCount === 0) {
-      return res.status(404).json({ message: "No team members are present." });
-    }
-
+    
     const teamMembers = await TeamMember.find(query)
       .skip(paginationOffset)
       .limit(paginationLimit);
@@ -795,6 +792,13 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       status: member.status,
       company_details: member.company_details,
     }));
+    
+    if (totalCount === 0) {
+      return res.status(200).json({
+        code: 200,
+        teamMembers: response,
+        message: "No team members are present." });
+    }
 
     res.status(200).json({
       code: 200,
