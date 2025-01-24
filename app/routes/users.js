@@ -65,14 +65,14 @@ router.patch(
 /*
  * Delete item route
  */
-router.delete(
-  '/:id',
-  requireAuth,
-  // AuthController.roleAuthorization(['admin']),
-  trimRequest.all,
-  validate.deleteItem,
-  controller.deleteItem
-)
+// router.delete(
+//   '/:id',
+//   requireAuth,
+//   // AuthController.roleAuthorization(['admin']),
+//   trimRequest.all,
+//   validate.deleteItem,
+//   controller.deleteItem
+// )
 
 
 router.patch(
@@ -453,7 +453,7 @@ router.post(
 )
 
 
-router.post(
+router.delete(
   '/deleteCard',
   requireAuth,
   trimRequest.all,

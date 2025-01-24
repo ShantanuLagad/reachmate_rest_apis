@@ -1937,6 +1937,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       last_name: teamMember.last_name,
       full_name: `${teamMember.first_name} ${teamMember.last_name}`,
       designation: teamMember.designation || "",
+      phone_number: teamMember.phone_number
     };
 
     // Prepare company access details
@@ -2018,7 +2019,6 @@ exports.getAllAccessCards = async (req, res) => {
           (detail) => detail.email_domain === company.email_domain
         );
     
-        // Await the asynchronous call to find the team member
         const teamMember = userAccessCardDetail?._id
           ? await TeamMember.findById(userAccessCardDetail._id)
           : null;
@@ -2031,6 +2031,7 @@ exports.getAllAccessCards = async (req, res) => {
               full_name: `${teamMember.first_name} ${teamMember.last_name}`,
               designation: teamMember.designation || "",
               work_email: teamMember.work_email,
+              phone_number:teamMember.phone_number
             }
           : null;
             console.log('bio',bio)
@@ -4654,30 +4655,94 @@ exports.sendMail = (req, res) => {
 }
 
 
+// exports.deleteCard = async (req, res) => {
+//   // try {
+//   //   const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+//   //   if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+
+//   //   const { card_id } = req.body;
+//   //   const user_id = req.user._id;
+
+//   //   const isCardExist = await SharedCards.findOne({
+//   //     user_id: mongoose.Types.ObjectId(user_id),
+//   //     card_id: mongoose.Types.ObjectId(card_id)
+//   //   })
+
+//   //   console.log("isCardExist", isCardExist)
+//   //   if (!isCardExist) return utils.handleError(res, { message: "Card not found", code: 404 });
+
+//   //   await isCardExist.remove()
+
+//   //   res.json({ message: "Card deleted successfully", card_id, code: 200 })
+//   // } catch (error) {
+//   //   console.log("error", error)
+//   //   utils.handleError(res, error)
+//   // }
+// }
+
 exports.deleteCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    if (!isSubscriptionActive) {
+      return utils.handleError(res, {
+        message: "Your subscription has expired. Please renew to continue accessing our services",
+        code: 400,
+      });
+    }
 
-    const { card_id } = req.body;
+    const { card_id } = req.body; // `card_id` is the ID of the card to delete
     const user_id = req.user._id;
 
-    const isCardExist = await SharedCards.findOne({
-      user_id: mongoose.Types.ObjectId(user_id),
-      card_id: mongoose.Types.ObjectId(card_id)
-    })
+    // Step 1: Find the card in the `Company` collection
+    const isCardExistInCompany = await Company.findOne({
+      _id: mongoose.Types.ObjectId(card_id),
+    });
 
-    console.log("isCardExist", isCardExist)
-    if (!isCardExist) return utils.handleError(res, { message: "Card not found", code: 404 });
+    if (!isCardExistInCompany) {
+      return utils.handleError(res, {
+        message: "Card not found in the Company collection.",
+        code: 404,
+      });
+    }
 
-    await isCardExist.remove()
+    // Step 2: Extract `email_domain` and `access_code` from the company card
+    const { email_domain, access_code } = isCardExistInCompany;
 
-    res.json({ message: "Card deleted successfully", card_id, code: 200 })
+    // Step 3: Find and remove the card from the user's `companyAccessCardDetails`
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: user_id,
+        "companyAccessCardDetails.email_domain": email_domain,
+        "companyAccessCardDetails.access_code": access_code,
+      },
+      {
+        $pull: {
+          companyAccessCardDetails: { email_domain, access_code },
+        },
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      return utils.handleError(res, {
+        message: "Card not found in user's company access card details.",
+        code: 404,
+      });
+    }
+
+    // Step 4: Return success response
+    return res.status(200).json({
+      message: "Card deleted successfully from user's company access cards.",
+      updatedUser,
+      code: 200,
+    });
   } catch (error) {
-    console.log("error", error)
-    utils.handleError(res, error)
+    console.error("Error in deleteCard:", error);
+    utils.handleError(res, { message: "An error occurred while deleting the card.", error });
   }
-}
+};
+
+
 
 
 exports.addSubscription = async (req, res) => {
