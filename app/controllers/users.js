@@ -1772,6 +1772,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       full_name: `${teamMember.first_name} ${teamMember.last_name}`,
       designation: teamMember.designation || "",
     };
+    console.log('teammmmmm',teamMember)
     // Prepare company access details
     const companyAccessDetails = {
       company_id: company._id,
@@ -1786,7 +1787,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
         youtube: teamMember.social_links?.youtube || "",
       },
     };
-
+    console.log('companyAccessDetails',companyAccessDetails)
     // Check if the card is already added
     const isAlreadyAdded = user.companyAccessCardDetails.some(
       (detail) => detail.company_id.toString() === company._id.toString()
@@ -1849,34 +1850,40 @@ exports.getAllAccessCards = async (req, res) => {
     if (companies.length === 0) {
       return res.status(404).json({ message: "No companies found for the access cards." });
     }
-    const enrichedCompanies = companies.map((company) => {
-
-      const userAccessCardDetail = user.companyAccessCardDetails.find(
-        (detail) => detail.email_domain === company.email_domain
-      );
-
-      const teamMember = TeamMember.findById(userAccessCardDetail?._id); 
-      const bio = teamMember
-        ? {
-            first_name: teamMember.first_name,
-            last_name: teamMember.last_name,
-            full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-            designation: teamMember.designation || "",
-            work_email: teamMember.work_email,
-          }
-        : null;
-        console.log('bio', bio)
-      return {
-        bio,
-        ...company.toObject(),
-        social_links: userAccessCardDetail?.accessCard_social_links || {
-          linkedin: "",
-          x: "",
-          instagram: "",
-          youtube: "",
-        },
-      };
-    });
+    const enrichedCompanies = await Promise.all(
+      companies.map(async (company) => {
+        const userAccessCardDetail = user.companyAccessCardDetails.find(
+          (detail) => detail.email_domain === company.email_domain
+        );
+    
+        // Await the asynchronous call to find the team member
+        const teamMember = userAccessCardDetail?._id
+          ? await TeamMember.findById(userAccessCardDetail._id)
+          : null;
+    
+        const bio = teamMember
+          ? {
+              first_name: teamMember.first_name,
+              last_name: teamMember.last_name,
+              full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+              designation: teamMember.designation || "",
+              work_email: teamMember.work_email,
+            }
+          : null;
+    
+        return {
+          bio,
+          ...company.toObject(),
+          social_links: userAccessCardDetail?.accessCard_social_links || {
+            linkedin: "",
+            x: "",
+            instagram: "",
+            youtube: "",
+          },
+        };
+      })
+    );
+    
 
     res.status(200).json({
       code: 200,
