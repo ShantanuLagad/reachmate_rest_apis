@@ -101,12 +101,17 @@ const UserSchema = new mongoose.Schema(
       address_line_2 :String,
       pin_code :String
     },
+  
     companyAccessCardDetails:[
       {
         company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
         email_domain: { type: String }, 
         company_name: { type: String }, 
         access_code:{type:String},
+        _id:{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'TeamMember',
+        },
         accessCard_social_links: {
           linkedin: {
             type: String,

@@ -1642,19 +1642,96 @@ exports.matchAccessCode = async (req, res) => {
   }
 };
 
+// exports.verifyOtpAndFetchCompany = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+//     const userId = req.user._id;
+
+//     //console.log('Verifying OTP and fetching company:', req.body);
+
+//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+//       return res.status(400).json({ message: 'Invalid email format.' });
+//     }
+
+//     const otpRecord = await Otp.findOne({ email, used: false })
+//       .sort({ createdDate: -1 }); 
+//     if (!otpRecord) {
+//       return res.status(404).json({ message: 'OTP not found or already used.' });
+//     }
+
+//     if (otpRecord.otp !== otp) {
+//       return res.status(400).json({ message: 'Invalid OTP.' });
+//     }
+//     if (Date.now() > otpRecord.expired) {
+//       return res.status(400).json({ message: 'This OTP has expired.' });
+//     }
+
+//     const emailDomain = email.split('@')[1];
+//     const company = await Company.findOne(
+//       { email_domain: emailDomain },
+//       { password: 0, decoded_password: 0 }
+//     );
+//     if (!company) {
+//       return res.status(404).json({ message: 'Company not found.' });
+//     }
+
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found.' });
+//     }
+
+//     const companyAccessDetails = {
+//       company_id: company._id,
+//       email_domain: company.email_domain,
+//       company_name: company.company_name,
+//       access_code: company.access_code,
+//       accessCard_social_links:{
+//         linkedin: "",
+//         x:"",
+//         instagram:"",
+//         youtube: ""
+//       }
+//     };
+
+//     const isAlreadyAdded = user.companyAccessCardDetails.some(
+//       (detail) => detail.company_id.toString() === company._id.toString()
+//     );
+
+//     if (!isAlreadyAdded) {
+//       const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+//       company.primary_card = isFirstCard;
+//       await company.save();
+
+//       user.companyAccessCardDetails.push(companyAccessDetails);
+//       await user.save();
+//     }
+
+//     otpRecord.used = true;
+//     await otpRecord.save();
+
+//     res.status(200).json({
+//       message: isAlreadyAdded
+//         ? 'Card was already created.'
+//         : 'OTP verified successfully!',
+//       data: company,
+//     });
+//   } catch (error) {
+//     //console.error('Error verifying OTP:', error);
+//     res.status(500).json({ message: 'Internal server error.', error });
+//   }
+// };
+
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const userId = req.user._id;
-
-    //console.log('Verifying OTP and fetching company:', req.body);
-
+    console.log('USERRRRR:', req.user);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: 'Invalid email format.' });
     }
 
-    const otpRecord = await Otp.findOne({ email, used: false })
-      .sort({ createdDate: -1 }); 
+    const otpRecord = await Otp.findOne({ email })
+      .sort({ createdDate: -1 });
     if (!otpRecord) {
       return res.status(404).json({ message: 'OTP not found or already used.' });
     }
@@ -1662,43 +1739,62 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     if (otpRecord.otp !== otp) {
       return res.status(400).json({ message: 'Invalid OTP.' });
     }
+
     if (Date.now() > otpRecord.expired) {
       return res.status(400).json({ message: 'This OTP has expired.' });
     }
 
     const emailDomain = email.split('@')[1];
+
+    // Find the company based on the email domain
     const company = await Company.findOne(
       { email_domain: emailDomain },
-      { password: 0, decoded_password: 0 }
+      { password: 0, decoded_password: 0,bio:0,social_links: 0 }
     );
     if (!company) {
       return res.status(404).json({ message: 'Company not found.' });
     }
 
+    // Find the user based on userId
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    // Find the team member based on the email
+    const teamMember = await TeamMember.findOne({ work_email: email });
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+    const bio = {
+      first_name: teamMember.first_name,
+      last_name: teamMember.last_name,
+      full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+      designation: teamMember.designation || "",
+    };
+    // Prepare company access details
     const companyAccessDetails = {
       company_id: company._id,
       email_domain: company.email_domain,
       company_name: company.company_name,
       access_code: company.access_code,
-      accessCard_social_links:{
-        linkedin: "",
-        x:"",
-        instagram:"",
-        youtube: ""
-      }
+      _id:teamMember._id,
+      accessCard_social_links: {
+        linkedin: teamMember.social_links?.linkedin || "",
+        x: teamMember.social_links?.x || "",
+        instagram: teamMember.social_links?.instagram || "",
+        youtube: teamMember.social_links?.youtube || "",
+      },
     };
 
+    // Check if the card is already added
     const isAlreadyAdded = user.companyAccessCardDetails.some(
       (detail) => detail.company_id.toString() === company._id.toString()
     );
 
     if (!isAlreadyAdded) {
-      const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+      const isFirstCard =
+        user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
       company.primary_card = isFirstCard;
       await company.save();
 
@@ -1706,6 +1802,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       await user.save();
     }
 
+    // Mark the OTP as used
     otpRecord.used = true;
     await otpRecord.save();
 
@@ -1713,53 +1810,27 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       message: isAlreadyAdded
         ? 'Card was already created.'
         : 'OTP verified successfully!',
-      data: company,
+      data: { bio,company },
     });
   } catch (error) {
-    //console.error('Error verifying OTP:', error);
     res.status(500).json({ message: 'Internal server error.', error });
   }
 };
 
-// exports.getAllAccessCards = async (req, res) => {
-//   try {
-//     const userId = req.user._id; 
-//  //console.log('get all access code card',req.user)
-//     const user = await User.findById(userId).select('companyAccessCardDetails');
-//     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
-//       return res.status(404).json({ message: 'No company access cards found.' });
-//     }
 
-//     const companyConditions = user.companyAccessCardDetails.map((detail) => ({
-//       email_domain: detail.email_domain,
-//       access_code: detail.access_code,
-//     }));
 
-//     const companies = await Company.find(
-//       { $or: companyConditions },
-//       { password: 0, decoded_password: 0 } 
-//     );
 
-//     if (companies.length === 0) {
-//       return res.status(404).json({ message: 'No companies found for the access cards.' });
-//     }
 
-//     res.status(200).json({
-//       code:200,
-//       message: 'Access Cards retrieved successfully.',
-//       count:companies.length,
-//       data: companies,
-//     });
-//   } catch (error) {
-//     //console.error('Error in getAllAccessCards API:', error);
-//     utils.handleError(res, error);
-//   }
-// };
+
+
+
+
+
 
 exports.getAllAccessCards = async (req, res) => {
   try {
     const userId = req.user._id;
-
+    console.log(' logged in USER IS>>>>',req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
       return res.status(404).json({ message: "No company access cards found." });
@@ -1772,19 +1843,31 @@ exports.getAllAccessCards = async (req, res) => {
 
     const companies = await Company.find(
       { $or: companyConditions },
-      { social_links: 0, password: 0, decoded_password: 0 }
+      { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
     );
 
     if (companies.length === 0) {
       return res.status(404).json({ message: "No companies found for the access cards." });
     }
-
     const enrichedCompanies = companies.map((company) => {
+
       const userAccessCardDetail = user.companyAccessCardDetails.find(
         (detail) => detail.email_domain === company.email_domain
       );
 
+      const teamMember = TeamMember.findById(userAccessCardDetail?._id); 
+      const bio = teamMember
+        ? {
+            first_name: teamMember.first_name,
+            last_name: teamMember.last_name,
+            full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+            designation: teamMember.designation || "",
+            work_email: teamMember.work_email,
+          }
+        : null;
+        console.log('bio', bio)
       return {
+        bio,
         ...company.toObject(),
         social_links: userAccessCardDetail?.accessCard_social_links || {
           linkedin: "",
@@ -1806,6 +1889,9 @@ exports.getAllAccessCards = async (req, res) => {
     utils.handleError(res, error);
   }
 };
+
+
+
 
 
 exports.updateAccessCard = async (req, res) => {
