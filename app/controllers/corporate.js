@@ -694,16 +694,75 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 };
 
 //--------get All Team Member List--------
+// exports.getTeamMembersByBusinessTeam = async (req, res) => {
+//   try {
+//     const { work_email, status, limit = 10, offset = 0, search } = req.query;
+//     console.log('company is>>>>>>>',req.user)
+//     const query = {};
+//     // Uncomment and modify as per requirements
+//     // const company_domain = req.user.email_domain;
+//     // query["company_details.email_domain"] = company_domain;
+
+//     if (status) query.status = status;
+//     if (search) {
+//       query.$or = [
+//         { first_name: { $regex: search, $options: "i" } },
+//         { last_name: { $regex: search, $options: "i" } },
+//         { work_email: { $regex: search, $options: "i" } },
+//         { phone_number: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     const paginationLimit = parseInt(limit, 10);
+//     const paginationOffset = parseInt(offset, 10);
+
+//     const totalCount = await TeamMember.countDocuments(query);
+//     const teamMembers = await TeamMember.find(query)
+//       //.populate('company_details.company_id', 'name email_domain')
+//       .skip(paginationOffset)
+//       .limit(paginationLimit);
+
+//     const response = teamMembers.map((member) => ({
+//       id: member._id,
+//       first_name: member.first_name,
+//       last_name: member.last_name,
+//       work_email: member.work_email,
+//       phone_number: member.phone_number,
+//       designation: member.designation,
+//       user_type: member.user_type,
+//       status: member.status,
+//       company_details: member.company_details,
+//     }));
+
+//     res.status(200).json({
+//       code: 200,
+//       totalCount,
+//       limit: paginationLimit,
+//       offset: paginationOffset,
+//       message: "Team members retrieved successfully",
+//       teamMembers: response,
+//     });
+//   } catch (error) {
+//     // console.error("Error fetching team members:", error);
+//     utils.handleError(res, error);
+//   }
+// };
+
 exports.getTeamMembersByBusinessTeam = async (req, res) => {
   try {
     const { work_email, status, limit = 10, offset = 0, search } = req.query;
 
-    const query = {};
-    // Uncomment and modify as per requirements
-    // const company_domain = req.user.email_domain;
-    // query["company_details.email_domain"] = company_domain;
+    const companyId = req.user._id; // Assuming req.user contains company_id
+    if (!companyId) {
+      return res.status(400).json({ message: "Invalid request: Company ID is missing." });
+    }
+
+    const query = {
+      "company_details.company_id": companyId, // Filter by matching company_id
+    };
 
     if (status) query.status = status;
+
     if (search) {
       query.$or = [
         { first_name: { $regex: search, $options: "i" } },
@@ -717,8 +776,11 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
     const paginationOffset = parseInt(offset, 10);
 
     const totalCount = await TeamMember.countDocuments(query);
+    if (totalCount === 0) {
+      return res.status(404).json({ message: "No team members are present." });
+    }
+
     const teamMembers = await TeamMember.find(query)
-      //.populate('company_details.company_id', 'name email_domain')
       .skip(paginationOffset)
       .limit(paginationLimit);
 
@@ -743,12 +805,14 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       teamMembers: response,
     });
   } catch (error) {
-    // console.error("Error fetching team members:", error);
     utils.handleError(res, error);
   }
 };
 
+
+
 //--------------get TEAM MEMBER By ID------------
+
 exports.getTeamMemberByID = async (req, res) => {
   try {
     const { _id } = req.query;
