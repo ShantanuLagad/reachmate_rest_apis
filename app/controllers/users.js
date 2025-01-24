@@ -4731,9 +4731,14 @@ exports.deleteCard = async (req, res) => {
     }
 
     // Step 4: Return success response
+    // return res.status(200).json({
+    //   message: "Card deleted successfully from user's company access cards.",
+    //   updatedUser,
+    //   code: 200,
+    // });
     return res.status(200).json({
       message: "Card deleted successfully from user's company access cards.",
-      //updatedUser,
+      
       code: 200,
     });
   } catch (error) {
