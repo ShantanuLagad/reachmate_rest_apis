@@ -4767,7 +4767,7 @@ exports.deleteCard = async (req, res) => {
       });
     }
 
-    await CardDetails.findByIdAndDelete(card_id);
+    await CardDetials.findByIdAndDelete(card_id);
 
     const isCardExistInCompany = await Company.findOne({
       _id: mongoose.Types.ObjectId(card_id),
