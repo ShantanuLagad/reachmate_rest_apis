@@ -546,7 +546,6 @@ exports.completeProfile = async (req, res) => {
   }
 }
 
-//--------------- List of Employees in a Business Team--- 
 
 exports.corporateCardHolder = async (req, res) => {
   try {
@@ -636,7 +635,6 @@ exports.corporateCardHolder = async (req, res) => {
   }
 }
 
-//-----------Add User By Admin(Business Team)-----
 exports.addTeamMemberByBusinessTeam = async (req, res) => {
   try {
     const userData = req.body;
@@ -693,60 +691,6 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
   }
 };
 
-//--------get All Team Member List--------
-// exports.getTeamMembersByBusinessTeam = async (req, res) => {
-//   try {
-//     const { work_email, status, limit = 10, offset = 0, search } = req.query;
-//     console.log('company is>>>>>>>',req.user)
-//     const query = {};
-//     // Uncomment and modify as per requirements
-//     // const company_domain = req.user.email_domain;
-//     // query["company_details.email_domain"] = company_domain;
-
-//     if (status) query.status = status;
-//     if (search) {
-//       query.$or = [
-//         { first_name: { $regex: search, $options: "i" } },
-//         { last_name: { $regex: search, $options: "i" } },
-//         { work_email: { $regex: search, $options: "i" } },
-//         { phone_number: { $regex: search, $options: "i" } },
-//       ];
-//     }
-
-//     const paginationLimit = parseInt(limit, 10);
-//     const paginationOffset = parseInt(offset, 10);
-
-//     const totalCount = await TeamMember.countDocuments(query);
-//     const teamMembers = await TeamMember.find(query)
-//       //.populate('company_details.company_id', 'name email_domain')
-//       .skip(paginationOffset)
-//       .limit(paginationLimit);
-
-//     const response = teamMembers.map((member) => ({
-//       id: member._id,
-//       first_name: member.first_name,
-//       last_name: member.last_name,
-//       work_email: member.work_email,
-//       phone_number: member.phone_number,
-//       designation: member.designation,
-//       user_type: member.user_type,
-//       status: member.status,
-//       company_details: member.company_details,
-//     }));
-
-//     res.status(200).json({
-//       code: 200,
-//       totalCount,
-//       limit: paginationLimit,
-//       offset: paginationOffset,
-//       message: "Team members retrieved successfully",
-//       teamMembers: response,
-//     });
-//   } catch (error) {
-//     // console.error("Error fetching team members:", error);
-//     utils.handleError(res, error);
-//   }
-// };
 
 exports.getTeamMembersByBusinessTeam = async (req, res) => {
   try {
@@ -815,7 +759,6 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
 
 
 
-//--------------get TEAM MEMBER By ID------------
 
 exports.getTeamMemberByID = async (req, res) => {
   try {
@@ -854,7 +797,6 @@ exports.getTeamMemberByID = async (req, res) => {
   }
 };
 
-//----------------Update Team Member--------------
 exports.updateTeamMember = async (req, res) => {
   try {
     const updateData = req.body; 
@@ -908,7 +850,6 @@ exports.updateTeamMember = async (req, res) => {
   }
 };
 
-//----------team member status update-----
 exports.updateTeamMemberStatus = async (req, res) => {
   try {
     const { _id } = req.body;
@@ -929,40 +870,6 @@ exports.updateTeamMemberStatus = async (req, res) => {
     utils.handleError(res, err);
   }
 };
-//--------------delete Team Member By ID-----
-// exports.deleteTeamMemberByID = async (req, res) => {
-//   try {
-//     const { _id } = req.params;
-//     console.log('Delete request for team member with ID:', _id);
-
-//     if (!_id) {
-//       return res.status(400).json({ message: 'Team member ID (_id) is required.' });
-//     }
-
-//     // Delete the team member from the TeamMember collection
-//     const teamMember = await TeamMember.findByIdAndDelete(_id);
-
-//     if (!teamMember) {
-//       return res.status(404).json({ message: 'Team member not found.' });
-//     }
-
-//     // Remove the team member reference from all users
-//     const users = await User.updateMany(
-//       { "companyAccessCardDetails._id": _id },
-//       { $pull: { companyAccessCardDetails: { _id } } }
-//     );
-
-//     res.status(200).json({
-//       code: 200,
-//       message: 'Team member deleted successfully and references removed from users.',
-//       deletedTeamMemberId: _id,
-//       usersUpdatedCount: users.modifiedCount, // Optional: Returns the count of users updated
-//     });
-//   } catch (error) {
-//     console.error('Error deleting team member by ID:', error);
-//     utils.handleError(res, error);
-//   }
-// };
 
 
 exports.deleteTeamMemberByID = async (req, res) => {
@@ -974,14 +881,12 @@ exports.deleteTeamMemberByID = async (req, res) => {
       return res.status(400).json({ message: 'Team member ID (_id) is required.' });
     }
 
-    // Check if the provided _id is valid
     if (!mongoose.Types.ObjectId.isValid(_id)) {
       return res.status(400).json({ message: 'Invalid team member ID format.' });
     }
 
     const objectId = mongoose.Types.ObjectId(_id);
 
-    // Delete the team member from the TeamMember collection
     const teamMember = await TeamMember.findByIdAndDelete(objectId);
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
@@ -989,11 +894,10 @@ exports.deleteTeamMemberByID = async (req, res) => {
 
     console.log('Deleted team member:', teamMember);
 
-    // Remove the team member reference from the specific user's companyAccessCardDetails array
     const user = await User.findOneAndUpdate(
-      { "companyAccessCardDetails._id": objectId }, // Query to find the user
-      { $pull: { companyAccessCardDetails: { _id: objectId } } }, // Pull the matching object from the array
-      { new: true } // Return the updated document
+      { "companyAccessCardDetails._id": objectId }, 
+      { $pull: { companyAccessCardDetails: { _id: objectId } } }, 
+      { new: true } 
     );
 
     if (!user) {
@@ -1008,7 +912,7 @@ exports.deleteTeamMemberByID = async (req, res) => {
       code: 200,
       message: 'Team member deleted successfully and reference removed from user.',
       deletedTeamMemberId: _id,
-      updatedUser: user, // Optional: Return the updated user for verification
+      updatedUser: user, 
     });
   } catch (error) {
     console.error('Error deleting team member by ID:', error);
@@ -1411,13 +1315,11 @@ exports.bulkUploadEmail = async (req, res) => {
       }
 
       Email = await processCSV()
-      // Read CSV file
     }
 
     if (Email.length === 0) return utils.handleError(res, { message: "Email field should cantain atleast one row", code: 400 });
 
 
-    //to check all the email contain company domain name
     for (let index = 0; index < Email.length; index++) {
       const email = Email[index].email;
       const emailDomain = extractDomainFromEmail(email);

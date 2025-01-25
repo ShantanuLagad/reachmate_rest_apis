@@ -1706,183 +1706,6 @@ exports.matchAccessCode = async (req, res) => {
   }
 };
 
-// exports.verifyOtpAndFetchCompany = async (req, res) => {
-//   try {
-//     const { email, otp } = req.body;
-//     const userId = req.user._id;
-
-//     //console.log('Verifying OTP and fetching company:', req.body);
-
-//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-//       return res.status(400).json({ message: 'Invalid email format.' });
-//     }
-
-//     const otpRecord = await Otp.findOne({ email})
-//       .sort({ createdDate: -1 }); 
-//     if (!otpRecord) {
-//       return res.status(404).json({ message: 'OTP not found or already used.' });
-//     }
-
-//     if (otpRecord.otp !== otp) {
-//       return res.status(400).json({ message: 'Invalid OTP.' });
-//     }
-//     if (Date.now() > otpRecord.expired) {
-//       return res.status(400).json({ message: 'This OTP has expired.' });
-//     }
-
-//     const emailDomain = email.split('@')[1];
-//     const company = await Company.findOne(
-//       { email_domain: emailDomain },
-//       { password: 0, decoded_password: 0 }
-//     );
-//     if (!company) {
-//       return res.status(404).json({ message: 'Company not found.' });
-//     }
-
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found.' });
-//     }
-
-//     const companyAccessDetails = {
-//       company_id: company._id,
-//       email_domain: company.email_domain,
-//       company_name: company.company_name,
-//       access_code: company.access_code,
-//       accessCard_social_links:{
-//         linkedin: "",
-//         x:"",
-//         instagram:"",
-//         youtube: ""
-//       }
-//     };
-
-//     const isAlreadyAdded = user.companyAccessCardDetails.some(
-//       (detail) => detail.company_id.toString() === company._id.toString()
-//     );
-
-//     if (!isAlreadyAdded) {
-//       const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
-//       company.primary_card = isFirstCard;
-//       await company.save();
-
-//       user.companyAccessCardDetails.push(companyAccessDetails);
-//       await user.save();
-//     }
-
-//     otpRecord.used = true;
-//     await otpRecord.save();
-
-//     res.status(200).json({
-//       message: isAlreadyAdded
-//         ? 'Card was already created.'
-//         : 'OTP verified successfully!',
-//       data: company,
-//     });
-//   } catch (error) {
-//     //console.error('Error verifying OTP:', error);
-//     res.status(500).json({ message: 'Internal server error.', error });
-//   }
-// };
-
-// exports.verifyOtpAndFetchCompany = async (req, res) => {
-//   try {
-//     const { email, otp } = req.body;
-//     const userId = req.user._id;
-//     console.log('USERRRRR:', req.user);
-//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-//       return res.status(400).json({ message: 'Invalid email format.' });
-//     }
-
-//     const otpRecord = await Otp.findOne({ email })
-//       .sort({ createdDate: -1 });
-//     if (!otpRecord) {
-//       return res.status(404).json({ message: 'OTP not found or already used.' });
-//     }
-
-//     if (otpRecord.otp !== otp) {
-//       return res.status(400).json({ message: 'Invalid OTP.' });
-//     }
-
-//     if (Date.now() > otpRecord.expired) {
-//       return res.status(400).json({ message: 'This OTP has expired.' });
-//     }
-
-//     const emailDomain = email.split('@')[1];
-
-//     // Find the company based on the email domain
-//     const company = await Company.findOne(
-//       { email_domain: emailDomain },
-//       { password: 0, decoded_password: 0,bio:0,social_links: 0 }
-//     );
-//     if (!company) {
-//       return res.status(404).json({ message: 'Company not found.' });
-//     }
-
-//     // Find the user based on userId
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found.' });
-//     }
-
-//     // Find the team member based on the email
-//     const teamMember = await TeamMember.findOne({ work_email: email });
-//     if (!teamMember) {
-//       return res.status(404).json({ message: 'Team member not found.' });
-//     }
-//     const bio = {
-//       first_name: teamMember.first_name,
-//       last_name: teamMember.last_name,
-//       full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-//       designation: teamMember.designation || "",
-//     };
-//     console.log('teammmmmm',teamMember)
-//     // Prepare company access details
-//     const companyAccessDetails = {
-//       company_id: company._id,
-//       email_domain: company.email_domain,
-//       company_name: company.company_name,
-//       access_code: company.access_code,
-//       _id:teamMember._id,
-//       accessCard_social_links: {
-//         linkedin: teamMember.social_links?.linkedin || "",
-//         x: teamMember.social_links?.x || "",
-//         instagram: teamMember.social_links?.instagram || "",
-//         youtube: teamMember.social_links?.youtube || "",
-//       },
-//     };
-//     console.log('companyAccessDetails',companyAccessDetails)
-//     // Check if the card is already added
-//     const isAlreadyAdded = user.companyAccessCardDetails.some(
-//       (detail) => detail.company_id.toString() === company._id.toString()
-//     );
-
-//     if (!isAlreadyAdded) {
-//       const isFirstCard =
-//         user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
-//       company.primary_card = isFirstCard;
-//       await company.save();
-
-//       user.companyAccessCardDetails.push(companyAccessDetails);
-//       await user.save();
-//     }
-//     console.log('userrrrrrr>>>>>>>>>>',user)
-
-//     // Mark the OTP as used
-//     otpRecord.used = true;
-//     await otpRecord.save();
-
-//     res.status(200).json({
-//       message: isAlreadyAdded
-//         ? 'Card was already created.'
-//         : 'OTP verified successfully!',
-//       data: { bio,company },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Internal server error.', error });
-//   }
-// };
-
 
 
 
@@ -2695,32 +2518,6 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// exports.userProfileDetails = async (req, res) => {
-//   try {
-//    // const userId = req.user._id;  
-//     console.log('user',req.user)
-//    //  const user = await User.findById(userId);  
-    
-//     // if (!user) {
-//     //   return res.status(404).json({ errors: { msg: 'User not found.' } });
-//     // }
-
-//     // const userInfo = {
-//     //   first_name: user.first_name,
-//     //   last_name: user.last_name,
-//     //   email: user.email,
-//     //   profile_image: user.profile_image,
-//     //   dateOfBirth: user.dateOfBirth,
-//     //   sex: user.sex,
-//     // };
-
-//    // res.status(200).json({ data:userInfo });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
-//   }
-// };
-
 
 
 
@@ -2787,23 +2584,20 @@ exports.enableOrDisableLink = async (req, res) => {
 
 }
 
-//-------get All scanned Cards and one Primary Individual Card (if user created any card primary)----
 
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    //console.log('isSubscriptionActive >>>',isSubscriptionActive)
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
 
-    // const profile = await CardDetials.findOne({owner_id : user_id});
 
     const profile = await CardDetials.aggregate([
       {
         $match: {
           owner_id: user_id,
-          primary_card: true, //---------added on 9 jan
+          primary_card: true, 
         }
       },
       {
@@ -2899,114 +2693,7 @@ exports.getCard = async (req, res) => {
   }
 }
 
-//------------updated on 6Jan 2025
-// exports.getCard = async (req, res) => {
-//   try {
-//     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-//     if (isSubscriptionActive === false) {
-//       return utils.handleError(res, {
-//         message: "Your subscription has expired. Please renew to continue accessing our services",
-//         code: 400
-//       });
-//     }
 
-//     const user_id = req.user._id;
-
-//     const profile = await CardDetials.aggregate([
-//       {
-//         $match: {
-//           owner_id: user_id
-//         }
-//       },
-//       {
-//         $lookup: {
-//           from: "companies",
-//           localField: "company_id",
-//           foreignField: "_id",
-//           as: "company",
-//         },
-//       },
-//       {
-//         $unwind: {
-//           path: "$company",
-//           preserveNullAndEmptyArrays: true,
-//         },
-//       },
-//       {
-//         $addFields: {
-//           'bio.business_name': {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.company_name',
-//               else: '$bio.business_name'
-//             }
-//           },
-//           'card_color': {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.card_color',
-//               else: '$card_color'
-//             }
-//           },
-//           "business_and_logo_status": {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.business_and_logo_status',
-//               else: '$business_and_logo_status'
-//             }
-//           },
-//           'text_color': {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.text_color',
-//               else: '$text_color'
-//             }
-//           },
-//           "business_logo": {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.business_logo',
-//               else: '$business_logo'
-//             }
-//           },
-//           "address": {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.address',
-//               else: '$address'
-//             }
-//           },
-//           "contact_details.website": {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.contact_details.website',
-//               else: '$contact_details.website'
-//             }
-//           },
-//           "website": {
-//             $cond: {
-//               if: { $eq: ['$card_type', 'corporate'] },
-//               then: '$company.contact_details.website',
-//               else: '$website'
-//             }
-//           },
-//         }
-//       },
-//       {
-//         $project: {
-//           company: 0
-//         }
-//       }
-//     ]);
-
-//     // Return all cards for the user
-//     res.json({ data: profile, code: 200 });
-//   } catch (error) {
-//     utils.handleError(res, error);
-//   }
-// };
-
-//--------get All Individual added Cards of a user-----------
 exports.getPersonalCards = async (req, res) => {
   try {
     const userId = req.user._id; 

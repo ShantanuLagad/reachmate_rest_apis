@@ -156,14 +156,12 @@ router.delete(
   controller.deleteAllNotification
 )
 
-//----------get list of employees
 router.get(
   "/corporateCardHolder",
   requireAuth,
   trimRequest.all,
   controller.corporateCardHolder
 )
-//---------add TeamMember by Business Team
 router.post(
   "/addTeamMember",
   requireAuth,
@@ -171,35 +169,30 @@ router.post(
   controller.addTeamMemberByBusinessTeam
 )
 
-//-------get all team members list
 router.get(
   "/getTeamMembers",
   requireAuth,
   trimRequest.all,
   controller.getTeamMembersByBusinessTeam
 )
-//----get Team Member By ID
 router.get(
   "/getTeamMemberById",
   requireAuth,
   trimRequest.all,
   controller.getTeamMemberByID
 )
-//-----update Team member
 router.patch(
   "/updateTeamMember",
   requireAuth,
   trimRequest.all,
   controller.updateTeamMember
 )
-//----delete Team Member
 router.delete(
   "/deleteTeamMember/:_id",
   requireAuth,
   trimRequest.all,
   controller.deleteTeamMemberByID
 )
-//----update status Team Member
 router.patch(
   "/updateTeamMemberStatus",
   requireAuth,
@@ -208,7 +201,6 @@ router.patch(
 )
 
 
-//--------------------
 router.delete(
   "/deleteCorporateCardHolders",
   requireAuth,

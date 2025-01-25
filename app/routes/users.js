@@ -426,7 +426,6 @@ router.post(
   controller.registration
 )
 
-//----sendEmailOnCompany to BT----
 // router.post(
 //   "/sendEmailOnCompany",
 //   trimRequest.all,
