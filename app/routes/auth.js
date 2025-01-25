@@ -200,7 +200,7 @@ router.post(
   trimRequest.all,
   controller.createCompanyAccount
 )
-router.get(
+router.post(
   '/userProfileDetails',
  // requireAuth,
   trimRequest.all,
