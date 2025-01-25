@@ -48,6 +48,7 @@ router.get(
   controller.verifyEmail
 )
 
+
 router.post(
   '/verifyotpemail',
   trimRequest.all,
@@ -198,6 +199,12 @@ router.post(
   "/createCompanyAccount",
   trimRequest.all,
   controller.createCompanyAccount
+)
+router.get(
+  '/userProfileDetails',
+ // requireAuth,
+  trimRequest.all,
+  controller.userProfileDetails
 )
 
 module.exports = router

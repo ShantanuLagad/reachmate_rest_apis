@@ -211,14 +211,6 @@ router.get(
   controller.getProfile
 )
 
-router.get(
-  '/userProfileDetails',
- // requireAuth,
-  trimRequest.all,
-  controller.userProfileDetails
-)
-
-
 router.post(
   '/enableOrDisableLink',
   requireAuth,

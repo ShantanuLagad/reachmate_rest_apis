@@ -76,6 +76,7 @@ console.log('Encrypted Token:', encryptedToken);
 
 
 
+
 async function checkSusbcriptionIsActive(user_id) {
   const checkIsTrialExits = await Trial.findOne({ user_id });
 
@@ -1673,3 +1674,31 @@ exports.token = async (req, res) => {
     res.json({ data: false })
   }
 }
+
+exports.userProfileDetails = async (req, res) => {
+  try {
+    const userId = req.body._id;
+    if (!userId) {
+      return res.status(400).json({ errors: { msg: 'User ID is required.' } });
+    }
+    const user = await User.findById(userId).select(
+      'first_name last_name email profile_image dateOfBirth sex'
+    );
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
+    res.status(200).json({
+      data: {
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        profile_image: user.profile_image,
+        dateOfBirth: user.dateOfBirth,
+        sex: user.sex,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};

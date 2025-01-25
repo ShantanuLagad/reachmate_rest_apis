@@ -2695,31 +2695,31 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-exports.userProfileDetails = async (req, res) => {
-  try {
-    const userId = req.user._id;  
-    const user = await User.findById(userId);  
+// exports.userProfileDetails = async (req, res) => {
+//   try {
+//    // const userId = req.user._id;  
+//     console.log('user',req.user)
+//    //  const user = await User.findById(userId);  
     
-    if (!user) {
-      return res.status(404).json({ errors: { msg: 'User not found.' } });
-    }
+//     // if (!user) {
+//     //   return res.status(404).json({ errors: { msg: 'User not found.' } });
+//     // }
 
-    const userInfo = {
-      id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      profile_image: user.profile_image,
-      dateOfBirth: user.dateOfBirth,
-      sex: user.sex,
-    };
+//     // const userInfo = {
+//     //   first_name: user.first_name,
+//     //   last_name: user.last_name,
+//     //   email: user.email,
+//     //   profile_image: user.profile_image,
+//     //   dateOfBirth: user.dateOfBirth,
+//     //   sex: user.sex,
+//     // };
 
-    res.status(200).json({ data:userInfo });
-  } catch (error) {
-   // console.error(error);
-    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
-  }
-};
+//    // res.status(200).json({ data:userInfo });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+//   }
+// };
 
 
 
