@@ -2230,10 +2230,10 @@ exports.getCard = async (req, res) => {
 
     const user_data = await User.findOne({ _id: user_id })
     console.log("user_data : ", user_data)
-    const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true)
+    const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
     console.log("is_primary : ", is_primary)
 
-    const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true)
+    const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
     console.log("is_primary_card : ", is_primary_card)
 
     const profile = await CardDetials.aggregate(
