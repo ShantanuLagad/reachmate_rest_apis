@@ -1637,9 +1637,11 @@ exports.makeIndividualCardPrimary = async (req, res) => {
     console.log("card id : ", card_id)
     if (!card_id) return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
+    console.log("existingCard : ", existingCard)
     let existingAccessCard;
     if (!existingCard) {
       existingAccessCard = await Company.findOne({ _id: card_id });
+      console.log("existingAccessCard : ", existingAccessCard)
       if (!existingAccessCard) {
         return res.status(404).json({ code: 404, message: "Card not found" });
       }
@@ -2223,93 +2225,95 @@ exports.getCard = async (req, res) => {
     const user_id = req.user._id;
 
 
-    const profile = await CardDetials.aggregate([
-      {
-        $match: {
-          owner_id: user_id,
-          primary_card: true,
-        }
-      },
-      {
-        $lookup: {
-          from: "companies",
-          localField: "company_id",
-          foreignField: "_id",
-          as: "company",
+    const profile = await CardDetials.aggregate(
+      [
+        {
+          $match: {
+            owner_id: user_id,
+            primary_card: true,
+          }
         },
-      },
-      {
-        $unwind: {
-          path: "$company",
-          preserveNullAndEmptyArrays: true,
+        {
+          $lookup: {
+            from: "companies",
+            localField: "company_id",
+            foreignField: "_id",
+            as: "company",
+          },
         },
-      },
-      {
-        $addFields: {
-          'bio.business_name': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.company_name',
-              else: '$bio.business_name'
-            }
+        {
+          $unwind: {
+            path: "$company",
+            preserveNullAndEmptyArrays: true,
           },
-          'card_color': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.card_color',
-              else: '$card_color'
-            }
-          },
-          "business_and_logo_status": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.business_and_logo_status',
-              else: '$business_and_logo_status'
-            }
-          },
-          'text_color': {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.text_color',
-              else: '$text_color'
-            }
-          },
-          "business_logo": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.business_logo',
-              else: '$business_logo'
-            }
-          },
-          "address": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.address',
-              else: '$address'
-            }
-          },
-          "contact_details.website": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$contact_details.website'
-            }
-          },
-          "website": {
-            $cond: {
-              if: { $eq: ['$card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$website'
-            }
-          },
+        },
+        {
+          $addFields: {
+            'bio.business_name': {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.company_name',
+                else: '$bio.business_name'
+              }
+            },
+            'card_color': {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.card_color',
+                else: '$card_color'
+              }
+            },
+            "business_and_logo_status": {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.business_and_logo_status',
+                else: '$business_and_logo_status'
+              }
+            },
+            'text_color': {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.text_color',
+                else: '$text_color'
+              }
+            },
+            "business_logo": {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.business_logo',
+                else: '$business_logo'
+              }
+            },
+            "address": {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.address',
+                else: '$address'
+              }
+            },
+            "contact_details.website": {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.contact_details.website',
+                else: '$contact_details.website'
+              }
+            },
+            "website": {
+              $cond: {
+                if: { $eq: ['$card_type', 'corporate'] },
+                then: '$company.contact_details.website',
+                else: '$website'
+              }
+            },
+          }
+        },
+        {
+          $project: {
+            company: 0
+          }
         }
-      },
-      {
-        $project: {
-          company: 0
-        }
-      }
-    ])
+      ]
+    )
 
     if (!profile || profile.length === 0) {
 
@@ -2327,7 +2331,7 @@ exports.getCard = async (req, res) => {
 exports.getPersonalCards = async (req, res) => {
   try {
     const userId = req.user._id;
-    // console.log("User ID:", userId);
+    console.log("User ID:", userId);
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       // console.error("Invalid User ID format:", userId);
