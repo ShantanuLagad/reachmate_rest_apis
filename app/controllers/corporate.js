@@ -24,6 +24,10 @@ const csv = require('csv-parser');
 const fs = require('fs');
 var generator = require('generate-password');
 const moment = require("moment")
+const TeamMember=require("../models/teamMember")
+const Support = require('../models/support')
+const Feedback = require('../models/feedback')
+
 const {
   uploadFile,
   uploadFileToLocal,
@@ -56,8 +60,6 @@ async function checkSusbcriptionIsActive(user_id) {
   if (subcription.end_at < new Date()) return false
   return true
 }
-
-
 async function giveTrialIfNotGive(user_id) {
   const isTrialGiven = await Trial.findOne({ user_id: user_id });
 
@@ -80,36 +82,6 @@ async function giveTrialIfNotGive(user_id) {
 
   return value
 }
-
-function generateAccessCode() {
-  // Generate 4 random characters
-  var chars = '';
-  var charLength = 4;
-  for (var i = 0; i < charLength; i++) {
-      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
-  }
-  
-  // Generate 2 random digits
-  var digits = '';
-  var digitLength = 2;
-  for (var j = 0; j < digitLength; j++) {
-      digits += Math.floor(Math.random() * 10);
-  }
-  
-  // Combine characters and digits
-  var code = chars + digits;
-  // Convert to array to shuffle
-  var codeArray = code.split('');
-  for (var k = codeArray.length - 1; k > 0; k--) {
-      var randIndex = Math.floor(Math.random() * (k + 1));
-      var temp = codeArray[k];
-      codeArray[k] = codeArray[randIndex];
-      codeArray[randIndex] = temp;
-  }
-  code = codeArray.join('');
-  return code;
-}
-
 
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
@@ -145,6 +117,7 @@ const generateToken = (_id, role, remember_me) => {
     )
   )
 }
+exports.generateToken = generateToken
 
 const saveUserAccessAndReturnToken = async (req, user, remember_me) => {
   return new Promise((resolve, reject) => {
@@ -364,7 +337,6 @@ exports.changePassword = async (req, res) => {
     utils.handleError(res, error)
   }
 }
-
 
 exports.login = async (req, res) => {
   try {
@@ -663,7 +635,293 @@ exports.corporateCardHolder = async (req, res) => {
   }
 }
 
+exports.addTeamMemberByBusinessTeam = async (req, res) => {
+  try {
+    const userData = req.body;
+    const workEmailDomain = userData.work_email.split('@')[1];
+    const companyDomain = req.user.email_domain;
+    if (workEmailDomain !== companyDomain) {
+      return res.status(400).json({
+        errors: {
+          msg: `Work email domain "${workEmailDomain}" does not match the company domain "${companyDomain}".`,
+        },
+      });
+    }
+    userData.company_details= {
+      company_id:req.user._id,
+      email_domain:req.user.email_domain,
+      company_name:req.user.company_name,
+      access_code:req.user.access_code
+    }
+   // console.log("userData in admin============",userData)
+    //console.log('BUsiness team name------------------>>>>',req.user)
+    const doesEmailExist = await TeamMember.exists({ work_email: userData.work_email });
+    if (doesEmailExist) {
+      return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+    }
+    userData.full_name = `${userData.first_name} ${userData.last_name}`
+    const newUser = new TeamMember(userData);
+    const savedUser = await newUser.save();
+    const userInfo = {
+      id: savedUser._id,
+      first_name: savedUser.first_name,
+      last_name: savedUser.last_name,
+      work_email: savedUser.work_email,
+      phone_number:savedUser.phone_number,
+      designation:savedUser.designation,
+      user_type:savedUser.user_type,
+      status:savedUser.status,
+      company_id:savedUser.company_details.company_id,
+      email_domain:savedUser.company_details.email_domain,
+      company_name:savedUser.company_details.company_name,
+      access_code:savedUser.company_details.access_code
+      
+    };
 
+    await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
+      userInfo,"accessCodeByCompanyToTeamMember");
+    
+    res.status(201).json({
+      code:201,
+      // userInfo: userInfo, 
+       message:'Team Member has been Added and Access code has been sent on work Email' });
+  } catch (error) {
+   // console.error(error);
+    utils.handleError(res, error)
+  }
+};
+
+
+exports.getTeamMembersByBusinessTeam = async (req, res) => {
+  try {
+    const { work_email, status, limit = 10, offset = 0, search } = req.query;
+
+    const companyId = req.user._id; 
+    if (!companyId) {
+      return res.status(400).json({ message: "Invalid request: Company ID is missing." });
+    }
+
+    const query = {
+      "company_details.company_id": companyId, 
+    };
+
+    if (status) query.status = status;
+
+    if (search) {
+      query.$or = [
+        { first_name: { $regex: search, $options: "i" } },
+        { last_name: { $regex: search, $options: "i" } },
+        { work_email: { $regex: search, $options: "i" } },
+        { phone_number: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const paginationLimit = parseInt(limit, 10);
+    const paginationOffset = parseInt(offset, 10);
+
+    const totalCount = await TeamMember.countDocuments(query);
+    
+    const teamMembers = await TeamMember.find(query)
+      .skip(paginationOffset)
+      .limit(paginationLimit);
+
+    const response = teamMembers.map((member) => ({
+      id: member._id,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      work_email: member.work_email,
+      phone_number: member.phone_number,
+      designation: member.designation,
+      user_type: member.user_type,
+      status: member.status,
+      company_details: member.company_details,
+    }));
+
+    if (totalCount === 0) {
+      return res.status(200).json({
+        code: 200,
+        teamMembers: response,
+        message: "No team members are present." });
+    }
+
+    res.status(200).json({
+      code: 200,
+      totalCount,
+      limit: paginationLimit,
+      offset: paginationOffset,
+      message: "Team members retrieved successfully",
+      teamMembers: response,
+    });
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+};
+
+
+
+
+exports.getTeamMemberByID = async (req, res) => {
+  try {
+    const { _id } = req.query;
+    //console.log('idd',req.query)
+    if (!_id) {
+      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    }
+    const teamMember = await TeamMember.findById(_id)
+      //.populate('company_details.company_id', 'name email_domain');
+
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+
+    const response = {
+      id: teamMember._id,
+      first_name: teamMember.first_name,
+      last_name: teamMember.last_name,
+      work_email: teamMember.work_email,
+      phone_number: teamMember.phone_number,
+      designation: teamMember.designation,
+      user_type: teamMember.user_type,
+      status: teamMember.status,
+      company_details: teamMember.company_details,
+    };
+
+    res.status(200).json({
+      code:200,
+      message: 'Team member retrieved successfully',
+      teamMember: response,
+    });
+  } catch (error) {
+    //console.error('Error fetching team member by ID:', error);
+    utils.handleError(res, error);
+  }
+};
+
+exports.updateTeamMember = async (req, res) => {
+  try {
+    const updateData = req.body; 
+    let emailChanged=false;
+    //console.log('Update request for team member with ID:', updateData);
+    if (!updateData._id) return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    const existedData = await TeamMember.findById(updateData._id)
+    if (updateData.work_email && updateData.work_email !== existedData.work_email) {
+          const emailExists = await TeamMember.exists({ work_email: updateData.work_email });
+          if (emailExists) {
+            return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+          }
+          emailChanged = true; 
+    }
+
+    const teamMember = await TeamMember.findByIdAndUpdate(
+      updateData._id, 
+      updateData, 
+      {
+        new: true,
+        runValidators: true, 
+      }
+    )
+    //.populate('company_details.company_id', 'name email_domain');
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+    const response = {
+      id: teamMember._id,
+      first_name: teamMember.first_name,
+      last_name: teamMember.last_name,
+      work_email: teamMember.work_email,
+      phone_number: teamMember.phone_number,
+      designation: teamMember.designation,
+      user_type: teamMember.user_type,
+      status: teamMember.status,
+      company_details: teamMember.company_details,
+    };
+    if(emailChanged){
+      await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
+        response,"accessCodeByCompanyToTeamMember");
+    }
+    res.status(200).json({
+      code:200,
+      message: emailChanged ? 'Team member updated successfully.Access code has been sent on work Email':'Team member updated successfully',
+      teamMember: response,
+    });
+  } catch (error) {
+    //console.error('Error updating team member by ID:', error);
+    utils.handleError(res, error);
+  }
+};
+
+exports.updateTeamMemberStatus = async (req, res) => {
+  try {
+    const { _id } = req.body;
+    if (!_id) return res.status(400).json({ message: 'Team Member ID (_id) is required.' });
+    const existedData = await TeamMember.findById(_id);
+    if (!existedData) return res.status(404).json({ message: 'Team member not found.' });
+    console.log('Existing Data:', existedData);
+    existedData.status =existedData.status==='active'?'inactive':'active' ;
+    const updatedTeamMember = await existedData.save();
+    console.log('Updated Status:', updatedTeamMember.status);
+    res.status(200).json({
+      message: 'Team member status updated successfully',
+      status:updatedTeamMember.status
+      //updatedTeamMember,
+    });
+  } catch (err) {
+    console.error('Error updating team member status:', err);
+    utils.handleError(res, err);
+  }
+};
+
+
+exports.deleteTeamMemberByID = async (req, res) => {
+  try {
+    const { _id } = req.params;
+    console.log('Delete request for team member with ID:', _id);
+
+    if (!_id) {
+      return res.status(400).json({ message: 'Team member ID (_id) is required.' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(_id)) {
+      return res.status(400).json({ message: 'Invalid team member ID format.' });
+    }
+
+    const objectId = mongoose.Types.ObjectId(_id);
+
+    const teamMember = await TeamMember.findByIdAndDelete(objectId);
+    if (!teamMember) {
+      return res.status(404).json({ message: 'Team member not found.' });
+    }
+
+    console.log('Deleted team member:', teamMember);
+
+    const user = await User.findOneAndUpdate(
+      { "companyAccessCardDetails._id": objectId }, 
+      { $pull: { companyAccessCardDetails: { _id: objectId } } }, 
+      { new: true } 
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'No user found with the specified team member ID in companyAccessCardDetails.',
+      });
+    }
+
+    console.log('Updated user after removing team member:', user);
+
+    res.status(200).json({
+      code: 200,
+      message: 'Team member deleted successfully and reference removed from user.',
+      deletedTeamMemberId: _id,
+      updatedUser: user, 
+    });
+  } catch (error) {
+    console.error('Error deleting team member by ID:', error);
+    res.status(500).json({ message: 'Internal server error.', error });
+  }
+};
+
+
+//-------------------------------------------------------
 exports.deleteCorporateCardHolders = async (req, res) => {
   try {
 
@@ -836,6 +1094,58 @@ exports.getNotification = async (req, res) => {
   }
 };
 
+exports.changeNotificaitonSetting = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+
+    const user = await Company.findById(user_id);
+    user.notification = !user.notification;
+    await user.save()
+
+    res.json({ message: `Notificaton ${user.notification ? "enabled" : "disabled"} successfully`, code: 200 })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+// exports.changeNotificaitonSetting = async (req, res) => {
+//   try {
+//     const receiver_id  = req.user._id; // ID of the receiver (user or company) whose notifications to toggle
+//    console.log('receiver_id',receiver_id)
+//     if (!receiver_id) {
+//       return res.status(400).json({ message: "Receiver ID is required", code: 400 });
+//     }
+
+//     // Ensure the request is from an admin
+//     if (req.user.type !== "admin") {
+//       return res.status(403).json({ message: "Access denied. Admin only.", code: 403 });
+//     }
+
+//     // Find notifications for the given receiver_id
+//     const notifications = await Notification.find({ receiver_id: mongoose.Types.ObjectId(receiver_id) });
+
+//     // if (notifications.length === 0) {
+//     //   return res.status(404).json({ message: "No notifications found for the given receiver", code: 404 });
+//     // }
+
+//     // Toggle the `is_admin` flag for all notifications for the receiver
+//     const currentStatus = notifications[0].is_admin; // Assume all notifications have the same status
+//     await Notification.updateMany(
+//       { receiver_id: mongoose.Types.ObjectId(receiver_id) },
+//       { $set: { is_admin: !currentStatus } }
+//     );
+
+//     res.json({
+//       message: `Notifications for receiver ${receiver_id} ${!currentStatus ? "enabled" : "disabled"} for admin.`,
+//       code: 200,
+//     });
+//   } catch (error) {
+//     console.error("Error changing notification settings:", error);
+//     utils.handleError(res, error);
+//   }
+// };
+
+
 exports.deleteNotification = async (req, res) => {
   try {
     let company_id = req.user._id;
@@ -1005,13 +1315,11 @@ exports.bulkUploadEmail = async (req, res) => {
       }
 
       Email = await processCSV()
-      // Read CSV file
     }
 
     if (Email.length === 0) return utils.handleError(res, { message: "Email field should cantain atleast one row", code: 400 });
 
 
-    //to check all the email contain company domain name
     for (let index = 0; index < Email.length; index++) {
       const email = Email[index].email;
       const emailDomain = extractDomainFromEmail(email);
@@ -1608,67 +1916,6 @@ exports.cancelScheduledUpdate = async (req, res) => {
 //   }
 // }
 
-
-exports.createCompanyAccount = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const isEmailExist = await Company.findOne({ email: email });
-    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
-
-    const emailDomain = extractDomainFromEmail(email);
-    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
-    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
-
-
-    const isApprovedByAdmin = await Registration.findOne({ email: email });
-    if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
-
-    // const access_code = generator.generate({
-    //   length: 6,
-    //   numbers: true,
-    //   uppercase: true
-    // });
-    
-    const access_code = generateAccessCode();
-
-
-    const dataForCompany = {
-      email: email,
-      access_code: access_code.toUpperCase(),
-      password: password,
-      decoded_password: password,
-      email_domain: emailDomain,
-      company_name: isApprovedByAdmin.company_name,
-      type: "admin",
-      bio: {
-        first_name: isApprovedByAdmin.first_name,
-        last_name: isApprovedByAdmin.last_name,
-        full_name: `${isApprovedByAdmin?.first_name}${isApprovedByAdmin?.last_name ? ` ${isApprovedByAdmin?.last_name}` : ""}`,
-      },
-      contact_details: {
-        country_code: isApprovedByAdmin?.country_code ?? "",
-        mobile_number: isApprovedByAdmin?.mobile_number ?? "",
-      },
-      address: {
-        country: isApprovedByAdmin.country
-      }
-    }
-
-    const company = new Company(dataForCompany);
-    await company.save();
-
-    const userObj = company.toJSON()
-
-    res.json({ message: "Company registered successfully", ...(await saveUserAccessAndReturnToken(req, userObj, true)), code: 200 })
-  } catch (error) {
-    console.log(error)
-    utils.handleError(res, error)
-  }
-}
-
-
-
 exports.createSubAdmin = async (req, res) => {
   try {
     const { email, first_name, last_name, mobile_number, country_code } = req.body;
@@ -1854,7 +2101,6 @@ exports.addSubscription = async (req, res) => {
   }
 }
 
-
 exports.editBillingAddress = async (req, res) => {
   try {
     const company_id = req.user._id;
@@ -1884,3 +2130,77 @@ exports.editBillingAddress = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+exports.helpsupport = async (req, res) => {
+  try {
+    const data = req.body;
+    const user_id = req.user._id;
+    console.log('User type check',req.user)
+    const add = await Support.create(
+      {
+        user_id: user_id,
+        message: data?.message,
+        userType:req.user.type
+      }
+    );
+
+    res.json({
+      code: 200,
+      message: add,
+    });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+};
+
+exports.feedback = async (req, res) => {
+  try {
+    const data = req.body;
+    const user_id = req.user._id;
+    console.log('feedback user',)
+    const feedback = await Feedback.create(
+      {
+        user_id: user_id,
+        message: data?.message,
+        userType: req.user.type
+      }
+    );
+    res.json({
+      code: 200,
+      message: feedback,
+    });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    const company_email=req.user.email
+    console.log('User',user_id)
+    await Company.deleteOne({ _id: user_id });
+    await Registration.deleteOne({email:company_email})
+    await CardDetials.deleteOne({ owner_id: user_id })
+
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+
+    if (isSubcriptionExist) {
+      const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+      const status = subcription.status
+      if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
+        if (subcription.has_scheduled_changes === true) {
+          await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
+        }
+        await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false);
+      }
+    }
+    res.json({ message: "Your account is deleted successfully" });
+  } catch (error) {
+    console.log("================error", error)
+    utils.handleError(res, error);
+  }
+}
+

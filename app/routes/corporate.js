@@ -156,13 +156,50 @@ router.delete(
   controller.deleteAllNotification
 )
 
-
 router.get(
   "/corporateCardHolder",
   requireAuth,
   trimRequest.all,
   controller.corporateCardHolder
 )
+router.post(
+  "/addTeamMember",
+  requireAuth,
+  trimRequest.all,
+  controller.addTeamMemberByBusinessTeam
+)
+
+router.get(
+  "/getTeamMembers",
+  requireAuth,
+  trimRequest.all,
+  controller.getTeamMembersByBusinessTeam
+)
+router.get(
+  "/getTeamMemberById",
+  requireAuth,
+  trimRequest.all,
+  controller.getTeamMemberByID
+)
+router.patch(
+  "/updateTeamMember",
+  requireAuth,
+  trimRequest.all,
+  controller.updateTeamMember
+)
+router.delete(
+  "/deleteTeamMember/:_id",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteTeamMemberByID
+)
+router.patch(
+  "/updateTeamMemberStatus",
+  requireAuth,
+  trimRequest.all,
+  controller.updateTeamMemberStatus
+)
+
 
 router.delete(
   "/deleteCorporateCardHolders",
@@ -250,14 +287,6 @@ router.post(
   trimRequest.all,
   controller.cancelScheduledUpdate
 )
-
-router.post(
-  "/createCompanyAccount",
-  trimRequest.all,
-  controller.createCompanyAccount
-)
-
-
 router.post(
   "/createSubAdmin",
   trimRequest.all,
@@ -292,5 +321,28 @@ router.post(
   trimRequest.all,
   controller.editBillingAddress
 )
-
+router.post(
+  '/helpsupport',
+  requireAuth,
+  trimRequest.all,
+  controller.helpsupport
+)
+router.post(
+  '/feedback',
+  requireAuth,
+  trimRequest.all,
+  controller.feedback
+)
+router.delete(
+  "/deleteAccount",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteAccount
+)
+router.post(
+  "/changeNotificaitonSetting",
+  requireAuth,
+  trimRequest.all,
+  controller.changeNotificaitonSetting
+)
 module.exports = router

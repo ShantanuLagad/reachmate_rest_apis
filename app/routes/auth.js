@@ -35,11 +35,19 @@ router.post(
   trimRequest.all,
   controller.registerUser
 )
+//----------------9 Jan
+router.put(
+  '/editUser',
+  requireAuth,
+  trimRequest.all,
+  controller.editUser
+)
 router.get(
   '/verifyEmail',
   trimRequest.all,
   controller.verifyEmail
 )
+
 
 router.post(
   '/verifyotpemail',
@@ -186,6 +194,17 @@ router.post('/verifyOTP', trimRequest.all,
 router.post("/token",
   requireAuth,
   controller.token
+)
+router.post(
+  "/createCompanyAccount",
+  trimRequest.all,
+  controller.createCompanyAccount
+)
+router.post(
+  '/userProfileDetails',
+ // requireAuth,
+  trimRequest.all,
+  controller.userProfileDetails
 )
 
 module.exports = router

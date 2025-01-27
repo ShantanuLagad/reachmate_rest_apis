@@ -206,7 +206,6 @@ router.post(
   controller.deleteAdminNotification
 )
 
-
 router.delete(
   "/deletePersonalCardHolders/:user_id",
   requireAuth,
@@ -352,12 +351,7 @@ router.get(
   controller.chartData
 )
 
-router.post(
-  "/sendEmailOnCompany",
-  trimRequest.all,
-  requireAuth,
-  controller.sendEmailOnCompany
-)
+
 
 router.post(
   "/getSubscription",

@@ -5,7 +5,7 @@ const OtpSchema = new mongoose.Schema(
   {
     email: {
       type: String,
-      required: true
+      required: true, unique: true
     },
     otp: {
       type: String,
@@ -17,6 +17,9 @@ const OtpSchema = new mongoose.Schema(
     used :{
       type : Boolean,
       default : false
+    },
+    createdDate:{
+      type: Date, default: Date.now
     }
   },
   {

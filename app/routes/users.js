@@ -41,14 +41,14 @@ router.post(
 /*
  * Get item route
  */
-router.get(
-  '/:id',
-  requireAuth,
-  // AuthController.roleAuthorization(['admin']),
-  trimRequest.all,
-  validate.getItem,
-  controller.getItem
-)
+// router.get(
+//   '/:id',
+//   requireAuth,
+//   // AuthController.roleAuthorization(['admin']),
+//   trimRequest.all,
+//   validate.getItem,
+//   controller.getItem
+// )
 
 /*
  * Update item route
@@ -65,14 +65,14 @@ router.patch(
 /*
  * Delete item route
  */
-router.delete(
-  '/:id',
-  requireAuth,
-  // AuthController.roleAuthorization(['admin']),
-  trimRequest.all,
-  validate.deleteItem,
-  controller.deleteItem
-)
+// router.delete(
+//   '/:id',
+//   requireAuth,
+//   // AuthController.roleAuthorization(['admin']),
+//   trimRequest.all,
+//   validate.deleteItem,
+//   controller.deleteItem
+// )
 
 
 router.patch(
@@ -90,6 +90,14 @@ router.post(
   trimRequest.all,
   controller.editCardDetails
 )
+
+router.get(
+  '/getCardAndUserDetails',
+  //requireAuth,
+  trimRequest.all,
+  controller.getCardAndUserDetails
+)  
+
 router.post(
   '/makeIndividualCardPrimary',
   requireAuth,
@@ -148,11 +156,31 @@ router.post(
 )
 
 router.post(
-  '/  ',
+  '/matchAccessCode',
   requireAuth,
   trimRequest.all,
   controller.matchAccessCode
 )
+
+router.post(
+  '/verifyOtpAndFetchCompany',
+  requireAuth,
+  trimRequest.all,
+  controller.verifyOtpAndFetchCompany
+)
+router.get(
+  '/getAllAccessCards',
+  requireAuth,
+  trimRequest.all,
+  controller.getAllAccessCards
+)
+router.get(
+  '/updateAccessCard',
+  requireAuth,
+  trimRequest.all,
+  controller.updateAccessCard
+)
+
 
 router.post(
   "/isPaidByCompany",
@@ -176,7 +204,7 @@ router.post(
   controller.addCorporateCard
 )
 
-router.post(
+router.get(
   '/getProfile',
   requireAuth,
   trimRequest.all,
@@ -209,7 +237,7 @@ router.post(
   controller.getStates
 )
 
-router.post(
+router.get(
   '/getCard',
   requireAuth,
   trimRequest.all,
@@ -221,14 +249,6 @@ router.get(
   requireAuth,
   trimRequest.all,
   controller.getPersonalCards
-)
-
-//----------------
-router.put(
-  '/editUser',
-  requireAuth,
-  trimRequest.all,
-  controller.editUser
 )
 
 router.post(
@@ -399,12 +419,19 @@ router.post(
   trimRequest.all,
   controller.cancelScheduledUpdate
 )
-
+//--------BT registration
 router.post(
   "/registration",
   trimRequest.all,
   controller.registration
 )
+
+// router.post(
+//   "/sendEmailOnCompany",
+//   trimRequest.all,
+//   requireAuth,
+//   controller.sendEmailOnCompany
+// )
 router.post(
   "/contactUs",
   trimRequest.all,
@@ -425,11 +452,19 @@ router.post(
 )
 
 
-router.post(
+router.delete(
   '/deleteCard',
   requireAuth,
   trimRequest.all,
   controller.deleteCard
+)
+
+
+router.delete(
+  '/deleteUserCards',
+  requireAuth,
+  trimRequest.all,
+  controller.deleteUserCards
 )
 
 router.post(
@@ -458,6 +493,12 @@ router.post(
   requireAuth,
   trimRequest.all,
   controller.editBillingAddress
+)
+router.put(
+  "/updateAccessCard",
+  requireAuth,
+  trimRequest.all,
+  controller.updateAccessCard
 )
 
 module.exports = router

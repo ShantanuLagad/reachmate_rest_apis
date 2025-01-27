@@ -30,8 +30,14 @@ const UserSchema = new mongoose.Schema(
     email_verified : {
       type : Boolean,
     },
+    designation:{
+      type:String
+    },
+    Phone_number:{
+      type:String
+    },
     dateOfBirth:{
-      type:Date
+      type:String
     },
     sex:{
       type:String
@@ -94,7 +100,38 @@ const UserSchema = new mongoose.Schema(
       address_line_1 :  String,
       address_line_2 :String,
       pin_code :String
-    }
+    },
+  
+    companyAccessCardDetails:[
+      {
+        company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
+        email_domain: { type: String }, 
+        company_name: { type: String }, 
+        access_code:{type:String},
+        _id:{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'TeamMember',
+        },
+        accessCard_social_links: {
+          linkedin: {
+            type: String,
+            default: ""
+          },
+          x: {
+            type: String,
+            default: ""
+          },
+          instagram: {
+            type: String,
+            default: ""
+          },
+          youtube: {
+            type: String,
+            default: ""
+          }
+        },
+      },
+    ],
   },
   {
     versionKey: false,
@@ -137,3 +174,5 @@ UserSchema.methods.comparePassword = function(passwordAttempt, cb) {
 }
 UserSchema.plugin(mongoosePaginate)
 module.exports = mongoose.model('User', UserSchema)
+
+

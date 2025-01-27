@@ -295,7 +295,7 @@ exports.forgotPassword = async (req, res) => {
     const emailData = {
       email: user.email,
       name: user.name,
-      url: data.production === false ? `${process.env.LOCAL_FRONTEND_URL}ui/Resetpassword/${token}` : `${process.env.PRODUCTION_FRONTEND_URL}ui/Resetpassword/${token}`
+      url: data.production === false ? `${process.env.LOCAL_ADMIN_URL}ui/Resetpassword/${token}` : `${process.env.PRODUCTION_FRONTEND_URL}ui/Resetpassword/${token}`
     }
 
     console.log("url==============", emailData.url)
@@ -604,7 +604,7 @@ exports.getPersonalUser = async (req, res) => {
 
 exports.getCorporateUser = async (req, res) => {
   try {
-    const { company_id, search = "", limit = 10, offset = 0, sort = -1 } = req.query;
+const { company_id, search = "", limit = 10, offset = 0, sort = -1 } = req.query;
 
     const condition = {
       $or: [
@@ -1055,6 +1055,32 @@ exports.getFeedbackList = async (req, res) => {
     const count = await Feedback.countDocuments({})
     const feedback = await Feedback.aggregate([
       {
+        
+          $lookup: {
+            from: "companies", 
+            let: { user_id: "$user_id" }, 
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$_id", "$$user_id"] }, 
+                    ],
+                  },
+                },
+              },
+              {
+                $project: {
+                  company_name: 1,
+                  email: 1,
+                  company_id: 1,
+                },
+              },
+            ],
+            as: "company",
+          },
+      },
+      {
         $lookup: {
           from: "users",
           let: { user_id: "$user_id" },
@@ -1079,7 +1105,18 @@ exports.getFeedbackList = async (req, res) => {
         },
       },
       {
-        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+        $addFields: {
+          userDetails: {
+            $cond: {
+              if: { $eq: ["$userType", "admin"] },
+              then: { $arrayElemAt: ["$company", 0] }, 
+              else: { $arrayElemAt: ["$user", 0] }, 
+            },
+          },
+        },
+      },
+      {
+        $unset: ["company", "user"], 
       },
       {
         $sort: {
@@ -1136,7 +1173,41 @@ exports.getSingleFeedback = async (req, res) => {
         },
       },
       {
-        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+        $lookup: {
+          from: "companies",
+          let: { user_id: "$user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$user_id"],
+                },
+              },
+            },
+            {
+              $project: {
+                company_name: 1,
+                email: 1,
+                company_id: 1,
+              },
+            },
+          ],
+          as: "company",
+        },
+      },
+      {
+        $addFields: {
+          userDetails: {
+            $cond: {
+              if: { $eq: ["$userType", "admin"] },
+              then: { $arrayElemAt: ["$company", 0] }, 
+              else: { $arrayElemAt: ["$user", 0] }, 
+            },
+          },
+        },
+      },
+      {
+        $unset: ["user", "company"], 
       },
     ])
 
@@ -1147,70 +1218,108 @@ exports.getSingleFeedback = async (req, res) => {
 }
 
 
+//-------------------------------------------
 exports.getSupportList = async (req, res) => {
   try {
     const { limit = 10, offset = 0, sort = -1 } = req.query;
 
-    // const feedback = await Feedback.find({}).sort({createdAt : +sort}).skip(+offset).limit(+limit);
+    const count = await Support.countDocuments({});
 
-    const count = await Support.countDocuments({})
     const feedback = await Support.aggregate([
       {
         $lookup: {
-          from: "users",
-          let: { user_id: "$user_id" },
+          from: "companies", 
+          let: { user_id: "$user_id" }, 
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $eq: ["$_id", "$$user_id"]
-                }
-              }
+                  $and: [
+                    { $eq: ["$_id", "$$user_id"] }, 
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                company_name: 1,
+                email: 1,
+                company_id: 1,
+              },
+            },
+          ],
+          as: "company",
+        },
+      },
+      {
+        $lookup: {
+          from: "users", 
+          let: { user_id: "$user_id" }, 
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$_id", "$$user_id"] },
+                  ],
+                },
+              },
             },
             {
               $project: {
                 first_name: 1,
                 last_name: 1,
+                email: 1,
                 full_name: 1,
-                email: 1
-              }
-            }
+              },
+            },
           ],
           as: "user",
         },
       },
       {
-        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+        $addFields: {
+          userDetails: {
+            $cond: {
+              if: { $eq: ["$userType", "admin"] },
+              then: { $arrayElemAt: ["$company", 0] }, 
+              else: { $arrayElemAt: ["$user", 0] }, 
+            },
+          },
+        },
+      },
+      {
+        $unset: ["company", "user"], 
       },
       {
         $sort: {
-          createdAt: +sort
-        }
+          createdAt: +sort,
+        },
       },
       {
-        $skip: +offset
+        $skip: +offset,
       },
       {
-        $limit: +limit
-      }
-    ])
+        $limit: +limit,
+      },
+    ]);
 
-    res.json({ data: feedback, count, code: 200 })
+    res.json({ data: feedback, count, code: 200 });
   } catch (error) {
     utils.handleError(res, error);
   }
-}
+};
+
 
 exports.getSingleSupport = async (req, res) => {
   try {
     const id = req.params.id;
 
-    // const feedback = await Feedback.findById(id)
     const feedback = await Support.aggregate([
       {
         $match: {
-          _id: mongoose.Types.ObjectId(id)
-        }
+          _id: mongoose.Types.ObjectId(id),
+        },
       },
       {
         $lookup: {
@@ -1220,45 +1329,82 @@ exports.getSingleSupport = async (req, res) => {
             {
               $match: {
                 $expr: {
-                  $eq: ["$_id", "$$user_id"]
-                }
-              }
+                  $eq: ["$_id", "$$user_id"],
+                },
+              },
             },
             {
               $project: {
                 first_name: 1,
                 last_name: 1,
                 full_name: 1,
-                email: 1
-              }
-            }
+                email: 1,
+              },
+            },
           ],
           as: "user",
         },
       },
       {
-        $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+        $lookup: {
+          from: "companies",
+          let: { user_id: "$user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$user_id"],
+                },
+              },
+            },
+            {
+              $project: {
+                company_name: 1,
+                email: 1,
+                company_id: 1,
+              },
+            },
+          ],
+          as: "company",
+        },
       },
-    ])
+      {
+        $addFields: {
+          userDetails: {
+            $cond: {
+              if: { $eq: ["$userType", "admin"] },
+              then: { $arrayElemAt: ["$company", 0] }, 
+              else: { $arrayElemAt: ["$user", 0] }, 
+            },
+          },
+        },
+      },
+      {
+        $unset: ["user", "company"], 
+      },
+    ]);
 
-    res.json({ data: feedback[0], code: 200 })
+    res.json({ data: feedback[0], code: 200 });
   } catch (error) {
     utils.handleError(res, error);
   }
-}
-
+};
 
 exports.reply = async (req, res) => {
   try {
     const { support_id, reply } = req.body;
     const locale = req.getLocale()
+    let user;
 
     const support = await Support.findById(support_id);
     if (!support) return utils.handleError(res, { message: "Question not found", code: 404 });
 
-    const user = await User.findById(support.user_id);
-    if (!user) return utils.handleError(res, { message: "User not found", code: 404 });
-
+    user = await User.findById(support.user_id);
+    if (!user) {
+      user = await Company.findById(support.user_id);
+    }else{
+      return utils.handleError(res, { message: "User not found", code: 404 });
+    }
     // if(support.replied === true) return  utils.handleError(res, {message : "User not found" , code : 404});
 
     support.reply = reply;
@@ -1267,7 +1413,7 @@ exports.reply = async (req, res) => {
 
     const emailData = {
       email: user.email,
-      full_name: user.full_name,
+      full_name: user.full_name|| user.company_name,
       question: support.message,
       reply: reply
     }
@@ -2196,40 +2342,6 @@ exports.chartData = async (req, res) => {
 }
 
 
-exports.sendEmailOnCompany = async (req, res) => {
-  try {
-    const { _id, status, prodcution } = req.body;
-
-
-    if (!["accepted", "declined"].includes(status)) return handleError(res, { message: "Invalid status", code: 400 });
-
-    const registration = await Registration.findById(_id);
-    if (!registration) return handleError(res, { message: "Company request not found", code: 404 });
-    if (registration.status !== "pending") return handleError(res, { message: `Company request already ${registration.status}`, code: 400 });
-
-    await Registration.findByIdAndUpdate(_id, { status: status });
-
-    const locale = req.getLocale()
-
-    if (status === "accepted") {
-
-      const dataForMail = {
-        subject: 'Approval Granted: Your Reachmate Account Creation Request',
-        company_name: `${registration.first_name} ${registration.last_name}`,
-        email: registration.email,
-        link: `${prodcution === false ? process.env.LOCAL_COMPANY_URL : process.env.PRODUCTION_COMPANY_URL}CreateAccount?email=${registration.email}`
-      }
-
-      emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
-      res.json({ message: "Approval email has been sent successfully", code: 200 })
-    } else {
-      res.json({ message: `Company request have been ${status}`, code: 200 })
-    }
-
-  } catch (error) {
-    handleError(res, error);
-  }
-}
 
 
 // exports.actionOnCompanyRequest = async (req , res) => {

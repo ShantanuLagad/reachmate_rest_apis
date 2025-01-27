@@ -20,6 +20,8 @@ const Subscription = require("../models/subscription");
 const CardDetials = require('../models/cardDetials')
 const PaidByCompany = require("../models/paid_by_company")
 const VerificationToken = require('../models/verificationToken');
+const Company = require("../models/company")
+const Registration = require("../models/registration")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
@@ -71,6 +73,7 @@ console.log('Encrypted Token:', encryptedToken);
 //     process.env.JWT_SECRET
 //   );
 // };
+
 
 
 
@@ -454,6 +457,108 @@ const registerUser = async req => {
   })
 }
 
+//------------
+function generateAccessCode() {
+  // Generate 4 random characters
+  var chars = '';
+  var charLength = 4;
+  for (var i = 0; i < charLength; i++) {
+      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  }
+  
+  // Generate 2 random digits
+  var digits = '';
+  var digitLength = 2;
+  for (var j = 0; j < digitLength; j++) {
+      digits += Math.floor(Math.random() * 10);
+  }
+  
+  // Combine characters and digits
+  var code = chars + digits;
+  // Convert to array to shuffle
+  var codeArray = code.split('');
+  for (var k = codeArray.length - 1; k > 0; k--) {
+      var randIndex = Math.floor(Math.random() * (k + 1));
+      var temp = codeArray[k];
+      codeArray[k] = codeArray[randIndex];
+      codeArray[randIndex] = temp;
+  }
+  code = codeArray.join('');
+  return code;
+}
+//-----------Set Password For Business Team Admin-------
+exports.createCompanyAccount = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const isEmailExist = await Company.findOne({ email: email });
+    if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
+
+    const emailDomain = extractDomainFromEmail(email);
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
+
+
+    const isEmailRegistered = await Registration.findOne({ email: email });
+    // if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
+
+    // const access_code = generator.generate({
+    //   length: 6,
+    //   numbers: true,
+    //   uppercase: true
+    // });
+    
+    const access_code = generateAccessCode();
+
+
+    const dataForCompany = {
+      email: email,
+      access_code: access_code.toUpperCase(),
+      password: password,
+      decoded_password: password,
+      email_domain: emailDomain,
+      company_name: isEmailRegistered.company_name,
+      type: "admin",
+      bio: {
+        first_name: isEmailRegistered.first_name,
+        last_name: isEmailRegistered.last_name,
+        full_name: `${isEmailRegistered?.first_name}${isEmailRegistered?.last_name ? ` ${isEmailRegistered?.last_name}` : ""}`,
+      },
+      contact_details: {
+        country_code: isEmailRegistered?.country_code ?? "",
+        mobile_number: isEmailRegistered?.mobile_number ?? "",
+      },
+      address: {
+        country: isEmailRegistered.country
+      }
+    }
+
+    const company = new Company(dataForCompany);
+    await company.save();
+
+    res.json({ message: "Company registered successfully.",  code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+//-------------------------------------------------------
+
+function extractDomainFromEmail(email) {
+  // Split the email address at the "@" symbol
+  const parts = email.split('@');
+ //console.log('email parts',parts)
+  // Check if the email has the correct format
+  if (parts.length !== 2) {
+    console.error('Invalid email address format');
+    return null;
+  }
+
+  // Extract and return the domain part
+  const domain = parts[1];
+  return domain;
+}
+
 /**
  * Builds the registration token
  * @param {Object} item - user object that contains created id
@@ -827,6 +932,72 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+//---------------EDIT PROFILE-------------------
+exports.editUser = async (req, res) => {
+  try {
+    const updateData = req.body;
+    const userId = req.user._id; 
+
+    console.log("updateData============", updateData);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
+
+    let emailChanged = false;
+
+    if (updateData.email && updateData.email !== user.email) {
+      const emailExists = await User.exists({ email: updateData.email });
+      if (emailExists) {
+        return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+      }
+      emailChanged = true; 
+    }
+
+    if (updateData.first_name || updateData.last_name) {
+      updateData.full_name = `${updateData.first_name || user.first_name} ${updateData.last_name || user.last_name}`;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true, 
+      runValidators: true, 
+    });
+
+    if (!updatedUser) {
+      return res.status(500).json({ errors: { msg: 'Failed to update user.' } });
+    }
+
+    if (emailChanged) {
+      const verificationToken = generateToken(updatedUser._id);
+      await emailer.sendVerificationEmail(req.body.locale || 'en', {
+        id: updatedUser._id,
+        first_name: updatedUser.first_name,
+        last_name: updatedUser.last_name,
+        email: updatedUser.email,
+      }, "emailVerification", verificationToken);
+    }
+
+    const userInfo = {
+      id: updatedUser._id,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      profile_image: updatedUser.profile_image,
+      dateOfBirth: updatedUser.dateOfBirth,
+      sex: updatedUser.sex,
+    };
+
+    res.status(200).json({ 
+      userInfo, 
+      message: emailChanged ? 'User updated successfully. Verification email sent.' : 'User updated successfully.'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};
+
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.query;
@@ -1149,6 +1320,12 @@ exports.socialLogin = async (req, res) => {
 
     if(!data.social_id  || !data.social_type) return utils.handleError(res, {message : "social id or social type is missing" , code : 400});
     const userExists = await emailer.userExists(User, data.email, false);
+
+    if(data.social_type === "apple" && (!data.first_name || !data.last_name) ){
+      const user = await User.findOne({ $or: [{ email: data.email }, { social_id: data.social_id, social_type: data.social_id }] });
+      if(!user) return res.json({data : false , code : 400})
+    }
+    
     const doesSocialIdExists = await emailer.socialIdExists(User,
       data.social_id,
       data.social_type
@@ -1497,3 +1674,31 @@ exports.token = async (req, res) => {
     res.json({ data: false })
   }
 }
+
+exports.userProfileDetails = async (req, res) => {
+  try {
+    const userId = req.body._id;
+    if (!userId) {
+      return res.status(400).json({ errors: { msg: 'User ID is required.' } });
+    }
+    const user = await User.findById(userId).select(
+      'first_name last_name email profile_image dateOfBirth sex'
+    );
+    if (!user) {
+      return res.status(404).json({ errors: { msg: 'User not found.' } });
+    }
+    res.status(200).json({
+      data: {
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        profile_image: user.profile_image,
+        dateOfBirth: user.dateOfBirth,
+        sex: user.sex,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+  }
+};
