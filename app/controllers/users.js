@@ -2228,8 +2228,8 @@ exports.getCard = async (req, res) => {
     const user_id = req.user._id;
     console.log('user id : ', user_id)
 
-    // const user_data = await User.findOne({ _id: user_id })
-    // console.log("user_data : ", user_data)
+    const user_data = await User.findOne({ _id: user_id })
+    console.log("user_data : ", user_data)
     // const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
     // console.log("is_primary : ", is_primary)
 
