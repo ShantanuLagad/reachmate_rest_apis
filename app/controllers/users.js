@@ -2228,13 +2228,31 @@ exports.getCard = async (req, res) => {
     const user_id = req.user._id;
     console.log('user id : ', user_id)
 
-    const user_data = await User.findOne({ _id: user_id })
-    console.log("user_data : ", user_data)
-    const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
-    console.log("is_primary : ", is_primary)
+    // const user_data = await User.findOne({ _id: user_id })
+    // console.log("user_data : ", user_data)
+    // const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
+    // console.log("is_primary : ", is_primary)
 
-    const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
-    console.log("is_primary_card : ", is_primary_card)
+    // const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
+    // console.log("is_primary_card : ", is_primary_card)
+
+    // Handling primary card logic for personal cards
+    const primaryPersonalCards = await Promise.all(
+      user_data.personal_cards.map(async (i) => {
+        const card = await CardDetials.findOne({ _id: i });
+        return card && card.primary_card ? card : null;
+      })
+    ).then(cards => cards.filter(card => card !== null));
+    console.log("primaryPersonalCards : ", primaryPersonalCards);
+
+    // Handling primary card logic for company access cards
+    const primaryCompanyCards = await Promise.all(
+      user_data.companyAccessCardDetails.map(async (i) => {
+        const company = await Company.findOne({ _id: i.company_id });
+        return company && company.primary_card ? company : null;
+      })
+    ).then(cards => cards.filter(card => card !== null));
+    console.log("primaryCompanyCards : ", primaryCompanyCards);
 
     const profile = await CardDetials.aggregate(
       [
