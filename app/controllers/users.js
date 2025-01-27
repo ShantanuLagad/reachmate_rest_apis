@@ -707,7 +707,7 @@ cron.schedule("30 3 * * *", async () => {
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
   const parts = email.split('@');
- //console.log('email parts',parts)
+  //console.log('email parts',parts)
   // Check if the email has the correct format
   if (parts.length !== 2) {
     console.error('Invalid email address format');
@@ -786,14 +786,14 @@ function sendInvoiceEmailForTransaction(mailOptions) {
 async function checkSusbcriptionIsActive(user_id) {
 
   const checkIsTrialExits = await Trial.findOne({ user_id });
- console.log('endd date>>',checkIsTrialExits.end_at)
+  console.log('endd date>>', checkIsTrialExits.end_at)
   if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
     return true
   }
 
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
-  console.log("subcription", subcription,'subcription.end_at',subcription.end_at,'subcription.status',subcription.status)
+  console.log("subcription", subcription, 'subcription.end_at', subcription.end_at, 'subcription.status', subcription.status)
   if (!subcription) return false
   if (subcription.status === "created") return false
   if (subcription.end_at < new Date()) return false
@@ -1430,12 +1430,12 @@ exports.getSharedCardsForUser = async (req, res) => {
 
 exports.addPersonalCard = async (req, res) => {
   try {
-    const user=req.user
-    console.log('USerrr',user)
+    const user = req.user
+    console.log('USerrr', user)
     const owner_id = req.user._id;
-    
+
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
-    console.log('cardd is first card',isFirstCard)
+    console.log('cardd is first card', isFirstCard)
     const data = req.body;
     const card = {
       owner_id,
@@ -1477,7 +1477,7 @@ exports.addPersonalCard = async (req, res) => {
     const cardData = new CardDetials(card)
     await cardData.save()
 
-    console.log('added card>>>>>',cardData)
+    console.log('added card>>>>>', cardData)
 
     //--------------------------------------
     await User.findByIdAndUpdate(owner_id, {
@@ -1490,9 +1490,10 @@ exports.addPersonalCard = async (req, res) => {
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
-    res.json({ code: 200, message: "Card Save successfully",
-      cardData:cardData
-     })
+    res.json({
+      code: 200, message: "Card Save successfully",
+      cardData: cardData
+    })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1501,10 +1502,10 @@ exports.addPersonalCard = async (req, res) => {
 
 exports.editCardDetails = async (req, res) => {
   try {
-    const owner_id = req.user._id; 
-    const card_id = req.body._id; 
+    const owner_id = req.user._id;
+    const card_id = req.body._id;
     const data = req.body;
-    const type = req.body.cardType; 
+    const type = req.body.cardType;
 
     if (!card_id) {
       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
@@ -1631,8 +1632,10 @@ exports.getCardAndUserDetails = async (req, res) => {
 exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
+    console.log("owner id : ", owner_id)
     const card_id = req.body._id;
-    if (!card_id)return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
+    console.log("card id : ", card_id)
+    if (!card_id) return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
     let existingAccessCard;
     if (!existingCard) {
@@ -1664,13 +1667,13 @@ exports.makeIndividualCardPrimary = async (req, res) => {
 };
 
 const generateNumericOTP = () => {
-  return Math.floor(1000 + Math.random() * 9000); 
+  return Math.floor(1000 + Math.random() * 9000);
 };
 
 exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
-    const userId = req.user._id; 
+    const userId = req.user._id;
     //console.log('USER>>>',req.user)
     const user = await User.findById(userId);
     if (!user) {
@@ -1681,13 +1684,13 @@ exports.matchAccessCode = async (req, res) => {
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
-    const isTeamMemberExist = await TeamMember.findOne({work_email: email })
+    const isTeamMemberExist = await TeamMember.findOne({ work_email: email })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
 
     const otp = generateNumericOTP();
-  
-   await Otp.deleteMany({ email });
-   const otpData = new Otp({ email, otp});
+
+    await Otp.deleteMany({ email });
+    const otpData = new Otp({ email, otp });
     await otpData.save();
 
     await emailer.sendAccessCodeOTP_Email(req.body.locale || 'en', {
@@ -1695,14 +1698,15 @@ exports.matchAccessCode = async (req, res) => {
       first_name: user.first_name,
       last_name: user.last_name,
       email: email,
-      otp:otp,
-      }, "matchAccessCodeOTP");
-    res.status(200).json({ 
-      code:200,
-      message: 'OTP sent successfully!' });
+      otp: otp,
+    }, "matchAccessCodeOTP");
+    res.status(200).json({
+      code: 200,
+      message: 'OTP sent successfully!'
+    });
   } catch (error) {
     utils.handleError(res, error)
-    
+
   }
 };
 
@@ -1812,7 +1816,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 exports.getAllAccessCards = async (req, res) => {
   try {
     const userId = req.user._id;
-   // console.log(' logged in USER IS>>>>',req.user)
+    // console.log(' logged in USER IS>>>>',req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
       return res.status(404).json({ message: "No company access cards found." });
@@ -1836,23 +1840,23 @@ exports.getAllAccessCards = async (req, res) => {
         const userAccessCardDetail = user.companyAccessCardDetails.find(
           (detail) => detail.email_domain === company.email_domain
         );
-    
+
         const teamMember = userAccessCardDetail?._id
           ? await TeamMember.findById(userAccessCardDetail._id)
           : null;
-         // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
-         // console.log('teammmmmm',teamMember)
+        // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
+        // console.log('teammmmmm',teamMember)
         const bio = teamMember
           ? {
-              first_name: teamMember.first_name,
-              last_name: teamMember.last_name,
-              full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-              designation: teamMember.designation || "",
-              work_email: teamMember.work_email,
-              phone_number:teamMember.phone_number
-            }
+            first_name: teamMember.first_name,
+            last_name: teamMember.last_name,
+            full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+            designation: teamMember.designation || "",
+            work_email: teamMember.work_email,
+            phone_number: teamMember.phone_number
+          }
           : null;
-           // console.log('bio',bio)
+        // console.log('bio',bio)
         return {
           bio,
           ...company.toObject(),
@@ -1865,7 +1869,7 @@ exports.getAllAccessCards = async (req, res) => {
         };
       })
     );
-    
+
 
     res.status(200).json({
       code: 200,
@@ -2112,7 +2116,7 @@ exports.addCorporateCard = async (req, res) => {
     }
 
   } catch (error) {
-   // console.log(error)
+    // console.log(error)
     utils.handleError(res, error)
   }
 }
@@ -2120,9 +2124,9 @@ exports.addCorporateCard = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const userId = req.user._id;  
-    const user = await User.findById(userId);  
-    
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
@@ -2137,9 +2141,9 @@ exports.getProfile = async (req, res) => {
       sex: user.sex,
     };
 
-    res.status(200).json({ data:userInfo });
+    res.status(200).json({ data: userInfo });
   } catch (error) {
-   // console.error(error);
+    // console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
   }
 };
@@ -2204,7 +2208,7 @@ exports.enableOrDisableLink = async (req, res) => {
 
     res.json({ code: 200, message: "Link status changed successfully" })
   } catch (error) {
-   // console.log(error)
+    // console.log(error)
     utils.handleError(res, error)
   }
 
@@ -2223,7 +2227,7 @@ exports.getCard = async (req, res) => {
       {
         $match: {
           owner_id: user_id,
-          primary_card: true, 
+          primary_card: true,
         }
       },
       {
@@ -2308,7 +2312,7 @@ exports.getCard = async (req, res) => {
     ])
 
     if (!profile || profile.length === 0) {
-     
+
       return res.status(404).json({ message: "No primary or scanned card available", code: 404 });
     }
 
@@ -2322,11 +2326,11 @@ exports.getCard = async (req, res) => {
 
 exports.getPersonalCards = async (req, res) => {
   try {
-    const userId = req.user._id; 
-   // console.log("User ID:", userId);
+    const userId = req.user._id;
+    // console.log("User ID:", userId);
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-     // console.error("Invalid User ID format:", userId);
+      // console.error("Invalid User ID format:", userId);
       return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
     }
 
@@ -2336,7 +2340,7 @@ exports.getPersonalCards = async (req, res) => {
     });
 
     if (!personalCards || personalCards.length === 0) {
-     // console.log("No personal cards found for user:", userId);
+      // console.log("No personal cards found for user:", userId);
       return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
     }
 
@@ -2353,19 +2357,19 @@ exports.getCountries = async (req, res) => {
     const data = Country.getAllCountries();
     res.json({ data: data, code: 200 })
   } catch (error) {
-   // console.log(error)
+    // console.log(error)
     utils.handleError(res, error)
   }
 }
 
 exports.getStates = async (req, res) => {
   try {
-   // console.log("req.query", req.query)
+    // console.log("req.query", req.query)
     var countryCode = req.query.countryCode;
 
     if (!countryCode) {
       const countryName = req.query.countryName
-     // console.log("countryName", countryName)
+      // console.log("countryName", countryName)
       countryCode = getCode(countryName)
     }
 
@@ -2391,7 +2395,7 @@ exports.getCMS = async (req, res) => {
         message: 'Data not found for the specified type.',
       });
     }
- 
+
     res.json({
       code: 200,
       content: cmsResp,
@@ -2430,12 +2434,12 @@ exports.helpsupport = async (req, res) => {
   try {
     const data = req.body;
     const user_id = req.user._id;
-    console.log('user check from users',req.user.user_type)
+    console.log('user check from users', req.user.user_type)
     const add = await Support.create(
       {
         user_id: user_id,
         message: data?.message,
-        userType:req.user.user_type
+        userType: req.user.user_type
       }
     );
 
@@ -2458,7 +2462,7 @@ exports.feedback = async (req, res) => {
       {
         user_id: user_id,
         message: data?.message,
-        userType:req.user.user_type
+        userType: req.user.user_type
       }
     );
 
@@ -2886,7 +2890,7 @@ async function isSubscriptionActiveOrNot(user) {
           subcriptionActive = await checkSusbcriptionIsActive(user_id)
         }
       }
-     // console.log('end dateee',waiting_end_time)
+      // console.log('end dateee',waiting_end_time)
 
     }
     //console.log('user subcriptionActive >>>>----',user)
@@ -3005,7 +3009,7 @@ exports.createSubscription = async (req, res) => {
     // function checkValue(value) {
     //   return !value;
     // }
-    
+
     // if (req.user.billing_address && (Object.values(req.user.billing_address).length === 0 || Object.values(req.user.billing_address).every(checkValue))) return res.json({ code: 400, billing_address: false })
 
     const { plan_id } = req.body;
@@ -3621,10 +3625,10 @@ exports.cancelScheduledUpdate = async (req, res) => {
 
 exports.registration = async (req, res) => {
   try {
-    const { first_name, last_name, email, country_code, mobile_number, 
+    const { first_name, last_name, email, country_code, mobile_number,
       company_name, country, how_can_we_help_you } = req.body;
 
-      const isEmailExistInRegistration = await Registration.findOne({ email: email });
+    const isEmailExistInRegistration = await Registration.findOne({ email: email });
     if (isEmailExistInRegistration) return utils.handleError(res, { message: "Email already Exists.", code: 400 })
 
     const isEmailExistInCompany = await Company.findOne({ email: email });
@@ -3656,35 +3660,36 @@ exports.registration = async (req, res) => {
     const register = new Registration(data);
     const userInfo = {
       id: register._id,
-      first_name:register.first_name ,
-      last_name:register.last_name ,
-      email:register. email,
-      country_code:register. country_code,
-      mobile_number:register.mobile_number ,
-      company_name:register.company_name ,
-      country:register.country ,
-      how_can_we_help_you:register.how_can_we_help_you,
+      first_name: register.first_name,
+      last_name: register.last_name,
+      email: register.email,
+      country_code: register.country_code,
+      mobile_number: register.mobile_number,
+      company_name: register.company_name,
+      country: register.country,
+      how_can_we_help_you: register.how_can_we_help_you,
     };
     const locale = req.getLocale()
     const isProduction = process.env.NODE_ENV === 'production';
     const baseURL = isProduction
-    ? process.env.PRODUCTION_WEBSITE_URL
-    : process.env.LOCAL_WEBSITE_URL;
+      ? process.env.PRODUCTION_WEBSITE_URL
+      : process.env.LOCAL_WEBSITE_URL;
 
     const dataForMail = {
-        subject: 'Your Reachmate Account Creation',
-        company_name: `${userInfo.first_name} ${userInfo.last_name}`,
-        email: userInfo.email,
-        link: `${baseURL}CreateAccount?email=${userInfo.email}`
+      subject: 'Your Reachmate Account Creation',
+      company_name: `${userInfo.first_name} ${userInfo.last_name}`,
+      email: userInfo.email,
+      link: `${baseURL}CreateAccount?email=${userInfo.email}`
     };
 
 
     emailer.sendApprovalEmail(locale, dataForMail, 'registration-accepted');
     await register.save()
-    
-    res.json({ 
+
+    res.json({
       message: "Registeration successfully.Verification link has been sent on email to verify and set password. ",
-      code: 200 })
+      code: 200
+    })
   } catch (error) {
     console.log
     utils.handleError(res, error)
@@ -3809,7 +3814,7 @@ async function sendSubscriptionInvoiceEmail(transaction, subscription, plan, use
   // const billing_address = user?.billing_address;
   // const line_1 = `${billing_address?.address_line_1}${billing_address?.address_line_2 ?`, ${billing_address?.address_line_2}` : ''}`
   // const line_2 = `${billing_address?.city}, ${billing_address?.state}, ${billing_address?.country},${billing_address?.pin_code}`;
-  
+
 
 
   const planFromDataBase = await Plan.findOne({ plan_id: plan.id })
@@ -4239,9 +4244,9 @@ exports.checkProfileIsExist = async (req, res) => {
     const user = await User.findOne({ social_id: data.social_id }).select("_id social_id first_name last_name full_name email");
 
     if (!user) {
-      return res.status(404).json({ message: 'User does not exist.' ,code:404 });
-    }else {
-           return      res.status(200).json({data:user ,code:200});
+      return res.status(404).json({ message: 'User does not exist.', code: 404 });
+    } else {
+      return res.status(200).json({ data: user, code: 200 });
     }
   } catch (error) {
     console.error(error);
