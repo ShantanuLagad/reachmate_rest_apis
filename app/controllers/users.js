@@ -1633,7 +1633,7 @@ exports.makeIndividualCardPrimary = async (req, res) => {
   try {
     const owner_id = req.user._id;
     console.log("owner id : ", owner_id)
-    const card_id = req.body._id;
+    const card_id = req.body._id; // company id
     console.log("card id : ", card_id)
     if (!card_id) return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
     const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
@@ -1818,8 +1818,9 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 exports.getAllAccessCards = async (req, res) => {
   try {
     const userId = req.user._id;
-    // console.log(' logged in USER IS>>>>',req.user)
+    console.log(' logged in USER IS>>>>', req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
+    console.log("user : ", user)
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
       return res.status(404).json({ message: "No company access cards found." });
     }
@@ -1828,11 +1829,13 @@ exports.getAllAccessCards = async (req, res) => {
       email_domain: detail.email_domain,
       access_code: detail.access_code,
     }));
+    console.log("companyConditions : ", companyConditions)
 
     const companies = await Company.find(
       { $or: companyConditions },
       { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
     );
+    console.log("companies : ", companies)
 
     if (companies.length === 0) {
       return res.status(404).json({ message: "No companies found for the access cards." });
@@ -2223,7 +2226,15 @@ exports.getCard = async (req, res) => {
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
+    console.log('user id : ', user_id)
 
+    const user_data = await User.findOne({ _id: user_id })
+    console.log("user_data : ", user_data)
+    const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true)
+    console.log("is_primary : ", is_primary)
+
+    const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true)
+    console.log("is_primary_card : ", is_primary_card)
 
     const profile = await CardDetials.aggregate(
       [
