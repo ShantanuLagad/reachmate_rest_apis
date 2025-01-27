@@ -2220,23 +2220,82 @@ exports.enableOrDisableLink = async (req, res) => {
 }
 
 
+// exports.getCard = async (req, res) => {
+//   try {
+//     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+//     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+
+//     const user_id = req.user._id;
+//     console.log('user id : ', user_id)
+
+//     const user_data = await User.findOne({ _id: user_id })
+//     console.log("user_data : ", user_data)
+
+//     const primaryPersonalCards = await Promise.all(
+//       user_data.personal_cards.map(async (i) => {
+//         const card = await CardDetials.findOne({ _id: i });
+//         return card && card.primary_card ? card : null;
+//       })
+//     ).then(cards => cards.filter(card => card !== null));
+//     console.log("primaryPersonalCards : ", primaryPersonalCards);
+
+//     const primaryCompanyCards = await Promise.all(
+//       user_data.companyAccessCardDetails.map(async (i) => {
+//         const company = await Company.findOne({ _id: i.company_id }, { bio: 0, password: 0, decoded_password: 0 });
+//         return company && company.primary_card ? company : null;
+//       })
+//     ).then(cards => cards.filter(card => card !== null));
+//     primaryCompanyCards = primaryCompanyCards.map(async i => {
+//       const data = await TeamMember.findOne({ 'company_details.company_id': i._id })
+//       const bio = data ? {
+//         first_name: data.first_name,
+//         last_name: data.last_name,
+//         full_name: `${data.first_name} ${data.last_name}`,
+//         desigmail: data.work_email,
+//         phone_number: data.phone_number
+//       }
+//         : null;
+//       return {
+//         bio,
+//         ...i.toObject(),
+//       }
+//     })
+//     console.log("primaryCompanyCards : ", primaryCompanyCards);
+
+//     let result = []
+//     if (primaryPersonalCards.length === 0 && primaryCompanyCards.length > 0) {
+//       result = primaryCompanyCards
+//     }
+//     if (primaryCompanyCards.length === 0 && primaryPersonalCards.length > 0) {
+//       result = primaryPersonalCards
+//     }
+//     if (primaryCompanyCards.length === 0 && primaryPersonalCards.length === 0) {
+//       result = []
+//     }
+//     console.log("result : ", result)
+//     return res.status(200).json({
+//       message: "Primary Card fetched successfully",
+//       data: result[0],
+//       code: 200
+//     })
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// }
+
 exports.getCard = async (req, res) => {
   try {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    if (isSubscriptionActive === false) {
+      return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    }
 
     const user_id = req.user._id;
-    console.log('user id : ', user_id)
+    console.log('user id : ', user_id);
 
-    const user_data = await User.findOne({ _id: user_id })
-    console.log("user_data : ", user_data)
-    // const is_primary = await user_data.personal_cards.map(async i => await CardDetials.findOne({ _id: i })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
-    // console.log("is_primary : ", is_primary)
+    const user_data = await User.findOne({ _id: user_id });
+    console.log("user_data : ", user_data);
 
-    // const is_primary_card = await user_data.companyAccessCardDetails.map(async i => await Company.findOne({ _id: i.company_id })).filter(async e => e.primary_card === true).filter(async n => n.toString() !== "{}")
-    // console.log("is_primary_card : ", is_primary_card)
-
-    // Handling primary card logic for personal cards
     const primaryPersonalCards = await Promise.all(
       user_data.personal_cards.map(async (i) => {
         const card = await CardDetials.findOne({ _id: i });
@@ -2245,129 +2304,51 @@ exports.getCard = async (req, res) => {
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryPersonalCards : ", primaryPersonalCards);
 
-    // Handling primary card logic for company access cards
-    const primaryCompanyCards = await Promise.all(
+    let primaryCompanyCards = await Promise.all(
       user_data.companyAccessCardDetails.map(async (i) => {
-        const company = await Company.findOne({ _id: i.company_id });
-        return company && company.primary_card ? company : null;
+        const company = await Company.findOne({ _id: i.company_id }, { bio: 0, password: 0, decoded_password: 0 });
+        if (company && company.primary_card) {
+          const data = await TeamMember.findOne({ 'company_details.company_id': company._id });
+          const bio = data ? {
+            first_name: data.first_name,
+            last_name: data.last_name,
+            full_name: `${data.first_name} ${data.last_name}`,
+            designation: data.designation || "",
+            work_email: data.work_email,
+            phone_number: data.phone_number
+          } : null;
+          return {
+            bio,
+            ...company.toObject(),
+          };
+        }
+        return null;
       })
-    ).then(cards => cards.filter(card => card !== null));
+    );
+    primaryCompanyCards = primaryCompanyCards.filter(card => card !== null);
     console.log("primaryCompanyCards : ", primaryCompanyCards);
 
-    // const profile = await CardDetials.aggregate(
-    //   [
-    //     {
-    //       $match: {
-    //         owner_id: user_id,
-    //         primary_card: true,
-    //       }
-    //     },
-    //     {
-    //       $lookup: {
-    //         from: "companies",
-    //         localField: "company_id",
-    //         foreignField: "_id",
-    //         as: "company",
-    //       },
-    //     },
-    //     {
-    //       $unwind: {
-    //         path: "$company",
-    //         preserveNullAndEmptyArrays: true,
-    //       },
-    //     },
-    //     {
-    //       $addFields: {
-    //         'bio.business_name': {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.company_name',
-    //             else: '$bio.business_name'
-    //           }
-    //         },
-    //         'card_color': {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.card_color',
-    //             else: '$card_color'
-    //           }
-    //         },
-    //         "business_and_logo_status": {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.business_and_logo_status',
-    //             else: '$business_and_logo_status'
-    //           }
-    //         },
-    //         'text_color': {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.text_color',
-    //             else: '$text_color'
-    //           }
-    //         },
-    //         "business_logo": {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.business_logo',
-    //             else: '$business_logo'
-    //           }
-    //         },
-    //         "address": {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.address',
-    //             else: '$address'
-    //           }
-    //         },
-    //         "contact_details.website": {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.contact_details.website',
-    //             else: '$contact_details.website'
-    //           }
-    //         },
-    //         "website": {
-    //           $cond: {
-    //             if: { $eq: ['$card_type', 'corporate'] },
-    //             then: '$company.contact_details.website',
-    //             else: '$website'
-    //           }
-    //         },
-    //       }
-    //     },
-    //     {
-    //       $project: {
-    //         company: 0
-    //       }
-    //     }
-    //   ]
-    // )
-
-    // if (!profile || profile.length === 0) {
-
-    //   return res.status(404).json({ message: "No primary or scanned card available", code: 404 });
-    // }
-    let result = []
+    let result = [];
     if (primaryPersonalCards.length === 0 && primaryCompanyCards.length > 0) {
-      result = primaryCompanyCards
+      result = primaryCompanyCards;
     }
     if (primaryCompanyCards.length === 0 && primaryPersonalCards.length > 0) {
-      result = primaryPersonalCards
+      result = primaryPersonalCards;
     }
     if (primaryCompanyCards.length === 0 && primaryPersonalCards.length === 0) {
-      result = []
+      result = [];
     }
-    console.log("result : ", result)
+    console.log("result : ", result);
+
     return res.status(200).json({
       message: "Primary Card fetched successfully",
-      data: result[0],
+      data: result[0] || null,
       code: 200
-    })
+    });
   } catch (error) {
-    utils.handleError(res, error)
+    utils.handleError(res, error);
   }
-}
+};
 
 
 exports.getPersonalCards = async (req, res) => {
