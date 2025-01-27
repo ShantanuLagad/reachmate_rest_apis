@@ -2254,103 +2254,116 @@ exports.getCard = async (req, res) => {
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryCompanyCards : ", primaryCompanyCards);
 
-    const profile = await CardDetials.aggregate(
-      [
-        {
-          $match: {
-            owner_id: user_id,
-            primary_card: true,
-          }
-        },
-        {
-          $lookup: {
-            from: "companies",
-            localField: "company_id",
-            foreignField: "_id",
-            as: "company",
-          },
-        },
-        {
-          $unwind: {
-            path: "$company",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $addFields: {
-            'bio.business_name': {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.company_name',
-                else: '$bio.business_name'
-              }
-            },
-            'card_color': {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.card_color',
-                else: '$card_color'
-              }
-            },
-            "business_and_logo_status": {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.business_and_logo_status',
-                else: '$business_and_logo_status'
-              }
-            },
-            'text_color': {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.text_color',
-                else: '$text_color'
-              }
-            },
-            "business_logo": {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.business_logo',
-                else: '$business_logo'
-              }
-            },
-            "address": {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.address',
-                else: '$address'
-              }
-            },
-            "contact_details.website": {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.contact_details.website',
-                else: '$contact_details.website'
-              }
-            },
-            "website": {
-              $cond: {
-                if: { $eq: ['$card_type', 'corporate'] },
-                then: '$company.contact_details.website',
-                else: '$website'
-              }
-            },
-          }
-        },
-        {
-          $project: {
-            company: 0
-          }
-        }
-      ]
-    )
+    // const profile = await CardDetials.aggregate(
+    //   [
+    //     {
+    //       $match: {
+    //         owner_id: user_id,
+    //         primary_card: true,
+    //       }
+    //     },
+    //     {
+    //       $lookup: {
+    //         from: "companies",
+    //         localField: "company_id",
+    //         foreignField: "_id",
+    //         as: "company",
+    //       },
+    //     },
+    //     {
+    //       $unwind: {
+    //         path: "$company",
+    //         preserveNullAndEmptyArrays: true,
+    //       },
+    //     },
+    //     {
+    //       $addFields: {
+    //         'bio.business_name': {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.company_name',
+    //             else: '$bio.business_name'
+    //           }
+    //         },
+    //         'card_color': {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.card_color',
+    //             else: '$card_color'
+    //           }
+    //         },
+    //         "business_and_logo_status": {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.business_and_logo_status',
+    //             else: '$business_and_logo_status'
+    //           }
+    //         },
+    //         'text_color': {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.text_color',
+    //             else: '$text_color'
+    //           }
+    //         },
+    //         "business_logo": {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.business_logo',
+    //             else: '$business_logo'
+    //           }
+    //         },
+    //         "address": {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.address',
+    //             else: '$address'
+    //           }
+    //         },
+    //         "contact_details.website": {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.contact_details.website',
+    //             else: '$contact_details.website'
+    //           }
+    //         },
+    //         "website": {
+    //           $cond: {
+    //             if: { $eq: ['$card_type', 'corporate'] },
+    //             then: '$company.contact_details.website',
+    //             else: '$website'
+    //           }
+    //         },
+    //       }
+    //     },
+    //     {
+    //       $project: {
+    //         company: 0
+    //       }
+    //     }
+    //   ]
+    // )
 
-    if (!profile || profile.length === 0) {
+    // if (!profile || profile.length === 0) {
 
-      return res.status(404).json({ message: "No primary or scanned card available", code: 404 });
+    //   return res.status(404).json({ message: "No primary or scanned card available", code: 404 });
+    // }
+    let result = []
+    if (primaryPersonalCards.length === 0 && primaryCompanyCards.length > 0) {
+      result = primaryCompanyCards
     }
-
-
-    res.json({ data: profile[0], code: 200 })
+    if (primaryCompanyCards.length === 0 && primaryPersonalCards.length > 0) {
+      result = primaryPersonalCards
+    }
+    if (primaryCompanyCards.length === 0 && primaryPersonalCards.length === 0) {
+      result = []
+    }
+    console.log("result : ", result)
+    return res.status(200).json({
+      message: "Primary Card fetched successfully",
+      data: result[0],
+      code: 200
+    })
   } catch (error) {
     utils.handleError(res, error)
   }
