@@ -2405,19 +2405,27 @@ exports.getSubscription = async (req, res) => {
 
 exports.userOverview = async (req, res) => {
   try {
-    const totalUser = await User.countDocuments();
-    const totalActiveUser = await User.countDocuments({ status: 'active' })
-    const totalInactiveUser = await User.countDocuments({ status: 'inactive' })
-    const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
-    const totalSharedCard = await sharedCards.countDocuments()
-    const totalSavedAndReceivedCard = await User.countDocuments({
+    const [totalUser, totalActiveUser, totalInactiveUser, totalBusinessCard, totalSharedCard, totalSavedAndReceivedCard] = Promise.all([User.countDocuments(), User.countDocuments({ status: 'active' }), User.countDocuments({ status: 'inactive' }), cardDetials.countDocuments({ card_type: 'corporate' }), sharedCards.countDocuments(), User.countDocuments({
       $expr: {
         $or: [
           { $gt: [{ $size: "$personal_cards" }, 0] },
           { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
         ]
       }
-    });
+    })])
+    // const totalUser = await User.countDocuments();
+    // const totalActiveUser = await User.countDocuments({ status: 'active' })
+    // const totalInactiveUser = await User.countDocuments({ status: 'inactive' })
+    // const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
+    // const totalSharedCard = await sharedCards.countDocuments()
+    // const totalSavedAndReceivedCard = await User.countDocuments({
+    //   $expr: {
+    //     $or: [
+    //       { $gt: [{ $size: "$personal_cards" }, 0] },
+    //       { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
+    //     ]
+    //   }
+    // });
 
     // user chart data
     const { selectedPeriod } = req.query;
