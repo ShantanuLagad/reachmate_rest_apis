@@ -2665,3 +2665,51 @@ exports.userOverview = async (req, res) => {
     handleError(res, error);
   }
 };
+
+
+exports.getUser = async (req, res) => {
+  try {
+    const { offset = 0, limit = 10, search } = req.query
+    let filter = {}
+    if (search) {
+      filter['$or'] = [
+        {
+          first_name: { $regex: search, $options: 'i' }
+        },
+        {
+          last_name: { $regex: search, $options: 'i' }
+        },
+        {
+          email: { $regex: search, $options: 'i' }
+        }
+      ]
+    }
+    const user_data = await User.aggregate([
+      {
+        $match: filter
+      },
+      {
+        $sort: {
+          createdAt: -1
+        }
+      },
+      {
+        $skip: parseInt(offset)
+      },
+      {
+        $limit: parseInt(limit)
+      }
+    ])
+
+    const count = await User.countDocuments(filter)
+
+    return res.status(200).json({
+      message: "user data fetched successfully",
+      data: user_data,
+      count,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
