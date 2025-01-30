@@ -2403,31 +2403,173 @@ exports.getSubscription = async (req, res) => {
 
 /* Honey work start here */
 
+// exports.userOverview = async (req, res) => {
+//   try {
+//     const [totalUser, totalActiveUser, totalInactiveUser, totalBusinessCard, totalSharedCard, totalSavedAndReceivedCard] = await Promise.all([User.countDocuments(), User.countDocuments({ status: 'active' }), User.countDocuments({ status: 'inactive' }), cardDetials.countDocuments({ card_type: 'corporate' }), sharedCards.countDocuments(), User.countDocuments({
+//       $expr: {
+//         $or: [
+//           { $gt: [{ $size: "$personal_cards" }, 0] },
+//           { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
+//         ]
+//       }
+//     })])
+//     // const totalUser = await User.countDocuments();
+//     // const totalActiveUser = await User.countDocuments({ status: 'active' })
+//     // const totalInactiveUser = await User.countDocuments({ status: 'inactive' })
+//     // const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
+//     // const totalSharedCard = await sharedCards.countDocuments()
+//     // const totalSavedAndReceivedCard = await User.countDocuments({
+//     //   $expr: {
+//     //     $or: [
+//     //       { $gt: [{ $size: "$personal_cards" }, 0] },
+//     //       { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
+//     //     ]
+//     //   }
+//     // });
+
+//     // user chart data
+//     const { selectedPeriod } = req.query;
+//     let currentDate = new Date();
+//     let startOfPeriod, endOfPeriod;
+
+//     if (selectedPeriod === 'daily') {
+//       startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+//       endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+//     } else if (selectedPeriod === 'weekly') {
+//       const startOfWeek = new Date();
+//       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+//       startOfWeek.setHours(0, 0, 0, 0);
+
+//       const endOfWeek = new Date(startOfWeek);
+//       endOfWeek.setDate(startOfWeek.getDate() + 6);
+//       endOfWeek.setHours(23, 59, 59, 999);
+
+//       startOfPeriod = startOfWeek;
+//       endOfPeriod = endOfWeek;
+//     } else if (selectedPeriod === 'yearly') {
+//       const year = currentDate.getFullYear();
+//       startOfPeriod = new Date(year, 0, 1);
+//       endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+//     }
+//     console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
+//     let filter = {};
+//     let data = [];
+//     if (selectedPeriod) {
+//       filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+//     }
+//     console.log("filter : ", filter)
+
+//     if (selectedPeriod === 'daily') {
+//       const hourlyData = await User.aggregate([
+//         { $match: { ...filter } },
+//         {
+//           $project: {
+//             hour: { $hour: "$createdAt" }
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: "$hour",
+//             count: { $sum: 1 }
+//           }
+//         },
+//         { $sort: { _id: 1 } }
+//       ]);
+//       console.log("hourly data : ", hourlyData)
+//       data = Array(24).fill(0);
+//       hourlyData.forEach(item => {
+//         data[item._id] = item.count;
+//       });
+//     } else if (selectedPeriod === 'weekly') {
+//       const dailyData = await User.aggregate([
+//         { $match: filter },
+//         {
+//           $project: {
+//             day: { $dayOfMonth: "$createdAt" }
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: "$day",
+//             count: { $sum: 1 }
+//           }
+//         },
+//         { $sort: { _id: 1 } }
+//       ]);
+
+//       const daysInWeek = 7;
+//       data = Array(daysInWeek).fill(0);
+//       dailyData.forEach(item => {
+//         data[item._id - 1] = item.count;
+//       });
+//     } else if (selectedPeriod === 'yearly') {
+//       const monthlyData = await User.aggregate([
+//         { $match: { ...filter } },
+//         {
+//           $project: {
+//             month: { $month: "$createdAt" }
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: "$month",
+//             count: { $sum: 1 }
+//           }
+//         },
+//         { $sort: { _id: 1 } }
+//       ]);
+//       console.log("monthly data : ", monthlyData)
+//       data = Array(12).fill(0);
+//       monthlyData.forEach(item => {
+//         data[item._id - 1] = item.count;
+//       });
+//     }
+
+//     return res.json({
+//       message: "user overview fetched successfully",
+//       data: {
+//         totalUser,
+//         totalActiveUser,
+//         totalInactiveUser,
+//         totalBusinessCard,
+//         totalSharedCard,
+//         totalSavedAndReceivedCard,
+//         graphData: data
+//       },
+//       code: 200,
+//     });
+
+//   } catch (error) {
+//     handleError(res, error);
+//   }
+// }
+
 exports.userOverview = async (req, res) => {
   try {
-    const [totalUser, totalActiveUser, totalInactiveUser, totalBusinessCard, totalSharedCard, totalSavedAndReceivedCard] = Promise.all([User.countDocuments(), User.countDocuments({ status: 'active' }), User.countDocuments({ status: 'inactive' }), cardDetials.countDocuments({ card_type: 'corporate' }), sharedCards.countDocuments(), User.countDocuments({
-      $expr: {
-        $or: [
-          { $gt: [{ $size: "$personal_cards" }, 0] },
-          { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
-        ]
-      }
-    })])
-    // const totalUser = await User.countDocuments();
-    // const totalActiveUser = await User.countDocuments({ status: 'active' })
-    // const totalInactiveUser = await User.countDocuments({ status: 'inactive' })
-    // const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
-    // const totalSharedCard = await sharedCards.countDocuments()
-    // const totalSavedAndReceivedCard = await User.countDocuments({
-    //   $expr: {
-    //     $or: [
-    //       { $gt: [{ $size: "$personal_cards" }, 0] },
-    //       { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
-    //     ]
-    //   }
-    // });
+    const [
+      totalUser,
+      totalActiveUser,
+      totalInactiveUser,
+      totalBusinessCard,
+      totalSharedCard,
+      totalSavedAndReceivedCard
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ status: 'active' }),
+      User.countDocuments({ status: 'inactive' }),
+      cardDetials.countDocuments({ card_type: 'corporate' }),
+      sharedCards.countDocuments(),
+      User.countDocuments({
+        $expr: {
+          $or: [
+            { $gt: [{ $size: "$personal_cards" }, 0] },
+            { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
+          ]
+        }
+      })
+    ]);
 
-    // user chart data
+    // User chart data
     const { selectedPeriod } = req.query;
     let currentDate = new Date();
     let startOfPeriod, endOfPeriod;
@@ -2451,49 +2593,36 @@ exports.userOverview = async (req, res) => {
       startOfPeriod = new Date(year, 0, 1);
       endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
     }
-    console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
+
+    console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
     let filter = {};
     let data = [];
     if (selectedPeriod) {
       filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
     }
-    console.log("filter : ", filter)
+
+    console.log("filter:", filter);
 
     if (selectedPeriod === 'daily') {
       const hourlyData = await User.aggregate([
-        { $match: { ...filter } },
-        {
-          $project: {
-            hour: { $hour: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$hour",
-            count: { $sum: 1 }
-          }
-        },
+        { $match: filter },
+        { $project: { hour: { $hour: "$createdAt" } } },
+        { $group: { _id: "$hour", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
-      console.log("hourly data : ", hourlyData)
+
+      console.log("hourly data:", hourlyData);
       data = Array(24).fill(0);
       hourlyData.forEach(item => {
         data[item._id] = item.count;
       });
+
     } else if (selectedPeriod === 'weekly') {
       const dailyData = await User.aggregate([
         { $match: filter },
-        {
-          $project: {
-            day: { $dayOfMonth: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$day",
-            count: { $sum: 1 }
-          }
-        },
+        { $project: { day: { $dayOfMonth: "$createdAt" } } },
+        { $group: { _id: "$day", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
 
@@ -2502,23 +2631,16 @@ exports.userOverview = async (req, res) => {
       dailyData.forEach(item => {
         data[item._id - 1] = item.count;
       });
+
     } else if (selectedPeriod === 'yearly') {
       const monthlyData = await User.aggregate([
-        { $match: { ...filter } },
-        {
-          $project: {
-            month: { $month: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$month",
-            count: { $sum: 1 }
-          }
-        },
+        { $match: filter },
+        { $project: { month: { $month: "$createdAt" } } },
+        { $group: { _id: "$month", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
-      console.log("monthly data : ", monthlyData)
+
+      console.log("monthly data:", monthlyData);
       data = Array(12).fill(0);
       monthlyData.forEach(item => {
         data[item._id - 1] = item.count;
@@ -2526,7 +2648,7 @@ exports.userOverview = async (req, res) => {
     }
 
     return res.json({
-      message: "user overview fetched successfully",
+      message: "User overview fetched successfully",
       data: {
         totalUser,
         totalActiveUser,
@@ -2536,10 +2658,10 @@ exports.userOverview = async (req, res) => {
         totalSavedAndReceivedCard,
         graphData: data
       },
-      code: 200,
+      code: 200
     });
 
   } catch (error) {
     handleError(res, error);
   }
-}
+};
