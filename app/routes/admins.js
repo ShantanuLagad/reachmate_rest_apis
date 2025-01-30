@@ -368,5 +368,12 @@ router.get(
   controller.userOverview
 )
 
+router.get(
+  "/getUserData",
+  trimRequest.all,
+  requireAuth,
+  controller.getUser
+)
+
 
 module.exports = router
