@@ -2413,102 +2413,102 @@ exports.userOverview = async (req, res) => {
     const totalSavedAndReceivedCard = await user.countDocuments({ personal_cards: { $size: { $gt: 0 } }, companyAccessCardDetails: { $size: { $gte: 0 } } })
 
     // user chart data
-    const { selectedPeriod } = req.query;
-    let currentDate = new Date();
-    let startOfPeriod, endOfPeriod;
+    // const { selectedPeriod } = req.query;
+    // let currentDate = new Date();
+    // let startOfPeriod, endOfPeriod;
 
-    if (selectedPeriod === 'daily') {
-      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
-      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
-    } else if (selectedPeriod === 'weekly') {
-      const startOfWeek = new Date();
-      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
+    // if (selectedPeriod === 'daily') {
+    //   startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+    //   endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    // } else if (selectedPeriod === 'weekly') {
+    //   const startOfWeek = new Date();
+    //   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    //   startOfWeek.setHours(0, 0, 0, 0);
 
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
+    //   const endOfWeek = new Date(startOfWeek);
+    //   endOfWeek.setDate(startOfWeek.getDate() + 6);
+    //   endOfWeek.setHours(23, 59, 59, 999);
 
-      startOfPeriod = startOfWeek;
-      endOfPeriod = endOfWeek;
-    } else if (selectedPeriod === 'yearly') {
-      const year = currentDate.getFullYear();
-      startOfPeriod = new Date(year, 0, 1);
-      endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
-    }
-    console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
-    let filter = {};
-    let data = [];
-    if (selectedPeriod) {
-      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
-    }
-    console.log("filter : ", filter)
+    //   startOfPeriod = startOfWeek;
+    //   endOfPeriod = endOfWeek;
+    // } else if (selectedPeriod === 'yearly') {
+    //   const year = currentDate.getFullYear();
+    //   startOfPeriod = new Date(year, 0, 1);
+    //   endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+    // }
+    // console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
+    // let filter = {};
+    // let data = [];
+    // if (selectedPeriod) {
+    //   filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+    // }
+    // console.log("filter : ", filter)
 
-    if (selectedPeriod === 'daily') {
-      const hourlyData = await user.aggregate([
-        { $match: { ...filter } },
-        {
-          $project: {
-            hour: { $hour: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$hour",
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
-      console.log("hourly data : ", hourlyData)
-      data = Array(24).fill(0);
-      hourlyData.forEach(item => {
-        data[item._id] = item.count;
-      });
-    } else if (selectedPeriod === 'weekly') {
-      const dailyData = await user.aggregate([
-        { $match: filter },
-        {
-          $project: {
-            day: { $dayOfMonth: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$day",
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
+    // if (selectedPeriod === 'daily') {
+    //   const hourlyData = await user.aggregate([
+    //     { $match: { ...filter } },
+    //     {
+    //       $project: {
+    //         hour: { $hour: "$createdAt" }
+    //       }
+    //     },
+    //     {
+    //       $group: {
+    //         _id: "$hour",
+    //         count: { $sum: 1 }
+    //       }
+    //     },
+    //     { $sort: { _id: 1 } }
+    //   ]);
+    //   console.log("hourly data : ", hourlyData)
+    //   data = Array(24).fill(0);
+    //   hourlyData.forEach(item => {
+    //     data[item._id] = item.count;
+    //   });
+    // } else if (selectedPeriod === 'weekly') {
+    //   const dailyData = await user.aggregate([
+    //     { $match: filter },
+    //     {
+    //       $project: {
+    //         day: { $dayOfMonth: "$createdAt" }
+    //       }
+    //     },
+    //     {
+    //       $group: {
+    //         _id: "$day",
+    //         count: { $sum: 1 }
+    //       }
+    //     },
+    //     { $sort: { _id: 1 } }
+    //   ]);
 
-      const daysInWeek = 7;
-      data = Array(daysInWeek).fill(0);
-      dailyData.forEach(item => {
-        data[item._id - 1] = item.count;
-      });
-    } else if (selectedPeriod === 'yearly') {
-      const monthlyData = await user.aggregate([
-        { $match: { ...filter } },
-        {
-          $project: {
-            month: { $month: "$createdAt" }
-          }
-        },
-        {
-          $group: {
-            _id: "$month",
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
-      console.log("monthly data : ", monthlyData)
-      data = Array(12).fill(0);
-      monthlyData.forEach(item => {
-        data[item._id - 1] = item.count;
-      });
-    }
+    //   const daysInWeek = 7;
+    //   data = Array(daysInWeek).fill(0);
+    //   dailyData.forEach(item => {
+    //     data[item._id - 1] = item.count;
+    //   });
+    // } else if (selectedPeriod === 'yearly') {
+    //   const monthlyData = await user.aggregate([
+    //     { $match: { ...filter } },
+    //     {
+    //       $project: {
+    //         month: { $month: "$createdAt" }
+    //       }
+    //     },
+    //     {
+    //       $group: {
+    //         _id: "$month",
+    //         count: { $sum: 1 }
+    //       }
+    //     },
+    //     { $sort: { _id: 1 } }
+    //   ]);
+    //   console.log("monthly data : ", monthlyData)
+    //   data = Array(12).fill(0);
+    //   monthlyData.forEach(item => {
+    //     data[item._id - 1] = item.count;
+    //   });
+    // }
 
     return res.json({
       message: "user overview fetched successfully",
@@ -2518,8 +2518,8 @@ exports.userOverview = async (req, res) => {
         totalInactiveUser,
         totalBusinessCard,
         totalSharedCard,
-        totalSavedAndReceivedCard,
-        graphData: data
+        totalSavedAndReceivedCard
+        // graphData: data
       },
       code: 200,
     });
