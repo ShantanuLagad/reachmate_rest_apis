@@ -364,7 +364,7 @@ router.post(
 router.get(
   "/getUserOverview",
   trimRequest.all,
-  // requireAuth,
+  requireAuth,
   controller.userOverview
 )
 
