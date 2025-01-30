@@ -361,4 +361,12 @@ router.post(
 )
 
 
+router.get(
+  "/getUserOverview",
+  trimRequest.all,
+  requireAuth,
+  controller.userOverview
+)
+
+
 module.exports = router

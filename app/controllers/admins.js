@@ -62,6 +62,9 @@ const { off } = require('process')
 const { json } = require('stream/consumers')
 const { count } = require('console')
 const { stat } = require('fs')
+const user = require('../models/user')
+const cardDetials = require('../models/cardDetials')
+const sharedCards = require('../models/sharedCards.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -92,25 +95,25 @@ function generateAccessCode() {
   var chars = '';
   var charLength = 4;
   for (var i = 0; i < charLength; i++) {
-      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
   }
-  
+
   // Generate 2 random digits
   var digits = '';
   var digitLength = 2;
   for (var j = 0; j < digitLength; j++) {
-      digits += Math.floor(Math.random() * 10);
+    digits += Math.floor(Math.random() * 10);
   }
-  
+
   // Combine characters and digits
   var code = chars + digits;
   // Convert to array to shuffle
   var codeArray = code.split('');
   for (var k = codeArray.length - 1; k > 0; k--) {
-      var randIndex = Math.floor(Math.random() * (k + 1));
-      var temp = codeArray[k];
-      codeArray[k] = codeArray[randIndex];
-      codeArray[randIndex] = temp;
+    var randIndex = Math.floor(Math.random() * (k + 1));
+    var temp = codeArray[k];
+    codeArray[k] = codeArray[randIndex];
+    codeArray[randIndex] = temp;
   }
   code = codeArray.join('');
   return code;
@@ -604,7 +607,7 @@ exports.getPersonalUser = async (req, res) => {
 
 exports.getCorporateUser = async (req, res) => {
   try {
-const { company_id, search = "", limit = 10, offset = 0, sort = -1 } = req.query;
+    const { company_id, search = "", limit = 10, offset = 0, sort = -1 } = req.query;
 
     const condition = {
       $or: [
@@ -750,7 +753,7 @@ exports.addCompany = async (req, res) => {
 
     // Example usage
     const access_code = generateAccessCode();
- 
+
 
     const dataForCompany = {
       email: data.email,
@@ -759,7 +762,7 @@ exports.addCompany = async (req, res) => {
       decoded_password: password,
       email_domain: emailDomain,
       company_name: data.company_name,
-      type : "admin",
+      type: "admin",
       // business_logo : data.business_logo,
       // text_color : data.text_color,
       // card_color : data.card_color,
@@ -822,7 +825,7 @@ exports.getCompanyList = async (req, res) => {
     const { search, limit = 10, offset = 0, sort = -1, start_date, end_date } = req.query;
 
     const condition = {
-      type : "admin",
+      type: "admin",
       // is_profile_completed : true
     }
 
@@ -911,8 +914,9 @@ exports.dashBoardCard = async (req, res) => {
       }
     ]);
 
-    const totalComany = await Company.countDocuments({type : "admin" ,
-    //  is_profile_completed : true
+    const totalComany = await Company.countDocuments({
+      type: "admin",
+      //  is_profile_completed : true
     })
 
     const revenue = await Transaction.aggregate([
@@ -1055,30 +1059,30 @@ exports.getFeedbackList = async (req, res) => {
     const count = await Feedback.countDocuments({})
     const feedback = await Feedback.aggregate([
       {
-        
-          $lookup: {
-            from: "companies", 
-            let: { user_id: "$user_id" }, 
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ["$_id", "$$user_id"] }, 
-                    ],
-                  },
+
+        $lookup: {
+          from: "companies",
+          let: { user_id: "$user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$_id", "$$user_id"] },
+                  ],
                 },
               },
-              {
-                $project: {
-                  company_name: 1,
-                  email: 1,
-                  company_id: 1,
-                },
+            },
+            {
+              $project: {
+                company_name: 1,
+                email: 1,
+                company_id: 1,
               },
-            ],
-            as: "company",
-          },
+            },
+          ],
+          as: "company",
+        },
       },
       {
         $lookup: {
@@ -1109,14 +1113,14 @@ exports.getFeedbackList = async (req, res) => {
           userDetails: {
             $cond: {
               if: { $eq: ["$userType", "admin"] },
-              then: { $arrayElemAt: ["$company", 0] }, 
-              else: { $arrayElemAt: ["$user", 0] }, 
+              then: { $arrayElemAt: ["$company", 0] },
+              else: { $arrayElemAt: ["$user", 0] },
             },
           },
         },
       },
       {
-        $unset: ["company", "user"], 
+        $unset: ["company", "user"],
       },
       {
         $sort: {
@@ -1200,14 +1204,14 @@ exports.getSingleFeedback = async (req, res) => {
           userDetails: {
             $cond: {
               if: { $eq: ["$userType", "admin"] },
-              then: { $arrayElemAt: ["$company", 0] }, 
-              else: { $arrayElemAt: ["$user", 0] }, 
+              then: { $arrayElemAt: ["$company", 0] },
+              else: { $arrayElemAt: ["$user", 0] },
             },
           },
         },
       },
       {
-        $unset: ["user", "company"], 
+        $unset: ["user", "company"],
       },
     ])
 
@@ -1228,14 +1232,14 @@ exports.getSupportList = async (req, res) => {
     const feedback = await Support.aggregate([
       {
         $lookup: {
-          from: "companies", 
-          let: { user_id: "$user_id" }, 
+          from: "companies",
+          let: { user_id: "$user_id" },
           pipeline: [
             {
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ["$_id", "$$user_id"] }, 
+                    { $eq: ["$_id", "$$user_id"] },
                   ],
                 },
               },
@@ -1253,8 +1257,8 @@ exports.getSupportList = async (req, res) => {
       },
       {
         $lookup: {
-          from: "users", 
-          let: { user_id: "$user_id" }, 
+          from: "users",
+          let: { user_id: "$user_id" },
           pipeline: [
             {
               $match: {
@@ -1282,14 +1286,14 @@ exports.getSupportList = async (req, res) => {
           userDetails: {
             $cond: {
               if: { $eq: ["$userType", "admin"] },
-              then: { $arrayElemAt: ["$company", 0] }, 
-              else: { $arrayElemAt: ["$user", 0] }, 
+              then: { $arrayElemAt: ["$company", 0] },
+              else: { $arrayElemAt: ["$user", 0] },
             },
           },
         },
       },
       {
-        $unset: ["company", "user"], 
+        $unset: ["company", "user"],
       },
       {
         $sort: {
@@ -1373,14 +1377,14 @@ exports.getSingleSupport = async (req, res) => {
           userDetails: {
             $cond: {
               if: { $eq: ["$userType", "admin"] },
-              then: { $arrayElemAt: ["$company", 0] }, 
-              else: { $arrayElemAt: ["$user", 0] }, 
+              then: { $arrayElemAt: ["$company", 0] },
+              else: { $arrayElemAt: ["$user", 0] },
             },
           },
         },
       },
       {
-        $unset: ["user", "company"], 
+        $unset: ["user", "company"],
       },
     ]);
 
@@ -1402,7 +1406,7 @@ exports.reply = async (req, res) => {
     user = await User.findById(support.user_id);
     if (!user) {
       user = await Company.findById(support.user_id);
-    }else{
+    } else {
       return utils.handleError(res, { message: "User not found", code: 404 });
     }
     // if(support.replied === true) return  utils.handleError(res, {message : "User not found" , code : 404});
@@ -1413,7 +1417,7 @@ exports.reply = async (req, res) => {
 
     const emailData = {
       email: user.email,
-      full_name: user.full_name|| user.company_name,
+      full_name: user.full_name || user.company_name,
       question: support.message,
       reply: reply
     }
@@ -1453,19 +1457,19 @@ exports.getRegistrationList = async (req, res) => {
   try {
     const { limit = 10, offset = 0, sort = -1 } = req.query;
 
-    const start_date = moment().subtract(30 , "days").toDate() 
+    const start_date = moment().subtract(30, "days").toDate()
     const count = await Registration.countDocuments({})
     const registration = await Registration.find({
-      $or :[
-        {status : "pending" },
+      $or: [
+        { status: "pending" },
         {
-          $and :[
-            {status : "declined" },
-            { createdAt : {$gte : start_date}}
+          $and: [
+            { status: "declined" },
+            { createdAt: { $gte: start_date } }
           ]
         }
       ]
-       }).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
+    }).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
 
 
     res.json({ data: registration, count, code: 200 })
@@ -2369,33 +2373,158 @@ exports.chartData = async (req, res) => {
 exports.getSubscription = async (req, res) => {
   const subscription_id = req.body.subscription_id
 
-  let subscriptions ;
+  let subscriptions;
 
   instance.subscriptions.fetch(subscription_id, (error, subscription) => {
     if (error) {
-        console.error('Error:', error);
-        return;
+      console.error('Error:', error);
+      return;
     }
-    console.log("subscription",subscription)
+    console.log("subscription", subscription)
     subscriptions = subscription;
-    res.json({subscription: subscriptions})
+    res.json({ subscription: subscriptions })
     const paymentId = subscription.payment_id;
 
     // Retrieve Payment details
     instance.payments.fetch(paymentId, (error, payment) => {
-        if (error) {
-            console.error('Error:', error);
-            return;
-        }
+      if (error) {
+        console.error('Error:', error);
+        return;
+      }
 
-        // Extract Payment Method details
-        const paymentMethod = payment.method;
+      // Extract Payment Method details
+      const paymentMethod = payment.method;
 
-        console.log('Current Payment Method:', paymentMethod);
+      console.log('Current Payment Method:', paymentMethod);
     });
-   
-});
 
+  });
+}
 
-  
+/* Honey work start here */
+
+exports.userOverview = async (req, res) => {
+  try {
+    const totalUser = await user.countDocuments();
+    const totalActiveUser = await user.countDocuments({ status: 'active' })
+    const totalInactiveUser = await user.countDocuments({ status: 'inactive' })
+    const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
+    const totalSharedCard = await sharedCards.countDocuments()
+    const totalSavedAndReceivedCard = await user.countDocuments({ personal_cards: { $size: { $gt: 0 } }, companyAccessCardDetails: { $size: { $gte: 0 } } })
+
+    // user chart data
+    const { selectedPeriod } = req.query;
+    let currentDate = new Date();
+    let startOfPeriod, endOfPeriod;
+
+    if (selectedPeriod === 'daily') {
+      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    } else if (selectedPeriod === 'weekly') {
+      const startOfWeek = new Date();
+      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      startOfPeriod = startOfWeek;
+      endOfPeriod = endOfWeek;
+    } else if (selectedPeriod === 'yearly') {
+      const year = currentDate.getFullYear();
+      startOfPeriod = new Date(year, 0, 1);
+      endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+    }
+    console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
+    let filter = {};
+    let data = [];
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+    }
+    console.log("filter : ", filter)
+
+    if (selectedPeriod === 'daily') {
+      const hourlyData = await user.aggregate([
+        { $match: { ...filter } },
+        {
+          $project: {
+            hour: { $hour: "$createdAt" }
+          }
+        },
+        {
+          $group: {
+            _id: "$hour",
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+      console.log("hourly data : ", hourlyData)
+      data = Array(24).fill(0);
+      hourlyData.forEach(item => {
+        data[item._id] = item.count;
+      });
+    } else if (selectedPeriod === 'weekly') {
+      const dailyData = await user.aggregate([
+        { $match: filter },
+        {
+          $project: {
+            day: { $dayOfMonth: "$createdAt" }
+          }
+        },
+        {
+          $group: {
+            _id: "$day",
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+
+      const daysInWeek = 7;
+      data = Array(daysInWeek).fill(0);
+      dailyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    } else if (selectedPeriod === 'yearly') {
+      const monthlyData = await user.aggregate([
+        { $match: { ...filter } },
+        {
+          $project: {
+            month: { $month: "$createdAt" }
+          }
+        },
+        {
+          $group: {
+            _id: "$month",
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+      console.log("monthly data : ", monthlyData)
+      data = Array(12).fill(0);
+      monthlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    return res.json({
+      message: "user overview fetched successfully",
+      data: {
+        totalUser,
+        totalActiveUser,
+        totalInactiveUser,
+        totalBusinessCard,
+        totalSharedCard,
+        totalSavedAndReceivedCard,
+        graphData: data
+      },
+      code: 200,
+    });
+
+  } catch (error) {
+    handleError(res, error);
+  }
 }
