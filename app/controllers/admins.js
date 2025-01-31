@@ -2552,21 +2552,21 @@ exports.userOverview = async (req, res) => {
       totalInactiveUser,
       totalBusinessCard,
       totalSharedCard,
-      totalSavedAndReceivedCard
+      // totalSavedAndReceivedCard
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ status: 'active' }),
       User.countDocuments({ status: 'inactive' }),
       cardDetials.countDocuments({ card_type: 'corporate' }),
       sharedCards.countDocuments(),
-      User.countDocuments({
-        $expr: {
-          $or: [
-            { $gt: [{ $size: "$personal_cards" }, 0] },
-            { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
-          ]
-        }
-      })
+      // User.countDocuments({
+      //   $expr: {
+      //     $or: [
+      //       { $gt: [{ $size: "$personal_cards" }, 0] },
+      //       { $gt: [{ $size: "$companyAccessCardDetails" }, 0] }
+      //     ]
+      //   }
+      // })
     ]);
 
     // User chart data
@@ -2655,7 +2655,7 @@ exports.userOverview = async (req, res) => {
         totalInactiveUser,
         totalBusinessCard,
         totalSharedCard,
-        totalSavedAndReceivedCard,
+        // totalSavedAndReceivedCard,
         graphData: data
       },
       code: 200
