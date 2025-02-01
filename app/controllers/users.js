@@ -1503,9 +1503,11 @@ exports.addPersonalCard = async (req, res) => {
 exports.editCardDetails = async (req, res) => {
   try {
     const owner_id = req.user._id;
+    console.log("owner id : ", owner_id)
     const card_id = req.body._id;
     const data = req.body;
     const type = req.body.cardType;
+    console.log("req.body : ", req.body)
 
     if (!card_id) {
       return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
@@ -1513,6 +1515,7 @@ exports.editCardDetails = async (req, res) => {
 
     let model = null;
     let existingEntity = null;
+    let companyTeammate
 
     if (type === "individual") {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
@@ -1521,6 +1524,15 @@ exports.editCardDetails = async (req, res) => {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
       if (!existingEntity) {
         existingEntity = await Company.findOne({ _id: card_id });
+        const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity._id })
+        companyTeammate = company_employee.find(i => {
+          if (i.work_email) {
+            if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
+          }
+          return false;
+        })
+
+        console.log("companyTeammate : ", companyTeammate);
         model = Company;
       }
     } else {
@@ -1534,6 +1546,7 @@ exports.editCardDetails = async (req, res) => {
     for (const field in data) {
       if (field === 'bio') {
         for (const bioField in data.bio) {
+          companyTeammate[bioField] = data.bio[bioField];
           existingEntity.bio[bioField] = data.bio[bioField];
         }
       } else if (field === 'contact_details') {
@@ -1555,7 +1568,8 @@ exports.editCardDetails = async (req, res) => {
     if (existingEntity.bio) {
       existingEntity.bio.full_name = `${existingEntity.bio.first_name}${existingEntity.bio.last_name ? ` ${existingEntity.bio.last_name}` : ""}`;
     }
-
+    console.log("existingEntity : ", existingEntity, " companyTeammate : ", companyTeammate)
+    await companyTeammate.save()
     await existingEntity.save();
     res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Individual"} updated successfully` });
 
