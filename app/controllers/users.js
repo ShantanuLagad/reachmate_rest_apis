@@ -1572,7 +1572,9 @@ exports.editCardDetails = async (req, res) => {
       existingEntity.bio.full_name = `${existingEntity.bio.first_name}${existingEntity.bio.last_name ? ` ${existingEntity.bio.last_name}` : ""}`;
     }
     console.log("existingEntity : ", existingEntity, " companyTeammate : ", companyTeammate)
-    await companyTeammate.save()
+    if (companyTeammate) {
+      await companyTeammate.save()
+    }
     await existingEntity.save();
     res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Individual"} updated successfully` });
 
