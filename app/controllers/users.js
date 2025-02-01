@@ -1546,8 +1546,11 @@ exports.editCardDetails = async (req, res) => {
     for (const field in data) {
       if (field === 'bio') {
         for (const bioField in data.bio) {
-          companyTeammate[bioField] = data.bio[bioField];
-          existingEntity.bio[bioField] = data.bio[bioField];
+          if (!companyTeammate) {
+            existingEntity.bio[bioField] = data.bio[bioField];
+          } else {
+            companyTeammate[bioField] = data.bio[bioField];
+          }
         }
       } else if (field === 'contact_details') {
         for (const contactField in data.contact_details) {
