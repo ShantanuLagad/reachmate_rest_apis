@@ -24,7 +24,7 @@ const csv = require('csv-parser');
 const fs = require('fs');
 var generator = require('generate-password');
 const moment = require("moment")
-const TeamMember=require("../models/teamMember")
+const TeamMember = require("../models/teamMember")
 const Support = require('../models/support')
 const Feedback = require('../models/feedback')
 
@@ -647,13 +647,13 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
         },
       });
     }
-    userData.company_details= {
-      company_id:req.user._id,
-      email_domain:req.user.email_domain,
-      company_name:req.user.company_name,
-      access_code:req.user.access_code
+    userData.company_details = {
+      company_id: req.user._id,
+      email_domain: req.user.email_domain,
+      company_name: req.user.company_name,
+      access_code: req.user.access_code
     }
-   // console.log("userData in admin============",userData)
+    // console.log("userData in admin============",userData)
     //console.log('BUsiness team name------------------>>>>',req.user)
     const doesEmailExist = await TeamMember.exists({ work_email: userData.work_email });
     if (doesEmailExist) {
@@ -667,26 +667,27 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       first_name: savedUser.first_name,
       last_name: savedUser.last_name,
       work_email: savedUser.work_email,
-      phone_number:savedUser.phone_number,
-      designation:savedUser.designation,
-      user_type:savedUser.user_type,
-      status:savedUser.status,
-      company_id:savedUser.company_details.company_id,
-      email_domain:savedUser.company_details.email_domain,
-      company_name:savedUser.company_details.company_name,
-      access_code:savedUser.company_details.access_code
-      
+      phone_number: savedUser.phone_number,
+      designation: savedUser.designation,
+      user_type: savedUser.user_type,
+      status: savedUser.status,
+      company_id: savedUser.company_details.company_id,
+      email_domain: savedUser.company_details.email_domain,
+      company_name: savedUser.company_details.company_name,
+      access_code: savedUser.company_details.access_code
+
     };
 
-    await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
-      userInfo,"accessCodeByCompanyToTeamMember");
-    
+    await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en',
+      userInfo, "accessCodeByCompanyToTeamMember");
+
     res.status(201).json({
-      code:201,
+      code: 201,
       // userInfo: userInfo, 
-       message:'Team Member has been Added and Access code has been sent on work Email' });
+      message: 'Team Member has been Added and Access code has been sent on work Email'
+    });
   } catch (error) {
-   // console.error(error);
+    // console.error(error);
     utils.handleError(res, error)
   }
 };
@@ -696,13 +697,13 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
   try {
     const { work_email, status, limit = 10, offset = 0, search } = req.query;
 
-    const companyId = req.user._id; 
+    const companyId = req.user._id;
     if (!companyId) {
       return res.status(400).json({ message: "Invalid request: Company ID is missing." });
     }
 
     const query = {
-      "company_details.company_id": companyId, 
+      "company_details.company_id": companyId,
     };
 
     if (status) query.status = status;
@@ -720,7 +721,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
     const paginationOffset = parseInt(offset, 10);
 
     const totalCount = await TeamMember.countDocuments(query);
-    
+
     const teamMembers = await TeamMember.find(query)
       .skip(paginationOffset)
       .limit(paginationLimit);
@@ -741,7 +742,8 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       return res.status(200).json({
         code: 200,
         teamMembers: response,
-        message: "No team members are present." });
+        message: "No team members are present."
+      });
     }
 
     res.status(200).json({
@@ -768,7 +770,7 @@ exports.getTeamMemberByID = async (req, res) => {
       return res.status(400).json({ message: 'Team member ID (_id) is required.' });
     }
     const teamMember = await TeamMember.findById(_id)
-      //.populate('company_details.company_id', 'name email_domain');
+    //.populate('company_details.company_id', 'name email_domain');
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
@@ -787,7 +789,7 @@ exports.getTeamMemberByID = async (req, res) => {
     };
 
     res.status(200).json({
-      code:200,
+      code: 200,
       message: 'Team member retrieved successfully',
       teamMember: response,
     });
@@ -799,25 +801,25 @@ exports.getTeamMemberByID = async (req, res) => {
 
 exports.updateTeamMember = async (req, res) => {
   try {
-    const updateData = req.body; 
-    let emailChanged=false;
+    const updateData = req.body;
+    let emailChanged = false;
     //console.log('Update request for team member with ID:', updateData);
     if (!updateData._id) return res.status(400).json({ message: 'Team member ID (_id) is required.' });
     const existedData = await TeamMember.findById(updateData._id)
     if (updateData.work_email && updateData.work_email !== existedData.work_email) {
-          const emailExists = await TeamMember.exists({ work_email: updateData.work_email });
-          if (emailExists) {
-            return res.status(400).json({ errors: { msg: 'Email already exists.' } });
-          }
-          emailChanged = true; 
+      const emailExists = await TeamMember.exists({ work_email: updateData.work_email });
+      if (emailExists) {
+        return res.status(400).json({ errors: { msg: 'Email already exists.' } });
+      }
+      emailChanged = true;
     }
 
     const teamMember = await TeamMember.findByIdAndUpdate(
-      updateData._id, 
-      updateData, 
+      updateData._id,
+      updateData,
       {
         new: true,
-        runValidators: true, 
+        runValidators: true,
       }
     )
     //.populate('company_details.company_id', 'name email_domain');
@@ -835,13 +837,13 @@ exports.updateTeamMember = async (req, res) => {
       status: teamMember.status,
       company_details: teamMember.company_details,
     };
-    if(emailChanged){
-      await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en', 
-        response,"accessCodeByCompanyToTeamMember");
+    if (emailChanged) {
+      await emailer.sendAccessCodeToTeamMemberByCompany(req.body.locale || 'en',
+        response, "accessCodeByCompanyToTeamMember");
     }
     res.status(200).json({
-      code:200,
-      message: emailChanged ? 'Team member updated successfully.Access code has been sent on work Email':'Team member updated successfully',
+      code: 200,
+      message: emailChanged ? 'Team member updated successfully.Access code has been sent on work Email' : 'Team member updated successfully',
       teamMember: response,
     });
   } catch (error) {
@@ -857,12 +859,12 @@ exports.updateTeamMemberStatus = async (req, res) => {
     const existedData = await TeamMember.findById(_id);
     if (!existedData) return res.status(404).json({ message: 'Team member not found.' });
     console.log('Existing Data:', existedData);
-    existedData.status =existedData.status==='active'?'inactive':'active' ;
+    existedData.status = existedData.status === 'active' ? 'inactive' : 'active';
     const updatedTeamMember = await existedData.save();
     console.log('Updated Status:', updatedTeamMember.status);
     res.status(200).json({
       message: 'Team member status updated successfully',
-      status:updatedTeamMember.status
+      status: updatedTeamMember.status
       //updatedTeamMember,
     });
   } catch (err) {
@@ -895,9 +897,9 @@ exports.deleteTeamMemberByID = async (req, res) => {
     console.log('Deleted team member:', teamMember);
 
     const user = await User.findOneAndUpdate(
-      { "companyAccessCardDetails._id": objectId }, 
-      { $pull: { companyAccessCardDetails: { _id: objectId } } }, 
-      { new: true } 
+      { "companyAccessCardDetails._id": objectId },
+      { $pull: { companyAccessCardDetails: { _id: objectId } } },
+      { new: true }
     );
 
     if (!user) {
@@ -912,7 +914,7 @@ exports.deleteTeamMemberByID = async (req, res) => {
       code: 200,
       message: 'Team member deleted successfully and reference removed from user.',
       deletedTeamMemberId: _id,
-      updatedUser: user, 
+      updatedUser: user,
     });
   } catch (error) {
     console.error('Error deleting team member by ID:', error);
@@ -955,55 +957,73 @@ exports.deleteCorporateCardHolders = async (req, res) => {
 exports.dashboardData = async (req, res) => {
   try {
     let company_id = req.user._id;
+    console.log("company id : ", company_id)
 
     const type = req.user.type;
+    console.log("type : ", type)
     if (type === "sub admin") {
       company_id = req.user.company_id
     }
 
     const sevenDay = 7 * 24 * 60 * 60 * 1000;
 
-    const data = await CardDetials.aggregate([
-      {
-        $match: {
-          company_id: mongoose.Types.ObjectId(company_id)
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          paid: {
-            $sum: {
-              $cond: { if: "$paid_by_company", then: 1, else: 0 }
-            }
-          },
-          unpaid: {
-            $sum: {
-              $cond: { if: "$paid_by_company", then: 0, else: 1 }
-            }
-          },
-          recent: {
-            $sum: {
-              $cond: {
-                if: {
-                  $gte: [
-                    "$createdAt",
-                    new Date(Date.now() - sevenDay)
-                  ]
-                },
-                then: 1,
-                else: 0
+    const data = await CardDetials.aggregate(
+      [
+        {
+          $match: {
+            company_id: mongoose.Types.ObjectId(company_id)
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            paid: {
+              $sum: {
+                $cond: { if: "$paid_by_company", then: 1, else: 0 }
+              }
+            },
+            unpaid: {
+              $sum: {
+                $cond: { if: "$paid_by_company", then: 0, else: 1 }
+              }
+            },
+            recent: {
+              $sum: {
+                $cond: {
+                  if: {
+                    $gte: [
+                      "$createdAt",
+                      new Date(Date.now() - sevenDay)
+                    ]
+                  },
+                  then: 1,
+                  else: 0
+                }
               }
             }
           }
         }
-      }
-    ])
+      ]
+    )
 
     const company = await Company.findById(company_id);
+    const currentDate = new Date()
+    const startOfWeek = new Date();
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
 
-    res.json({ data: data[0], access_code: company?.access_code, code: 200 })
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    startOfPeriod = startOfWeek;
+    endOfPeriod = endOfWeek;
+    console.log("currentDate : ", currentDate, " startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+    const totalTeamMate = await TeamMember.countDocuments({})
+    const newTeamMate = await TeamMember.countDocuments({ createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } })
+
+    res.json({ data: data[0], access_code: company?.access_code, totalTeamMate, newTeamMate, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -1694,7 +1714,7 @@ exports.createSubscription = async (req, res) => {
       if (["created", "expired", "cancelled"].includes(status)) {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
-      } else if (["authenticated", "active", "paused", "pending","halted"].includes(status)) {
+      } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
         return res.json({ message: `You already have ${status} subscription, It will take some to reflect here`, code: 400 })
       }
     }
@@ -1704,7 +1724,7 @@ exports.createSubscription = async (req, res) => {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
     }
 
-    if (isSubcriptionExist && ["pending" , "halted"].includes(isSubcriptionExist.status)) {
+    if (isSubcriptionExist && ["pending", "halted"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription , Please update your payment method`, code: 400 })
     }
 
@@ -2036,12 +2056,12 @@ exports.getPaymentMethod = async (req, res) => {
 
     const latest_payment = await Transaction.findOne({ user_id }).sort({ createdAt: -1 });
 
-    if(!latest_payment){
+    if (!latest_payment) {
       return res.json({ data: latest_payment, code: 200 })
     }
 
     const data = latest_payment.toJSON()
-    data.full_name = req?.user?.bio?.first_name + " " +  req?.user?.bio?.last_name
+    data.full_name = req?.user?.bio?.first_name + " " + req?.user?.bio?.last_name
 
     res.json({ data: data, code: 200 })
   } catch (error) {
@@ -2124,7 +2144,7 @@ exports.editBillingAddress = async (req, res) => {
 
     await Company.findByIdAndUpdate(company_id, { $set: { billing_address: billing_address } })
 
-    res.json({ message : "Billing address saved successfully", code: 200 })
+    res.json({ message: "Billing address saved successfully", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -2135,12 +2155,12 @@ exports.helpsupport = async (req, res) => {
   try {
     const data = req.body;
     const user_id = req.user._id;
-    console.log('User type check',req.user)
+    console.log('User type check', req.user)
     const add = await Support.create(
       {
         user_id: user_id,
         message: data?.message,
-        userType:req.user.type
+        userType: req.user.type
       }
     );
 
@@ -2179,10 +2199,10 @@ exports.feedback = async (req, res) => {
 exports.deleteAccount = async (req, res) => {
   try {
     const user_id = req.user._id;
-    const company_email=req.user.email
-    console.log('User',user_id)
+    const company_email = req.user.email
+    console.log('User', user_id)
     await Company.deleteOne({ _id: user_id });
-    await Registration.deleteOne({email:company_email})
+    await Registration.deleteOne({ email: company_email })
     await CardDetials.deleteOne({ owner_id: user_id })
 
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });

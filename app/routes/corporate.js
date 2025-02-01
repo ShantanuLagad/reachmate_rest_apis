@@ -128,14 +128,6 @@ router.get(
 )
 
 router.get(
-  "/dashboardData",
-  requireAuth,
-  trimRequest.all,
-  controller.dashboardData
-)
-
-
-router.get(
   "/getNotification",
   requireAuth,
   trimRequest.all,
@@ -345,4 +337,6 @@ router.post(
   trimRequest.all,
   controller.changeNotificaitonSetting
 )
+
+
 module.exports = router
