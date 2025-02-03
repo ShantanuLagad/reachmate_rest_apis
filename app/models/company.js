@@ -38,6 +38,12 @@ const CompanySchema = new mongoose.Schema(
     business_logo: {
       type: String
     },
+
+    bt_user_subscription_price: {
+      type: Number,
+      default: 0
+    },
+
     card_color: {
       type: [String]
     },
@@ -48,9 +54,9 @@ const CompanySchema = new mongoose.Schema(
       type: String,
       enum: ["both", "name", "logo"],
     },
-    primary_card : {
-      type:Boolean,
-      default:false
+    primary_card: {
+      type: Boolean,
+      default: false
     },
     company_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -59,9 +65,9 @@ const CompanySchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "sub admin"]
     },
-    notification : {
-      type : Boolean,
-      default : true,
+    notification: {
+      type: Boolean,
+      default: true,
     },
     bio: {
       first_name: {
@@ -139,13 +145,13 @@ const CompanySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    billing_address : {
-      country:String,
-      state:String,
-      city:String,
-      address_line_1 :  String,
-      address_line_2 :String,
-      pin_code :String
+    billing_address: {
+      country: String,
+      state: String,
+      city: String,
+      address_line_1: String,
+      address_line_2: String,
+      pin_code: String
     }
   },
   {
