@@ -3144,6 +3144,16 @@ exports.createSubscription = async (req, res) => {
 
     const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
     console.log('getTotalCount(plan.interval)', getTotalCount(plan.interval))
+    console.log('instance : ', instance)
+
+    console.log('Creating subscription with:', {
+      plan_id: plan.plan_id,
+      total_count: getTotalCount(plan.interval),
+      quantity: 1,
+      customer_notify: 1,
+      expire_by: expireTime
+    });
+
     const subcription = await instance.subscriptions.create({
       "plan_id": plan.plan_id,
       "total_count": getTotalCount(plan.interval),
