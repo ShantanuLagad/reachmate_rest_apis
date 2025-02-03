@@ -27,6 +27,7 @@ const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
 const moment = require("moment");
 const cardDetials = require('../models/cardDetials');
+const teamMember = require('../models/teamMember');
 /*********************
  * Private functions *
  *********************/
@@ -1677,39 +1678,135 @@ exports.token = async (req, res) => {
   }
 }
 
+// exports.userProfileDetails = async (req, res) => {
+//   try {
+//     // const userId = req.body._id;
+//     const cardId = req.body.card_id
+//     console.log("cardId : ", cardId)
+//     // if (!userId) {
+//     //   return res.status(400).json({ errors: { msg: 'User ID is required.' } });
+//     // }
+//     // const user = await User.findById(userId).select(
+//     //   'first_name last_name email profile_image dateOfBirth sex'
+//     // );
+//     // if (!user) {
+//     //   return res.status(404).json({ errors: { msg: 'User not found.' } });
+//     // }
+//     let card_data
+//     let user_data
+//     let teamMate
+//     let returnData
+//     card_data = await cardDetials.findOne({ _id: cardId })
+//     console.log("card_data : ", card_data)
+//     if (!card_data) {
+//       card_data = await Company.findOne({ _id: cardId })
+//       user_data = await UserModel.findOne({ 'companyAccessCardDetails.company_id': new mongoose.Types.ObjectId(cardId) })
+
+//       const userAccessCardDetail = user_data.companyAccessCardDetails.find(
+//         (detail) => detail.email_domain === card_data.email_domain
+//       );
+//       console.log("userAccessCardDetail : ", userAccessCardDetail)
+
+//       teamMate = userAccessCardDetail?._id
+//         ? await teamMember.findById(userAccessCardDetail._id)
+//         : null;
+
+//       console.log("teamMate : ", teamMate)
+//       const bio = teamMate
+//         ? {
+//           first_name: teamMate.first_name,
+//           last_name: teamMate.last_name,
+//           full_name: `${teamMate.first_name} ${teamMate.last_name}`,
+//           designation: teamMate.designation || "",
+//           work_email: teamMate.work_email,
+//           phone_number: teamMate.phone_number
+//         }
+//         : null;
+//       // console.log('bio',bio)
+//       returnData = {
+//         bio,
+//         ...card_data.toObject()
+//       };
+
+//     }
+//     if (!user_data) {
+//       user_data = await UserModel.findOne({ 'personal_cards': new mongoose.Types.ObjectId(cardId) })
+//     }
+//     console.log("card_data : ", card_data)
+//     console.log("user_data : ", user_data)
+//     res.status(200).json({
+//       // data: {
+//       //   // first_name: user.first_name,
+//       //   // last_name: user.last_name,
+//       //   // email: user.email,
+//       //   // profile_image: user.profile_image,
+//       //   // dateOfBirth: user.dateOfBirth,
+//       //   // sex: user.sex,
+//       //   card_data
+//       // },
+//       data: returnData ? returnData : card_data
+//     });
+//   } catch (error) {
+//     console.error('Error fetching user profile:', error);
+//     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
+//   }
+// };
+
+
 exports.userProfileDetails = async (req, res) => {
   try {
-    // const userId = req.body._id;
-    const cardId = req.body.card_id
-    // if (!userId) {
-    //   return res.status(400).json({ errors: { msg: 'User ID is required.' } });
-    // }
-    // const user = await User.findById(userId).select(
-    //   'first_name last_name email profile_image dateOfBirth sex'
-    // );
-    // if (!user) {
-    //   return res.status(404).json({ errors: { msg: 'User not found.' } });
-    // }
-    let card_data
-    card_data = await cardDetials.findOne({ _id: cardId })
-    console.log("card_data : ", card_data)
+    const cardId = req.body.card_id;
+    console.log("cardId:", cardId);
+
+    let card_data;
+    let user_data;
+    let teamMate;
+    let bio;
+
+    card_data = await cardDetials.findOne({ _id: cardId });
+    console.log("card_data:", card_data);
+
     if (!card_data) {
-      card_data = await Company.findOne({ _id: cardId })
+      console.log("inside....")
+      card_data = await Company.findOne({ _id: cardId });
+      user_data = await UserModel.findOne({ 'companyAccessCardDetails.company_id': new mongoose.Types.ObjectId(cardId) });
+
+      const userAccessCardDetail = user_data?.companyAccessCardDetails.find(
+        (detail) => detail.email_domain === card_data.email_domain
+      );
+      console.log("userAccessCardDetail:", userAccessCardDetail);
+
+      teamMate = userAccessCardDetail?._id ? await teamMember.findById(userAccessCardDetail._id) : null;
+      console.log("teamMate:", teamMate);
+
+      bio = teamMate
+        ? {
+          first_name: teamMate.first_name,
+          last_name: teamMate.last_name,
+          full_name: `${teamMate.first_name} ${teamMate.last_name}`,
+          designation: teamMate.designation || "",
+          work_email: teamMate.work_email,
+          phone_number: teamMate.phone_number
+        }
+        : null;
+      console.log("bio : ", bio)
     }
-    console.log("card_data : ", card_data)
+
+    if (!user_data) {
+      user_data = await UserModel.findOne({ 'personal_cards': new mongoose.Types.ObjectId(cardId) });
+    }
+
+    console.log("card_data:", card_data);
+    console.log("user_data:", user_data);
+
+    if (card_data && bio) {
+      card_data.bio = bio;
+    }
 
     res.status(200).json({
-      // data: {
-      //   // first_name: user.first_name,
-      //   // last_name: user.last_name,
-      //   // email: user.email,
-      //   // profile_image: user.profile_image,
-      //   // dateOfBirth: user.dateOfBirth,
-      //   // sex: user.sex,
-      //   card_data
-      // },
       data: card_data
     });
+
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
