@@ -5,7 +5,6 @@ const planSchema = new mongoose.Schema(
     {
         plan_id: {
             type: String,
-            required: true
         },
         period: {
             type: String,
@@ -18,33 +17,41 @@ const planSchema = new mongoose.Schema(
         },
         item: {
             name: {
-                type :String,
-                required : true
+                type: String,
             },
             amount: {
-                type : Number,
-                required : true
+                type: Number,
             },
             currency: {
-                type :String,
-                required : true
+                type: String,
             },
-            description:{
-                type :String,
-                default : ""
+            description: {
+                type: String,
+                default: ""
             }
         },
-        amount_without_discount : {
-            type : Number,
-            
+        amount_without_discount: {
+            type: Number,
+
         },
-        trial_period_days:{
-            type : Number,
-            default : 0
+        trial_period_days: {
+            type: Number,
+            default: 0
         },
         plan_type: {
             type: String,
             enum: ["individual", "company"]
+        },
+        plan_tiers: {
+            type: [
+                {
+                    plan_ids: { type: String },
+                    min_users: { type: Number },
+                    max_users: { type: Number },
+                    per_user_charge: { type: Number }
+                }
+            ],
+            default: []
         },
         allowed_user: {
             type: Number,
