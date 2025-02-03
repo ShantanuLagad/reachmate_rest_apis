@@ -1816,7 +1816,7 @@ exports.userProfileDetails = async (req, res) => {
     }
 
     res.status(200).json({
-      data: mydata
+      data: bio ? mydata : card_data
     });
 
   } catch (error) {
