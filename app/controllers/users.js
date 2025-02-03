@@ -3041,14 +3041,14 @@ function getTotalCount(interval) {
 exports.createSubscription = async (req, res) => {
   try {
 
-    if (req.user.is_card_created === false) {
-      return utils.handleError(res, { message: "Please create a card before purchasing the subscription", code: 400 })
-    }
+    // if (req.user.is_card_created === false) {
+    //   return utils.handleError(res, { message: "Please create a card before purchasing the subscription", code: 400 })
+    // }
 
-    if (req.user.is_card_created === false) {
-      const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
-      if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
-    }
+    // if (req.user.is_card_created === false) {
+    //   const saveCard = await SavedCard.findOne({ owner_id: req.user._id });
+    //   if (!saveCard) return utils.handleError(res, { message: "Please save card in the app before creating subscription", code: 400 })
+    // }
 
     const user_id = req.user._id;
 

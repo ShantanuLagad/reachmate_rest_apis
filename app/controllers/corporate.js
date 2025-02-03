@@ -1696,8 +1696,10 @@ exports.createSubscription = async (req, res) => {
   try {
 
     let user_id = req.user._id;
+    console.log("user_id : ", user_id)
 
     const type = req.user.type;
+    console.log("user_type : ", type)
     if (type === "sub admin") {
       user_id = req.user.company_id
     }
@@ -1761,21 +1763,26 @@ exports.createSubscription = async (req, res) => {
 
 
     const plan = await await Plan.findOne({ plan_id: plan_id });
+    console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
 
     if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
 
     const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
+    console.log("trailToBeGiven : ", trailToBeGiven)
     let trail = {}
 
     const currentDate = moment();
     const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
+    console.log("futureDate : ", futureDate)
     if (trailToBeGiven === true) {
       const timestamp = Math.floor(futureDate.valueOf() / 1000)
+      console.log("timestamp : ", timestamp)
       trail = { start_at: timestamp }
     }
 
     const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
+    console.log("expireTime : ", expireTime)
     console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
 
 
@@ -1791,6 +1798,7 @@ exports.createSubscription = async (req, res) => {
         "user_type": "company"
       }
     })
+    console.log("subcription : ", subcription)
 
     const now = new Date()
     const dataForDatabase = {
@@ -1801,9 +1809,11 @@ exports.createSubscription = async (req, res) => {
       start_at: now,
       end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
       status: subcription.status
-    }
+    } 
+    console.log("dataForDatabase : ", dataForDatabase)
 
     const saveToDB = new Subscription(dataForDatabase);
+    console.log("saveToDB : ", saveToDB)
     await saveToDB.save()
 
     res.json({ data: subcription, code: 200 })
