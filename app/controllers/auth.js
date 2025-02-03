@@ -1799,12 +1799,24 @@ exports.userProfileDetails = async (req, res) => {
     console.log("card_data:", card_data);
     console.log("user_data:", user_data);
 
+    let mydata = {}
     if (card_data && bio) {
-      card_data.bio = bio;
+      // card_data.bio.first_name = bio.first_name
+      // card_data.bio.last_name = bio.last_name
+      // card_data.bio.full_name = bio.full_name
+      // card_data.bio.designation = bio.designation
+      // card_data.bio.work_email = bio.work_email
+      // card_data.bio.phone_number = bio.phone_number
+
+      mydata = {
+        ...bio,
+        ...card_data.toObject()
+      }
+      delete mydata.bio
     }
 
     res.status(200).json({
-      data: card_data
+      data: mydata
     });
 
   } catch (error) {
