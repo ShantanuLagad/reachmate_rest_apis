@@ -25,7 +25,8 @@ const Registration = require("../models/registration")
 const HOURS_TO_BLOCK = 2
 const LOGIN_ATTEMPTS = 5
 const bcrypt = require('bcrypt');
-const moment = require("moment")
+const moment = require("moment");
+const cardDetials = require('../models/cardDetials');
 /*********************
  * Private functions *
  *********************/
@@ -36,15 +37,15 @@ const moment = require("moment")
  */
 const generateToken = (user, role = 'user') => {
   // Gets expiration time
-  console.log("user",user)
+  console.log("user", user)
   const expiration =
     Math.floor(Date.now() / 1000) + 60 * process.env.JWT_EXPIRATION_IN_MINUTES
 
-const signedToken = jwt.sign({ data: { _id: user } }, process.env.JWT_SECRET);
-console.log('Signed Token:', signedToken);
+  const signedToken = jwt.sign({ data: { _id: user } }, process.env.JWT_SECRET);
+  console.log('Signed Token:', signedToken);
 
-const encryptedToken = auth.encrypt(signedToken);
-console.log('Encrypted Token:', encryptedToken);
+  const encryptedToken = auth.encrypt(signedToken);
+  console.log('Encrypted Token:', encryptedToken);
   // returns signed and encrypted token
   return auth.encrypt(
     jwt.sign(
@@ -463,25 +464,25 @@ function generateAccessCode() {
   var chars = '';
   var charLength = 4;
   for (var i = 0; i < charLength; i++) {
-      chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    chars += String.fromCharCode(65 + Math.floor(Math.random() * 26));
   }
-  
+
   // Generate 2 random digits
   var digits = '';
   var digitLength = 2;
   for (var j = 0; j < digitLength; j++) {
-      digits += Math.floor(Math.random() * 10);
+    digits += Math.floor(Math.random() * 10);
   }
-  
+
   // Combine characters and digits
   var code = chars + digits;
   // Convert to array to shuffle
   var codeArray = code.split('');
   for (var k = codeArray.length - 1; k > 0; k--) {
-      var randIndex = Math.floor(Math.random() * (k + 1));
-      var temp = codeArray[k];
-      codeArray[k] = codeArray[randIndex];
-      codeArray[randIndex] = temp;
+    var randIndex = Math.floor(Math.random() * (k + 1));
+    var temp = codeArray[k];
+    codeArray[k] = codeArray[randIndex];
+    codeArray[randIndex] = temp;
   }
   code = codeArray.join('');
   return code;
@@ -507,7 +508,7 @@ exports.createCompanyAccount = async (req, res) => {
     //   numbers: true,
     //   uppercase: true
     // });
-    
+
     const access_code = generateAccessCode();
 
 
@@ -536,7 +537,7 @@ exports.createCompanyAccount = async (req, res) => {
     const company = new Company(dataForCompany);
     await company.save();
 
-    res.json({ message: "Company registered successfully.",  code: 200 })
+    res.json({ message: "Company registered successfully.", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -547,7 +548,7 @@ exports.createCompanyAccount = async (req, res) => {
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
   const parts = email.split('@');
- //console.log('email parts',parts)
+  //console.log('email parts',parts)
   // Check if the email has the correct format
   if (parts.length !== 2) {
     console.error('Invalid email address format');
@@ -895,7 +896,7 @@ exports.registerUser = async (req, res) => {
   try {
     let newOtpforget;
     const userData = req.body;
-    console.log("userData============",userData)
+    console.log("userData============", userData)
 
     const doesEmailExist = await UserModel.exists({ email: userData.email });
     if (doesEmailExist) {
@@ -905,27 +906,28 @@ exports.registerUser = async (req, res) => {
     const newUser = new UserModel(userData);
     const savedUser = await newUser.save();
     newOtpforget = generateNumericOTP();
-    
+
     const userInfo = {
       id: savedUser._id,
       first_name: savedUser.first_name,
       last_name: savedUser.last_name,
       email: savedUser.email,
-      profile_image:savedUser.profile_image,
-      dateOfBirth:savedUser.dateOfBirth,
-      sex:savedUser.sex,
+      profile_image: savedUser.profile_image,
+      dateOfBirth: savedUser.dateOfBirth,
+      sex: savedUser.sex,
       password: savedUser.password,
       confirm_password: savedUser.confirm_password,
     };
-    const verificationToken= generateToken(userInfo.id);
+    const verificationToken = generateToken(userInfo.id);
 
-    await emailer.sendVerificationEmail(req.body.locale || 'en', 
-      userInfo,"emailVerification",verificationToken);
-    
+    await emailer.sendVerificationEmail(req.body.locale || 'en',
+      userInfo, "emailVerification", verificationToken);
+
     res.status(201).json({
-       userInfo: userInfo, 
-       token:verificationToken, 
-       message: 'Email sent for verification successfully' });
+      userInfo: userInfo,
+      token: verificationToken,
+      message: 'Email sent for verification successfully'
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
@@ -936,7 +938,7 @@ exports.registerUser = async (req, res) => {
 exports.editUser = async (req, res) => {
   try {
     const updateData = req.body;
-    const userId = req.user._id; 
+    const userId = req.user._id;
 
     console.log("updateData============", updateData);
 
@@ -952,7 +954,7 @@ exports.editUser = async (req, res) => {
       if (emailExists) {
         return res.status(400).json({ errors: { msg: 'Email already exists.' } });
       }
-      emailChanged = true; 
+      emailChanged = true;
     }
 
     if (updateData.first_name || updateData.last_name) {
@@ -960,8 +962,8 @@ exports.editUser = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-      new: true, 
-      runValidators: true, 
+      new: true,
+      runValidators: true,
     });
 
     if (!updatedUser) {
@@ -988,8 +990,8 @@ exports.editUser = async (req, res) => {
       sex: updatedUser.sex,
     };
 
-    res.status(200).json({ 
-      userInfo, 
+    res.status(200).json({
+      userInfo,
       message: emailChanged ? 'User updated successfully. Verification email sent.' : 'User updated successfully.'
     });
   } catch (error) {
@@ -1318,14 +1320,14 @@ exports.socialLogin = async (req, res) => {
     const data = req.body;
     console.log("data", data)
 
-    if(!data.social_id  || !data.social_type) return utils.handleError(res, {message : "social id or social type is missing" , code : 400});
+    if (!data.social_id || !data.social_type) return utils.handleError(res, { message: "social id or social type is missing", code: 400 });
     const userExists = await emailer.userExists(User, data.email, false);
 
-    if(data.social_type === "apple" && (!data.first_name || !data.last_name) ){
+    if (data.social_type === "apple" && (!data.first_name || !data.last_name)) {
       const user = await User.findOne({ $or: [{ email: data.email }, { social_id: data.social_id, social_type: data.social_id }] });
-      if(!user) return res.json({data : false , code : 400})
+      if (!user) return res.json({ data: false, code: 400 })
     }
-    
+
     const doesSocialIdExists = await emailer.socialIdExists(User,
       data.social_id,
       data.social_type
@@ -1677,25 +1679,36 @@ exports.token = async (req, res) => {
 
 exports.userProfileDetails = async (req, res) => {
   try {
-    const userId = req.body._id;
-    if (!userId) {
-      return res.status(400).json({ errors: { msg: 'User ID is required.' } });
+    // const userId = req.body._id;
+    const cardId = req.body.card_id
+    // if (!userId) {
+    //   return res.status(400).json({ errors: { msg: 'User ID is required.' } });
+    // }
+    // const user = await User.findById(userId).select(
+    //   'first_name last_name email profile_image dateOfBirth sex'
+    // );
+    // if (!user) {
+    //   return res.status(404).json({ errors: { msg: 'User not found.' } });
+    // }
+    let card_data
+    card_data = await cardDetials.findOne({ _id: cardId })
+    console.log("card_data : ", card_data)
+    if (!card_data) {
+      card_data = await company.findOne({ _id: cardId })
     }
-    const user = await User.findById(userId).select(
-      'first_name last_name email profile_image dateOfBirth sex'
-    );
-    if (!user) {
-      return res.status(404).json({ errors: { msg: 'User not found.' } });
-    }
+    console.log("card_data : ", card_data)
+
     res.status(200).json({
-      data: {
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        profile_image: user.profile_image,
-        dateOfBirth: user.dateOfBirth,
-        sex: user.sex,
-      },
+      // data: {
+      //   // first_name: user.first_name,
+      //   // last_name: user.last_name,
+      //   // email: user.email,
+      //   // profile_image: user.profile_image,
+      //   // dateOfBirth: user.dateOfBirth,
+      //   // sex: user.sex,
+      //   card_data
+      // },
+      data: card_data
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);

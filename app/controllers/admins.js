@@ -11,6 +11,7 @@ const Plan = require("../models/plan")
 const Registration = require("../models/registration")
 const ContactUs = require("../models/contactUs")
 const moment = require("moment")
+const crypto = require("crypto")
 const {
   INTERNAL_SERVER_ERROR
 } = require('../middleware/error_messages')
@@ -2211,53 +2212,242 @@ exports.getStates = async (req, res) => {
 }
 
 
+// exports.createPlan = async (req, res) => {
+//   try {
+//     const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user, amount_without_discount, plan_tiers } = req.body
+//     if (plan_tiers && !Array.isArray(plan_tiers)) {
+//       return res.status(403).json({
+//         message: "Plan tier must be an array",
+//         code: 403
+//       })
+//     }
+//     let newPLans
+//     let plan
+//     let returnData
+//     let result = []
+//     if (Array.isArray(plan_tiers)) {
+//       newPLans = await plan_tiers.map(async i => {
+//         let plan_data = {
+//           "period": period,
+//           "interval": interval,
+//           "item": {
+//             "name": i.tier_type,
+//             "amount": Number(i.max_users) * Number(i.per_user_charge) * 100,
+//             "currency": "INR",
+//             // "description": description
+//           },
+//           "notes": {
+//             "plan_type": plan_type,
+//             "allowed_user": i.max_users,
+//             "trial_period_days": trial_period_days,
+//             "amount_without_discount": amount_without_discount
+//           }
+//         }
+//         console.log("plan_data : ", plan_data)
+//         const mydata = await instance.plans.create(plan_data)
+//         result.push(mydata)
+//         console.log("mydata : ", mydata)
+//       })
+//       console.log("result : ", result)
+//       let plan_tiers_data = await result.map((i, index) => {
+//         console.log("inside.......")
+//         return {
+//           plan_ids: i,
+//           min_users: plan_tiers[index].min_users,
+//           max_users: plan_tiers[index].max_users,
+//           per_user_charge: plan_tiers[index].per_user_charge
+//         }
+//       })
+//       console.log('plan_tiers_data : ', plan_tiers_data)
+//       const data = {
+//         // plan_id: plan.id,
+//         period: period,
+//         interval: interval,
+//         // item: {
+//         //   name: plan.item.name,
+//         //   amount: plan.item.amount,
+//         //   currency: plan.item.currency,
+//         //   description: plan.item.description,
+//         // },
+//         amount_without_discount: amount_without_discount,
+//         trial_period_days: trial_period_days,
+//         plan_type: plan_type,
+//         // allowed_user: plan.notes.allowed_user,
+//         plan_tiers: plan_tiers_data
+//       }
+//       console.log('data', data)
+
+//       returnData = new Plan(data);
+//       await returnData.save()
+//     } else {
+//       console.log("inside else")
+//       let planData = {
+//         "period": period,
+//         "interval": interval,
+//         "item": {
+//           "name": name,
+//           "amount": Number(amount) * 100,
+//           "currency": "INR",
+//           "description": description
+//         },
+//         "notes": {
+//           "plan_type": plan_type,
+//           "allowed_user": allowed_user,
+//           "trial_period_days": trial_period_days,
+//           "amount_without_discount": amount_without_discount
+//         }
+//       }
+//       plan = await instance.plans.create(planData)
+//       console.log("plan", plan)
+//       const data = {
+//         plan_id: plan.id,
+//         period: plan.period,
+//         interval: plan.interval,
+//         item: {
+//           name: plan.item.name,
+//           amount: plan.item.amount,
+//           currency: plan.item.currency,
+//           description: plan.item.description,
+//         },
+//         amount_without_discount: plan.notes.amount_without_discount,
+//         trial_period_days: plan.notes.trial_period_days,
+//         plan_type: plan.notes.plan_type,
+//         allowed_user: plan.notes.allowed_user,
+//         plan_tiers
+//       }
+//       console.log('data', data)
+
+//       returnData = new Plan(data);
+//       await returnData.save()
+//     }
+
+//     res.json({ message: "Plan create successfully", data: returnData, code: 200 })
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// }
+
+async function PlanId() {
+  const token = await crypto.randomBytes(8).toString('hex')
+  return `plan_${token}`
+}
+
 exports.createPlan = async (req, res) => {
   try {
-    const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user, amount_without_discount } = req.body
-
-    const plan = await instance.plans.create({
-      "period": period,
-      "interval": interval,
-      "item": {
-        "name": name,
-        "amount": Number(amount) * 100,
-        "currency": "INR",
-        // "description": description
-      },
-      "notes": {
-        "plan_type": plan_type,
-        "allowed_user": allowed_user,
-        "trial_period_days": trial_period_days,
-        "amount_without_discount": amount_without_discount
-      }
-    })
-
-    console.log("plan", plan)
-    const data = {
-      plan_id: plan.id,
-      period: plan.period,
-      interval: plan.interval,
-      item: {
-        name: plan.item.name,
-        amount: plan.item.amount,
-        currency: plan.item.currency,
-        // description: plan.item.description,
-      },
-      amount_without_discount: plan.notes.amount_without_discount,
-      trial_period_days: plan.notes.trial_period_days,
-      plan_type: plan.notes.plan_type,
-      allowed_user: plan.notes.allowed_user,
+    const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user, amount_without_discount, plan_tiers } = req.body;
+    if (plan_tiers && !Array.isArray(plan_tiers)) {
+      return res.status(403).json({
+        message: "Plan tier must be an array",
+        code: 403
+      });
     }
-    console.log('data', data)
 
-    const planForDatabase = new Plan(data);
-    await planForDatabase.save()
+    let returnData;
+    let result = [];
 
-    res.json({ message: "Plan create successfully", data: plan, code: 200 })
+    if (Array.isArray(plan_tiers)) {
+      const newPlans = await Promise.all(plan_tiers.map(async i => {
+        let plan_data = {
+          period,
+          interval,
+          item: {
+            name: i.tier_type,
+            amount: Number(i.max_users) * Number(i.per_user_charge) * 100,
+            currency: "INR",
+            description
+          },
+          notes: {
+            plan_type,
+            allowed_user: i.max_users,
+            trial_period_days,
+            amount_without_discount
+          }
+        };
+
+        console.log("plan_data : ", plan_data);
+        const mydata = await instance.plans.create(plan_data);
+        return mydata;
+      }));
+
+      console.log("newPlans : ", newPlans);
+
+      const plan_tiers_data = plan_tiers.map((i, index) => {
+        return {
+          plan_ids: newPlans[index].id,
+          min_users: i.min_users,
+          max_users: i.max_users,
+          per_user_charge: i.per_user_charge
+        };
+      });
+
+      console.log('plan_tiers_data : ', plan_tiers_data);
+
+      const data = {
+        plan_id: await PlanId(),
+        period,
+        interval,
+        amount_without_discount,
+        trial_period_days,
+        plan_type,
+        plan_tiers: plan_tiers_data
+      };
+
+      console.log('data', data);
+
+      returnData = new Plan(data);
+      await returnData.save();
+    } else {
+      console.log("inside else");
+
+      const planData = {
+        period,
+        interval,
+        item: {
+          name,
+          amount: Number(amount) * 100,
+          currency: "INR",
+          description
+        },
+        notes: {
+          plan_type,
+          allowed_user,
+          trial_period_days,
+          amount_without_discount
+        }
+      };
+
+      const plan = await instance.plans.create(planData);
+      console.log("plan", plan);
+
+      const data = {
+        plan_id: plan.id,
+        period: plan.period,
+        interval: plan.interval,
+        item: {
+          name: plan.item.name,
+          amount: plan.item.amount,
+          currency: plan.item.currency,
+          description: plan.item.description
+        },
+        amount_without_discount: plan.notes.amount_without_discount,
+        trial_period_days: plan.notes.trial_period_days,
+        plan_type: plan.notes.plan_type,
+        allowed_user: plan.notes.allowed_user,
+        plan_tiers
+      };
+
+      console.log('data', data);
+
+      returnData = new Plan(data);
+      await returnData.save();
+    }
+
+    res.json({ message: "Plan created successfully", data: returnData, code: 200 });
   } catch (error) {
-    utils.handleError(res, error)
+    utils.handleError(res, error);
   }
-}
+};
+
 
 exports.chartData = async (req, res) => {
   try {

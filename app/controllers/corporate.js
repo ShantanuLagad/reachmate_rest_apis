@@ -1694,7 +1694,6 @@ function getTotalCount(interval) {
 
 exports.createSubscription = async (req, res) => {
   try {
-
     let user_id = req.user._id;
     console.log("user_id : ", user_id)
 
@@ -1756,12 +1755,7 @@ exports.createSubscription = async (req, res) => {
     //   res.josn({message : "subscription exits"})
     //  }
     // }
-
-
-
-
-
-
+    
     const plan = await await Plan.findOne({ plan_id: plan_id });
     console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
@@ -1809,7 +1803,7 @@ exports.createSubscription = async (req, res) => {
       start_at: now,
       end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
       status: subcription.status
-    } 
+    }
     console.log("dataForDatabase : ", dataForDatabase)
 
     const saveToDB = new Subscription(dataForDatabase);
