@@ -1694,7 +1694,7 @@ exports.userProfileDetails = async (req, res) => {
     card_data = await cardDetials.findOne({ _id: cardId })
     console.log("card_data : ", card_data)
     if (!card_data) {
-      card_data = await company.findOne({ _id: cardId })
+      card_data = await Company.findOne({ _id: cardId })
     }
     console.log("card_data : ", card_data)
 

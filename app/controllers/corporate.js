@@ -1755,8 +1755,28 @@ exports.createSubscription = async (req, res) => {
     //   res.josn({message : "subscription exits"})
     //  }
     // }
-    
-    const plan = await await Plan.findOne({ plan_id: plan_id });
+    let plan
+    if (req.body.tier_id) {
+      plan = await Plan.aggregate(
+        [
+          {
+            $unwind: {
+              path: "$plan_tiers",
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $match: {
+              plan_id,
+              'plan_tiers._id': new mongoose.Types.ObjectId(req.body.tier_id)
+            }
+          }
+        ]
+      )
+      plan = plan[0]
+    } else {
+      plan = await Plan.findOne({ plan_id: plan_id });
+    }
     console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
 
@@ -1779,9 +1799,10 @@ exports.createSubscription = async (req, res) => {
     console.log("expireTime : ", expireTime)
     console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
 
+    let planId = req.body.tier_id ? plan?.plan_tiers?.plan_ids : plan.plan_id
 
     const subcription = await instance.subscriptions.create({
-      "plan_id": plan.plan_id,
+      "plan_id": planId,
       "total_count": getTotalCount(plan.interval),
       "quantity": 1,
       "customer_notify": 1,
@@ -1798,7 +1819,7 @@ exports.createSubscription = async (req, res) => {
     const dataForDatabase = {
       user_id: user_id,
       subscription_id: subcription.id,
-      plan_id: plan.plan_id,
+      plan_id: planId,
       plan_started_at: now,
       start_at: now,
       end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
