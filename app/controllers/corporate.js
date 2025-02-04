@@ -1834,13 +1834,13 @@ exports.createSubscription = async (req, res) => {
       let startOfPeriod
       let endOfPeriod
       if (plan.period === "monthly") {
-        // startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
-        startOfPeriod = new Date(now)
+        startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        // startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
       }
       if (plan.period === "yearly") {
-        // startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
-        startOfPeriod = new Date(now)
+        startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        // startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
       }
 
@@ -1854,15 +1854,24 @@ exports.createSubscription = async (req, res) => {
         status: "active",
         plan_tier: tierPlanData
       }
+      if (req.body.isTrial) {
+        dataForDatabase.trial_period = {
+          start: startOfPeriod,
+          end: endOfPeriod
+        }
+      }
       console.log("dataForDatabase : ", dataForDatabase)
 
       subcription = new Subscription(dataForDatabase);
       console.log("subcription : ", subcription)
 
-      const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
-      subcription.plan_tier.razorpay_order = razorpayOrder
+      if (!req.body.isTrial) {
+        const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
+        subcription.plan_tier.razorpay_order = razorpayOrder
+        console.log("razorpayOrder : ", razorpayOrder)
+      }
+
       await subcription.save()
-      console.log("razorpayOrder : ", razorpayOrder)
 
     } else {
       const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
