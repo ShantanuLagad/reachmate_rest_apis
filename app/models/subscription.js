@@ -41,47 +41,51 @@ const subscriptionSchema = new mongoose.Schema(
                 id: {
                     type: String
                 },
-                entity: {
-                    type: String
-                },
-                amount: {
-                    type: Number
-                },
-                currency: {
-                    type: String
-                },
-                receipt: {
-                    type: String
-                },
-                notes: {
-                    user_id: {
-                        type: String
-                    },
-                    plan_id: {
-                        type: String
-                    }
-                },
-                status: {
-                    type: String
-                },
-                created_at: {
-                    type: String
-                },
-                amount_paid: {
-                    type: Number
-                },
-                amount_due: {
-                    type: Number
-                },
-                payment_modes: {
-                    type: String,
-                    enum: ["card", "netbanking", "wallet"]
-                },
-                method: {
-                    type: String
-                }
+                // entity: {
+                //     type: String
+                // },
+                // amount: {
+                //     type: Number
+                // },
+                // currency: {
+                //     type: String
+                // },
+                // receipt: {
+                //     type: String
+                // },
+                // notes: {
+                //     user_id: {
+                //         type: String
+                //     },
+                //     plan_id: {
+                //         type: String
+                //     }
+                // },
+                // status: {
+                //     type: String
+                // },
+                // created_at: {
+                //     type: String
+                // },
+                // amount_paid: {
+                //     type: Number
+                // },
+                // amount_due: {
+                //     type: Number
+                // },
+                // payment_modes: {
+                //     type: String,
+                //     enum: ["card", "netbanking", "wallet"]
+                // },
+                // method: {
+                //     type: String
+                // }
+            },
+            razorpay_payment: {
+                razorpay_paymentID: { type: String },
+                razorpay_orderID: { type: String },
+                razorpay_signature: { type: String },
             }
-
         },
         start_at: {
             type: Date,
