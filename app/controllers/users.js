@@ -1441,6 +1441,7 @@ exports.addPersonalCard = async (req, res) => {
       owner_id,
       card_type: 'personal',
       business_logo: data.business_logo,
+      qr_logo: data.qr_logo,
       card_color: data.card_color,
       text_color: data.text_color,
       business_and_logo_status: data.business_and_logo_status,
@@ -2768,6 +2769,13 @@ exports.exportCardToExcel = async (req, res) => {
               else: '$cardDetails.business_logo'
             }
           },
+          // "cardDetails.qr_logo": {
+          //   $cond: {
+          //     if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+          //     then: '$company.qr_logo',
+          //     else: '$cardDetails.qr_logo'
+          //   }
+          // },
           "cardDetails.address": {
             $cond: {
               if: { $eq: ['$cardDetails.card_type', 'corporate'] },
@@ -3412,6 +3420,7 @@ exports.saveCard = async (req, res) => {
         owner_id,
         card_type: card_type,
         business_logo: data.business_logo,
+        qr_logo: data?.qr_logo,
         card_color: data.card_color,
         text_color: data.text_color,
         business_and_logo_status: data.business_and_logo_status,
@@ -3465,6 +3474,7 @@ exports.saveCard = async (req, res) => {
         card_color: data?.card_color,
         text_color: data?.text_color,
         business_logo: data?.business_logo,
+        qr_logo: data?.qr_logo,
         business_and_logo_status: data?.business_and_logo_status,
         bio: {
           first_name: data?.bio?.first_name,
