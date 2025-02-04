@@ -1731,18 +1731,30 @@ exports.createSubscription = async (req, res) => {
 
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+    console.log("isSubcriptionExist : ", isSubcriptionExist)
 
 
     if (isSubcriptionExist && isSubcriptionExist.status === "created") {
       console.log(isSubcriptionExist)
-      const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
-      const status = subcription.status
-      console.log("subcription", status)
-      if (["created", "expired", "cancelled"].includes(status)) {
-        await Subscription.findByIdAndDelete(isSubcriptionExist._id);
-        await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
-      } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
-        return res.json({ message: `You already have ${status} subscription, It will take some to reflect here`, code: 400 })
+      if (req.body.tier_id) {
+        console.log("checking existing plan.....")
+        const status = isSubcriptionExist.status
+        if (["created", "expired", "cancelled"].includes(status)) {
+          const result = await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+          console.log("result : ", result)
+        } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
+          return res.json({ message: `You already have ${status} subscription, It will take some to reflect here`, code: 400 })
+        }
+      } else {
+        const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+        const status = subcription.status
+        console.log("subcription", status)
+        if (["created", "expired", "cancelled"].includes(status)) {
+          await Subscription.findByIdAndDelete(isSubcriptionExist._id);
+          await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
+        } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
+          return res.json({ message: `You already have ${status} subscription, It will take some to reflect here`, code: 400 })
+        }
       }
     }
 
