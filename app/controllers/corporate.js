@@ -2418,15 +2418,26 @@ exports.getSingleTierCorporatePlan = async (req, res) => {
 exports.paymentVerification = async (req, res) => {
   try {
     const userId = req.user._id
+    console.log("userId : ", userId)
     const { subscription_id, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body
     const subscription_data = await Subscription.findOne({ user_id: userId, subscription_id })
     console.log("subscription_data : ", subscription_data)
-    subscription_data.plan_tier.razorpay_payment = {
-      razorpay_payment_id, razorpay_order_id, razorpay_signature
-    }
-    await subscription_data.save()
+
+    const result = await Subscription.findOneAndUpdate(
+      {
+        user_id: userId, subscription_id
+      },
+      {
+        $set: {
+          "plan_tier.razorpay_payment.razorpay_payment_id": razorpay_payment_id,
+          "plan_tier.razorpay_payment.razorpay_order_id": razorpay_order_id,
+          "plan_tier.razorpay_payment.razorpay_signature": razorpay_signature
+        }
+      }
+    )
     return res.status(200).json({
       message: "Payment data saved successfully",
+      data: result,
       code: 200
     })
   } catch (error) {

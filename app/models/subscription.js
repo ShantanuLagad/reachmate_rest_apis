@@ -82,8 +82,8 @@ const subscriptionSchema = new mongoose.Schema(
                 // }
             },
             razorpay_payment: {
-                razorpay_paymentID: { type: String },
-                razorpay_orderID: { type: String },
+                razorpay_payment_id: { type: String },
+                razorpay_order_id: { type: String },
                 razorpay_signature: { type: String },
             }
         },
