@@ -2381,12 +2381,13 @@ exports.createPlan = async (req, res) => {
       // });
 
       console.log('plan_tiers_data : ', plan_tiers);
-      const Tierplan = await Plan.findOne({
+      const Tierplan = await Plan.find({
         plan_type: 'company',
-        corporate_selected: true
+        corporate_selected: true,
+        $or: [{ period: 'monthly' }, { period: 'yearly' }]
       })
-      console.log("Tierplan : ", Tierplan)
-      if (Tierplan) {
+      console.log("Tierplan : ", Tierplan, Tierplan.length)
+      if (Tierplan && Tierplan.length === 2) {
         return res.status(403).json({
           message: "Corporate Tier plan already existed",
           code: 403
