@@ -375,5 +375,4 @@ router.get(
   controller.getUser
 )
 
-
 module.exports = router

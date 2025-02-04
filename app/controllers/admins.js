@@ -2346,41 +2346,41 @@ exports.createPlan = async (req, res) => {
     let result = [];
 
     if (Array.isArray(plan_tiers)) {
-      const newPlans = await Promise.all(plan_tiers.map(async i => {
-        let plan_data = {
-          period,
-          interval,
-          item: {
-            name: i.tier_type,
-            amount: Number(i.max_users) * Number(i.per_user_charge) * 100,
-            currency: "INR",
-            description
-          },
-          notes: {
-            plan_type,
-            allowed_user: i.max_users,
-            trial_period_days,
-            amount_without_discount
-          }
-        };
+      // const newPlans = await Promise.all(plan_tiers.map(async i => {
+      //   let plan_data = {
+      //     period,
+      //     interval,
+      //     item: {
+      //       name: i.tier_type,
+      //       amount: Number(i.max_users) * Number(i.per_user_charge) * 100,
+      //       currency: "INR",
+      //       description
+      //     },
+      //     notes: {
+      //       plan_type,
+      //       allowed_user: i.max_users,
+      //       trial_period_days,
+      //       amount_without_discount
+      //     }
+      //   };
 
-        console.log("plan_data : ", plan_data);
-        const mydata = await instance.plans.create(plan_data);
-        return mydata;
-      }));
+      //   console.log("plan_data : ", plan_data);
+      //   const mydata = await instance.plans.create(plan_data);
+      //   return mydata;
+      // }));
 
-      console.log("newPlans : ", newPlans);
+      // console.log("newPlans : ", newPlans);
 
-      const plan_tiers_data = plan_tiers.map((i, index) => {
-        return {
-          plan_ids: newPlans[index].id,
-          min_users: i.min_users,
-          max_users: i.max_users,
-          per_user_charge: i.per_user_charge
-        };
-      });
+      // const plan_tiers_data = plan_tiers.map((i, index) => {
+      //   return {
+      //     plan_ids: newPlans[index].id,
+      //     min_users: i.min_users,
+      //     max_users: i.max_users,
+      //     per_user_charge: i.per_user_charge
+      //   };
+      // });
 
-      console.log('plan_tiers_data : ', plan_tiers_data);
+      console.log('plan_tiers_data : ', plan_tiers);
 
       const data = {
         plan_id: await PlanId(),
@@ -2389,7 +2389,8 @@ exports.createPlan = async (req, res) => {
         amount_without_discount,
         trial_period_days,
         plan_type,
-        plan_tiers: plan_tiers_data
+        corporate_selected: true,
+        plan_tiers: plan_tiers
       };
 
       console.log('data', data);
@@ -2903,3 +2904,4 @@ exports.getUser = async (req, res) => {
     handleError(res, error);
   }
 }
+
