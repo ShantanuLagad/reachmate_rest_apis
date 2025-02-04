@@ -45,7 +45,7 @@ const planSchema = new mongoose.Schema(
         plan_tiers: {
             type: [
                 {
-                    plan_ids: { type: String },
+                    tier_type: { type: String },
                     min_users: { type: Number },
                     max_users: { type: Number },
                     per_user_charge: { type: Number }
@@ -56,6 +56,10 @@ const planSchema = new mongoose.Schema(
         allowed_user: {
             type: Number,
         },
+        corporate_selected: {
+            type: Boolean,
+            default: false
+        }
     },
     {
         timestamps: true

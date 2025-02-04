@@ -27,6 +27,7 @@ const moment = require("moment")
 const TeamMember = require("../models/teamMember")
 const Support = require('../models/support')
 const Feedback = require('../models/feedback')
+const crypto = require('crypto')
 
 const {
   uploadFile,
@@ -1692,6 +1693,31 @@ function getTotalCount(interval) {
   }
 }
 
+async function SubscriptionId() {
+  const token = await crypto.randomBytes(8).toString('hex')
+  return `sub_${token}`
+}
+
+async function createRazorpayOrder(amount, user_id) {
+  try {
+    const order = await instance.orders.create({
+      amount: amount * 100,
+      currency: "INR",
+      receipt: `order_rcptid_${new Date().getTime()}`,
+      notes: {
+        user_id: user_id.toString()
+        // plan_id: plan.plan_id
+      }
+    });
+
+    console.log("razorpay order created: ", order);
+    return order;
+  } catch (error) {
+    console.error("Error creating Razorpay order: ", error);
+    throw error;
+  }
+}
+
 exports.createSubscription = async (req, res) => {
   try {
     let user_id = req.user._id;
@@ -1757,6 +1783,7 @@ exports.createSubscription = async (req, res) => {
     // }
     let plan
     if (req.body.tier_id) {
+      console.log("checking....")
       plan = await Plan.aggregate(
         [
           {
@@ -1799,38 +1826,67 @@ exports.createSubscription = async (req, res) => {
     console.log("expireTime : ", expireTime)
     console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
 
-    let planId = req.body.tier_id ? plan?.plan_tiers?.plan_ids : plan.plan_id
-
-    const subcription = await instance.subscriptions.create({
-      "plan_id": planId,
-      "total_count": getTotalCount(plan.interval),
-      "quantity": 1,
-      "customer_notify": 1,
-      // ...trail,
-      expire_by: expireTime,
-      "notes": {
-        "user_id": user_id.toString(),
-        "user_type": "company"
+    let planId = plan.plan_id
+    let subcription
+    if (req.body.tier_id) {
+      console.log("inside.....")
+      const tierPlanData = {
+        tier_id: plan?.plan_tiers?._id,
+        amount: req.body.amount,
+        user_count: req.body.user_count
       }
-    })
-    console.log("subcription : ", subcription)
+      const now = new Date()
+      const dataForDatabase = {
+        user_id: user_id,
+        subscription_id: await SubscriptionId(),
+        plan_id: planId,
+        plan_started_at: now,
+        start_at: now,
+        end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
+        status: "created",
+        plan_tier: tierPlanData
+      }
+      console.log("dataForDatabase : ", dataForDatabase)
 
-    const now = new Date()
-    const dataForDatabase = {
-      user_id: user_id,
-      subscription_id: subcription.id,
-      plan_id: planId,
-      plan_started_at: now,
-      start_at: now,
-      end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
-      status: subcription.status
+      subcription = new Subscription(dataForDatabase);
+      console.log("subcription : ", subcription)
+
+      const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
+      subcription.plan_tier.razorpay_order = razorpayOrder
+      await subcription.save()
+      console.log("razorpayOrder : ", razorpayOrder)
+
+    } else {
+      subcription = await instance.subscriptions.create({
+        "plan_id": planId,
+        "total_count": getTotalCount(plan.interval),
+        "quantity": 1,
+        "customer_notify": 1,
+        // ...trail,
+        expire_by: expireTime,
+        "notes": {
+          "user_id": user_id.toString(),
+          "user_type": "company"
+        }
+      })
+      console.log("subcription : ", subcription)
+
+      const now = new Date()
+      const dataForDatabase = {
+        user_id: user_id,
+        subscription_id: subcription.id,
+        plan_id: planId,
+        plan_started_at: now,
+        start_at: now,
+        end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
+        status: subcription.status
+      }
+      console.log("dataForDatabase : ", dataForDatabase)
+
+      const saveToDB = new Subscription(dataForDatabase);
+      console.log("saveToDB : ", saveToDB)
+      await saveToDB.save()
     }
-    console.log("dataForDatabase : ", dataForDatabase)
-
-    const saveToDB = new Subscription(dataForDatabase);
-    console.log("saveToDB : ", saveToDB)
-    await saveToDB.save()
-
     res.json({ data: subcription, code: 200 })
   } catch (error) {
     console.log(error)
@@ -2249,3 +2305,20 @@ exports.deleteAccount = async (req, res) => {
   }
 }
 
+
+exports.getSingleTierCorporatePlan = async (req, res) => {
+  try {
+    const Tierplan = await Plan.findOne({
+      plan_type: 'company',
+      corporate_selected: true
+    })
+    console.log("Tierplan : ", Tierplan)
+    return res.status(200).json({
+      message: "Corporate tier plan is fetched successfully",
+      data: Tierplan,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}

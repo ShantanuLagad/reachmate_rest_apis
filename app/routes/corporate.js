@@ -339,4 +339,12 @@ router.post(
 )
 
 
+
+router.get(
+  "/singleTierPlan",
+  trimRequest.all,
+  requireAuth,
+  controller.getSingleTierCorporatePlan
+)
+
 module.exports = router
