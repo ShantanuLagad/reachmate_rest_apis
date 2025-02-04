@@ -1833,11 +1833,13 @@ exports.createSubscription = async (req, res) => {
       let startOfPeriod
       let endOfPeriod
       if (plan.period === "monthly") {
-        startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        // startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
       }
       if (plan.period === "yearly") {
-        startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        // startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
       }
 
@@ -1987,6 +1989,11 @@ exports.updateSubscription = async (req, res) => {
       activeSubscription.end_at = endOfPeriod
       activeSubscription.status = "active"
       activeSubscription.plan_tier = tierPlanData
+
+      const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
+      activeSubscription.plan_tier.razorpay_order = razorpayOrder
+      console.log("razorpayOrder : ", razorpayOrder)
+
       await activeSubscription.save()
     } else {
       const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
@@ -2009,7 +2016,9 @@ exports.updateSubscription = async (req, res) => {
       await instance.subscriptions.update(activeSubscription.subscription_id, update)
     }
 
-    res.json({ message: "Subscription updated successfully", code: 200 })
+    let result = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+
+    res.json({ message: "Subscription updated successfully", data: result, code: 200 })
   } catch (error) {
     console.log
     utils.handleError(res, error)
