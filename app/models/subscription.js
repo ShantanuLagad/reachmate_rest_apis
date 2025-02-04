@@ -19,6 +19,14 @@ const subscriptionSchema = new mongoose.Schema(
             type: Date,
             required: true
         },
+        trial_period: {
+            start: {
+                type: Date
+            },
+            end: {
+                type: Date
+            }
+        },
         plan_tier: {
             tier_id: {
                 type: mongoose.Schema.Types.ObjectId

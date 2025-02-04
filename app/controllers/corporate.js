@@ -1704,6 +1704,7 @@ async function createRazorpayOrder(amount, user_id) {
       amount: amount * 100,
       currency: "INR",
       receipt: `order_rcptid_${new Date().getTime()}`,
+      payment_capture: 1,
       notes: {
         user_id: user_id.toString()
         // plan_id: plan.plan_id
