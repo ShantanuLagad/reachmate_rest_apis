@@ -2417,8 +2417,9 @@ exports.getSingleTierCorporatePlan = async (req, res) => {
 
 exports.paymentVerification = async (req, res) => {
   try {
-    const { user_id, subscription_id, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body
-    const subscription_data = await Subscription.findOne({ user_id, subscription_id })
+    const userId = req.user._id
+    const { subscription_id, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body
+    const subscription_data = await Subscription.findOne({ user_id: userId, subscription_id })
     console.log("subscription_data : ", subscription_data)
     subscription_data.plan_tier.razorpay_payment = {
       razorpay_payment_id, razorpay_order_id, razorpay_signature
