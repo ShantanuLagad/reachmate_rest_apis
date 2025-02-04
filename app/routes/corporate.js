@@ -338,13 +338,18 @@ router.post(
   controller.changeNotificaitonSetting
 )
 
-
-
 router.get(
   "/singleTierPlan",
   trimRequest.all,
   requireAuth,
   controller.getSingleTierCorporatePlan
+)
+
+router.patch(
+  "/verifyPayment",
+  trimRequest.all,
+  requireAuth,
+  controller.paymentVerification
 )
 
 module.exports = router
