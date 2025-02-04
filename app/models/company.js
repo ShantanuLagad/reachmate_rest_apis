@@ -38,12 +38,14 @@ const CompanySchema = new mongoose.Schema(
     business_logo: {
       type: String
     },
-
+    qr_logo: {
+      type: String,
+      default: ""
+    },
     bt_user_subscription_price: {
       type: Number,
       default: 0
     },
-
     card_color: {
       type: [String]
     },
