@@ -1758,7 +1758,6 @@ exports.createSubscription = async (req, res) => {
       }
     }
 
-
     if (isSubcriptionExist && ["authenticated", "active"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription`, code: 400 })
     }
@@ -1821,23 +1820,6 @@ exports.createSubscription = async (req, res) => {
 
     if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
 
-    const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
-    console.log("trailToBeGiven : ", trailToBeGiven)
-    let trail = {}
-
-    const currentDate = moment();
-    const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
-    console.log("futureDate : ", futureDate)
-    if (trailToBeGiven === true) {
-      const timestamp = Math.floor(futureDate.valueOf() / 1000)
-      console.log("timestamp : ", timestamp)
-      trail = { start_at: timestamp }
-    }
-
-    const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
-    console.log("expireTime : ", expireTime)
-    console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
-
     let planId = plan.plan_id
     let subcription
     if (req.body.tier_id) {
@@ -1848,14 +1830,25 @@ exports.createSubscription = async (req, res) => {
         user_count: req.body.user_count
       }
       const now = new Date()
+      let startOfPeriod
+      let endOfPeriod
+      if (plan.period === "monthly") {
+        startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
+      }
+      if (plan.period === "yearly") {
+        startOfPeriod = plan.trial_period_days ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
+      }
+
       const dataForDatabase = {
         user_id: user_id,
         subscription_id: await SubscriptionId(),
         plan_id: planId,
-        plan_started_at: now,
-        start_at: now,
-        end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
-        status: "created",
+        plan_started_at: startOfPeriod,
+        start_at: startOfPeriod,
+        end_at: endOfPeriod,
+        status: "active",
         plan_tier: tierPlanData
       }
       console.log("dataForDatabase : ", dataForDatabase)
@@ -1869,6 +1862,23 @@ exports.createSubscription = async (req, res) => {
       console.log("razorpayOrder : ", razorpayOrder)
 
     } else {
+      const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
+      console.log("trailToBeGiven : ", trailToBeGiven)
+      let trail = {}
+
+      const currentDate = moment();
+      const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
+      console.log("futureDate : ", futureDate)
+      if (trailToBeGiven === true) {
+        const timestamp = Math.floor(futureDate.valueOf() / 1000)
+        console.log("timestamp : ", timestamp)
+        trail = { start_at: timestamp }
+      }
+
+      const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
+      console.log("expireTime : ", expireTime)
+      console.log("getTotalCount(plan.interval)", getTotalCount(plan.interval));
+
       subcription = await instance.subscriptions.create({
         "plan_id": planId,
         "total_count": getTotalCount(plan.interval),
@@ -1916,35 +1926,88 @@ exports.updateSubscription = async (req, res) => {
       user_id = req.user.company_id
     }
 
-
     const plan_id = req.body.plan_id;
 
-    const plan = await await Plan.findOne({ plan_id: plan_id });
+    let plan
+    if (req.body.tier_id) {
+      plan = await Plan.aggregate(
+        [
+          {
+            $unwind: {
+              path: "$plan_tiers",
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $match: {
+              plan_id,
+              'plan_tiers._id': new mongoose.Types.ObjectId(req.body.tier_id)
+            }
+          }
+        ]
+      )
+      plan = plan[0]
+    } else {
+      plan = await Plan.findOne({ plan_id: plan_id });
+    }
+    console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
     if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
-
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
-    const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
-    const status = subcription.status;
-    if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+    if (plan?.plan_tiers && plan?.plan_tiers?.length !== 0) {
+      const status = activeSubscription.status;
+      if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+      if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
 
-    if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+      const tierPlanData = {
+        tier_id: plan?.plan_tiers?._id,
+        amount: req.body.amount,
+        user_count: req.body.user_count
+      }
 
-    if (subcription.has_scheduled_changes === true) {
-      await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+      const now = new Date()
+      let startOfPeriod
+      let endOfPeriod
+      if (plan.period === "monthly") {
+        startOfPeriod = new Date(now);
+        endOfPeriod = new Date(now.setMonth(now.getMonth() + 1));
+      }
+      if (plan.period === "yearly") {
+        startOfPeriod = new Date(now);
+        endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1));
+      }
+
+      activeSubscription.user_id = user_id
+      activeSubscription.plan_id = plan.plan_id
+      activeSubscription.plan_started_at = startOfPeriod
+      activeSubscription.start_at = startOfPeriod
+      activeSubscription.end_at = endOfPeriod
+      activeSubscription.status = "active"
+      activeSubscription.plan_tier = tierPlanData
+      await activeSubscription.save()
+    } else {
+      const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+      const status = subcription.status;
+      if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+
+      if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+
+      if (subcription.has_scheduled_changes === true) {
+        await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+      }
+
+      const update = {
+        plan_id: plan_id,
+        schedule_change_at: "cycle_end",
+        customer_notify: true,
+        remaining_count: getTotalCount(plan.interval)
+      }
+
+      await instance.subscriptions.update(activeSubscription.subscription_id, update)
     }
-
-    const update = {
-      plan_id: plan_id,
-      schedule_change_at: "cycle_end",
-      customer_notify: true,
-      remaining_count: getTotalCount(plan.interval)
-    }
-
-    await instance.subscriptions.update(activeSubscription.subscription_id, update)
 
     res.json({ message: "Subscription updated successfully", code: 200 })
   } catch (error) {
