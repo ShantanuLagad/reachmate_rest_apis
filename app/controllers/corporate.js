@@ -2320,9 +2320,16 @@ exports.deleteAccount = async (req, res) => {
 
 exports.getSingleTierCorporatePlan = async (req, res) => {
   try {
+    const { period } = req.query
+    let filter = {}
+    if (period) {
+      filter.period = period
+    }
+    console.log("filter : ", filter)
     const Tierplan = await Plan.findOne({
       plan_type: 'company',
-      corporate_selected: true
+      corporate_selected: true,
+      ...filter
     })
     console.log("Tierplan : ", Tierplan)
     return res.status(200).json({
@@ -2331,6 +2338,6 @@ exports.getSingleTierCorporatePlan = async (req, res) => {
       code: 200
     })
   } catch (error) {
-    handleError(res, error);
+    utils.handleError(res, error);
   }
 }
