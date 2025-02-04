@@ -2381,6 +2381,17 @@ exports.createPlan = async (req, res) => {
       // });
 
       console.log('plan_tiers_data : ', plan_tiers);
+      const Tierplan = await Plan.findOne({
+        plan_type: 'company',
+        corporate_selected: true
+      })
+      console.log("Tierplan : ", Tierplan)
+      if (Tierplan) {
+        return res.status(403).json({
+          message: "Corporate Tier plan already existed",
+          code: 403
+        })
+      }
 
       const data = {
         plan_id: await PlanId(),
