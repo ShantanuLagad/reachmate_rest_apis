@@ -352,4 +352,11 @@ router.patch(
   controller.paymentVerification
 )
 
+router.get(
+  "/paymentHistory",
+  trimRequest.all,
+  requireAuth,
+  controller.getPaymentHistory
+)
+
 module.exports = router

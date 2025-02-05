@@ -39,6 +39,7 @@ const { resolve } = require('path');
 
 const Razorpay = require('razorpay');
 const payments = require('../models/payments')
+const { default: axios } = require('axios')
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -2433,18 +2434,64 @@ exports.paymentVerification = async (req, res) => {
     const subscription_data = await Subscription.findOne({ user_id: userId, subscription_id })
     console.log("subscription_data : ", subscription_data)
 
+    const razorpay_payment_data = await instance.payments.fetch(razorpay_payment_id);
+    console.log("razorpay_payment_data : ", razorpay_payment_data)
+
     const paymentdata = {
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
       subscription_id,
-      user_id: userId
+      user_id: userId,
+      amount: razorpay_payment_data.amount,
+      status: razorpay_payment_data.status,
+      order_id: razorpay_payment_data.order_id,
+      invoice_id: razorpay_payment_data.invoice_id,
+      method: razorpay_payment_data.method,
+      description: razorpay_payment_data.description,
+      card_id: razorpay_payment_data.card_id,
+      wallet: razorpay_payment_data.wallet,
+      bank: razorpay_payment_data.bank,
+      vpa: razorpay_payment_data.vpa,
+      acquirer_data: razorpay_payment_data.acquirer_data,
+      upi: razorpay_payment_data.upi
     }
     const result = await payments.create(paymentdata)
     console.log("result : ", result)
     return res.status(200).json({
       message: "Payment data saved successfully",
       data: result,
+      code: 200
+    })
+  } catch (error) {
+    utils.handleError(res, error);
+  }
+}
+
+
+exports.getPaymentHistory = async (req, res) => {
+  try {
+    const userId = req.user._id
+    console.log("userId : ", userId)
+    let filter = {}
+    const { offset = 0, limit = 10, from_date, to_date } = req.query
+
+    if (from_date && to_date) {
+      const newFromDate = new Date(from_date);
+      const newToDate = new Date(to_date);
+      if (isNaN(newFromDate) || isNaN(newToDate)) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+      filter.createdAt = { $gte: newFromDate, $lte: newToDate }
+    }
+
+    const payment_history = await payments.find({ user_id: userId, ...filter }).sort({ createdAt: -1 }).skip(Number(offset)).limit(Number(limit))
+    const count = await payments.countDocuments({ user_id: userId, ...filter })
+    console.log("payment_history : ", payment_history)
+    return res.status(200).json({
+      message: "Payment history fetched successfully",
+      data: payment_history,
+      count,
       code: 200
     })
   } catch (error) {
