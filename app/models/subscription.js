@@ -80,11 +80,6 @@ const subscriptionSchema = new mongoose.Schema(
                 // method: {
                 //     type: String
                 // }
-            },
-            razorpay_payment: {
-                razorpay_payment_id: { type: String },
-                razorpay_order_id: { type: String },
-                razorpay_signature: { type: String },
             }
         },
         start_at: {
