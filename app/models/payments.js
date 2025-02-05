@@ -10,6 +10,42 @@ const paymentSchema = new mongoose.Schema(
         subscription_id: { type: String },
         user_id: {
             type: mongoose.Schema.Types.ObjectId,
+        },
+        amount: {
+            type: Number
+        },
+        status: {
+            type: String
+        },
+        order_id: {
+            type: String
+        },
+        invoice_id: {
+            type: String
+        },
+        method: {
+            type: String
+        },
+        description: {
+            type: String
+        },
+        card_id: {
+            type: String
+        },
+        wallet: {
+            type: String
+        },
+        bank: {
+            type: String
+        },
+        vpa: {
+            type: String
+        },
+        acquirer_data: {
+            type: mongoose.Schema.Types.Mixed
+        },
+        upi: {
+            vpa: String
         }
     },
     {
