@@ -38,6 +38,7 @@ const {
 const { resolve } = require('path');
 
 const Razorpay = require('razorpay');
+const payments = require('../models/payments')
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -2432,18 +2433,15 @@ exports.paymentVerification = async (req, res) => {
     const subscription_data = await Subscription.findOne({ user_id: userId, subscription_id })
     console.log("subscription_data : ", subscription_data)
 
-    const result = await Subscription.findOneAndUpdate(
-      {
-        user_id: userId, subscription_id
-      },
-      {
-        $set: {
-          "plan_tier.razorpay_payment.razorpay_payment_id": razorpay_payment_id,
-          "plan_tier.razorpay_payment.razorpay_order_id": razorpay_order_id,
-          "plan_tier.razorpay_payment.razorpay_signature": razorpay_signature
-        }
-      }
-    )
+    const paymentdata = {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      subscription_id,
+      user_id: userId
+    }
+    const result = await payments.create(paymentdata)
+    console.log("result : ", result)
     return res.status(200).json({
       message: "Payment data saved successfully",
       data: result,
