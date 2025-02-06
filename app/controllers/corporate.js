@@ -1621,32 +1621,64 @@ exports.activeSubscription = async (req, res) => {
       company_id = req.user.company_id
     }
 
-    const activeSubscription = await Subscription.aggregate([
-      {
-        $match: {
-          user_id: company_id
+    const activeSubscription = await Subscription.aggregate(
+      [
+        {
+          $match: {
+            user_id: company_id
+          }
+        },
+        {
+          $lookup: {
+            from: "plans",
+            let: {
+              id: "$plan_id",
+              tier_id: "$plan_tier.tier_id"
+            },
+            pipeline: [
+              {
+                $unwind: {
+                  path: "$plan_tiers"
+                }
+              },
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: ["$$id", "$plan_id"]
+                      },
+                      {
+                        $eq: ["$$tier_id", "$plan_tiers._id"]
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "plan"
+          }
+        },
+        {
+          $unwind: "$plan"
+        },
+        {
+          $addFields: {
+            'plan_tier.plan_tier_data': '$plan.plan_tiers'
+          }
+        },
+        {
+          $project: {
+            plan: 0
+          }
+        },
+        {
+          $sort: {
+            createdAt: -1
+          }
         }
-      },
-      {
-        $lookup: {
-          from: "plans",
-          localField: "plan_id",
-          foreignField: "plan_id",
-          as: "plan"
-        }
-      },
-      {
-        $unwind: "$plan"
-      },
-      {
-        $sort: {
-          createdAt: -1
-        }
-      },
-      {
-        $limit: 1
-      }
-    ])
+      ]
+    )
 
 
 
@@ -1836,16 +1868,16 @@ exports.createSubscription = async (req, res) => {
       let startOfPeriod
       let endOfPeriod
       if (plan.period === "monthly") {
-        startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
-        // startOfPeriod = new Date(now)
+        // startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
       }
       if (plan.period === "yearly") {
-        startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
-        // startOfPeriod = new Date(now)
+        // startOfPeriod = req.body.isTrial ? new Date(now.setDate(now.getDate() + plan.trial_period_days)) : new Date(now);
+        startOfPeriod = new Date(now)
         endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
       }
-
+      console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
       const dataForDatabase = {
         user_id: user_id,
         subscription_id: await SubscriptionId(),
@@ -1857,6 +1889,7 @@ exports.createSubscription = async (req, res) => {
         plan_tier: tierPlanData
       }
       if (req.body.isTrial) {
+        console.log("req.body.isTrial : ", req.body.isTrial)
         dataForDatabase.trial_period = {
           start: startOfPeriod,
           end: endOfPeriod
