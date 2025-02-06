@@ -96,7 +96,7 @@ router.get(
   //requireAuth,
   trimRequest.all,
   controller.getCardAndUserDetails
-)  
+)
 
 router.post(
   '/makeIndividualCardPrimary',
@@ -392,7 +392,7 @@ router.post(
 
 
 router.post(
-  "/isPaymentDone" ,
+  "/isPaymentDone",
   requireAuth,
   trimRequest.all,
   controller.isPaymentDone
@@ -499,6 +499,12 @@ router.put(
   requireAuth,
   trimRequest.all,
   controller.updateAccessCard
+)
+
+router.get(
+  "/getUserIndivaidualPlans",
+  trimRequest.all,
+  controller.getUserPlans
 )
 
 module.exports = router

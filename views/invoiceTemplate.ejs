@@ -158,7 +158,9 @@
                                         style="padding: 24px 24px 0; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; ">
                                         <p style="margin: 0; font-size: 14px; color: #666; text-transform: uppercase;">
                                             Email ID</p>
-                                        <p style="margin: 0; font-size: 16px;"><a href=""><%= email %></a></p>
+                                        <p style="margin: 0; font-size: 16px;"><a href="">
+                                                <%= email %>
+                                            </a></p>
                                     </td>
                                     <td align="left" bgcolor="#ffffff"
                                         style="padding: 24px 24px 0; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; ">
@@ -169,13 +171,17 @@
                                         style="padding: 24px 24px 0; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; ">
                                         <p style="margin: 0; font-size: 14px; color: #666; text-transform: uppercase;">
                                             INVOICE DATE</p>
-                                        <p style="margin: 0; font-size: 16px;"><%= invoice_date %></p>
+                                        <p style="margin: 0; font-size: 16px;">
+                                            <%= invoice_date %>
+                                        </p>
                                     </td>
                                     <td align="left" bgcolor="#ffffff"
                                         style="padding: 24px 24px 0; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; ">
                                         <p style="margin: 0; font-size: 14px; color: #666; text-transform: uppercase;">
                                             SUBSCRIPTION ID.</p>
-                                        <p style="margin: 0; font-size: 16px;"><%= subcription_id %></p>
+                                        <p style="margin: 0; font-size: 16px;">
+                                            <%= subcription_id %>
+                                        </p>
                                     </td>
 
                                 </tr>
@@ -234,7 +240,7 @@
         <tr>
         <td align="center" valign="top" width="600">
         <![endif]-->
-     
+
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 800px;">
 
                     <!-- start copy -->
@@ -246,14 +252,14 @@
                     </tr> -->
 
                     <tr>
-                        <td  align="center" bgcolor="#ffffff">
+                        <td align="center" bgcolor="#ffffff">
                             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 800px;">
                                 <tr>
                                     <td bgcolor="#ffffff" style="height: 80px;">
                                     </td>
                                 </tr>
                             </table>
-            
+
                         </td>
                     </tr>
 
@@ -266,10 +272,13 @@
                                             <tr>
                                                 <td align="left" bgcolor="#ffffff"
                                                     style="padding: 0px 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px;">
-                                                    <p style="margin: 0; font-size: 16px ; font-weight: 600;"><%= plan_name %> (Automatic Renewal)</p>
+                                                    <p style="margin: 0; font-size: 16px ; font-weight: 600;">
+                                                        <%= plan_name %> (Automatic Renewal)
+                                                    </p>
                                                     <!-- <p style="margin: 0;"><%= plan_name %> (Automatic Renewal)
                                                         (Yearly)</p> -->
-                                                    <p style="margin: 0;">Renews <%= renew_on %></p>
+                                                    <p style="margin: 0;">Renews <%= renew_on %>
+                                                    </p>
                                                     <!-- <p style="margin: 0;">Shantanu’s MacBook Pro</p> -->
                                                 </td>
                                             </tr>
@@ -280,7 +289,8 @@
                                             <tr>
                                                 <td align="right" bgcolor="#ffffff"
                                                     style="padding: 0px 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px;">
-                                                    <p style="margin: 0; font-size: 16px ; font-weight: 600;">₹ <%= amount %>
+                                                    <p style="margin: 0; font-size: 16px ; font-weight: 600;">₹ <%=
+                                                            amount %>
                                                     </p>
 
                                                 </td>
@@ -294,14 +304,14 @@
                         </td>
                     </tr>
                     <tr>
-                        <td  align="center" bgcolor="#ffffff">
+                        <td align="center" bgcolor="#ffffff">
                             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 800px;">
                                 <tr>
                                     <td bgcolor="#ffffff" style="height: 30px;">
                                     </td>
                                 </tr>
                             </table>
-            
+
                         </td>
                     </tr>
                     <!-- end copy -->
@@ -320,7 +330,8 @@
                                                 </td>
                                                 <td align="right"
                                                     style="padding: 10px 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px;">
-                                                    <p style="margin: 0; font-weight: 600;">₹ <%= sub_total %></p>
+                                                    <p style="margin: 0; font-weight: 600;">₹ <%= sub_total %>
+                                                    </p>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -330,7 +341,8 @@
                                                 </td>
                                                 <td align="right"
                                                     style="padding: 10px 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px;">
-                                                    <p style="margin: 0; font-weight: 600;">₹ <%= gst %></p>
+                                                    <p style="margin: 0; font-weight: 600;">₹ <%= gst %>
+                                                    </p>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -340,7 +352,8 @@
                                                 </td>
                                                 <td align="right"
                                                     style="padding: 10px 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px;">
-                                                    <p style="margin: 0; font-weight: 600;">₹ <%= amount %></p>
+                                                    <p style="margin: 0; font-weight: 600;">₹ <%= amount %>
+                                                    </p>
                                                 </td>
                                             </tr>
 
@@ -358,7 +371,7 @@
                     <tr>
                         <td align="left" bgcolor="#ffffff"
                             style="padding: 24px; font-family: 'Source Sans Pro', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 24px; border-bottom: 3px solid #d4dadf">
-							<p style="margin: 0;">Thank you,<br> ReachMate Team</p>
+                            <p style="margin: 0;">Thank you,<br> ReachMate Team</p>
                         </td>
                     </tr>
                     <!-- end copy -->

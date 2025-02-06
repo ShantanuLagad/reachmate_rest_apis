@@ -28,11 +28,13 @@ const planSchema = new mongoose.Schema(
             description: {
                 type: String,
                 default: ""
+            },
+            billing_cycles: {
+                type: Number
             }
         },
         amount_without_discount: {
             type: Number,
-
         },
         trial_period_days: {
             type: Number,
@@ -41,6 +43,10 @@ const planSchema = new mongoose.Schema(
         plan_type: {
             type: String,
             enum: ["individual", "company"]
+        },
+        plan_variety: {
+            type: String,
+            enum: ["freemium", "premium"]
         },
         plan_tiers: {
             type: [
@@ -57,6 +63,10 @@ const planSchema = new mongoose.Schema(
             type: Number,
         },
         corporate_selected: {
+            type: Boolean,
+            default: false
+        },
+        individual_selected: {
             type: Boolean,
             default: false
         }

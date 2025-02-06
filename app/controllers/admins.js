@@ -2334,7 +2334,7 @@ async function PlanId() {
 
 exports.createPlan = async (req, res) => {
   try {
-    const { period, interval, amount, name, description, plan_type, trial_period_days, allowed_user, amount_without_discount, plan_tiers } = req.body;
+    const { period, interval, amount, name, description, plan_type, plan_variety, trial_period_days, allowed_user, amount_without_discount, plan_tiers, billing_cycles, corporate_selected, individual_selected } = req.body;
     if (plan_tiers && !Array.isArray(plan_tiers)) {
       return res.status(403).json({
         message: "Plan tier must be an array",
@@ -2401,9 +2401,15 @@ exports.createPlan = async (req, res) => {
         amount_without_discount,
         trial_period_days,
         plan_type,
-        corporate_selected: true,
         plan_tiers: plan_tiers
       };
+
+      if (corporate_selected) {
+        data.corporate_selected = true
+      }
+      // if (plan_variety) {
+      //   data.plan_variety = plan_variety
+      // }
 
       console.log('data', data);
 
@@ -2412,49 +2418,85 @@ exports.createPlan = async (req, res) => {
     } else {
       console.log("inside else");
 
-      const planData = {
-        period,
-        interval,
-        item: {
-          name,
-          amount: Number(amount) * 100,
-          currency: "INR",
-          description
-        },
-        notes: {
-          plan_type,
-          allowed_user,
-          trial_period_days,
-          amount_without_discount
+      let data
+      if (plan_variety === "premium") {
+        const planData = {
+          period,
+          interval,
+          item: {
+            name,
+            amount: Number(amount) * 100,
+            currency: "INR",
+            description,
+          },
+          notes: {
+            plan_type,
+            allowed_user,
+            trial_period_days,
+            amount_without_discount
+          }
+        };
+
+        const plan = await instance.plans.create(planData);
+        console.log("plan", plan);
+
+        data = {
+          plan_id: plan.id,
+          period: plan.period,
+          interval: plan.interval,
+          item: {
+            name: plan.item.name,
+            amount: plan.item.amount,
+            currency: plan.item.currency,
+            description: plan.item.description,
+          },
+          amount_without_discount: amount_without_discount,
+          trial_period_days: trial_period_days,
+          plan_type: plan_type,
+          allowed_user: allowed_user
+        };
+
+        if (billing_cycles) {
+          data.item.billing_cycles = billing_cycles
         }
-      };
+        if (individual_selected) {
+          data.individual_selected = true
+        }
+        if (plan_variety === "premium") {
+          data.plan_variety = plan_variety
+        }
+        console.log('data', data);
+      } else {
+        data = {
+          plan_id: await PlanId(),
+          period: period,
+          interval: interval,
+          item: {
+            name: name,
+            amount: amount,
+            description: description,
+          },
+          amount_without_discount: amount_without_discount,
+          trial_period_days: trial_period_days,
+          plan_type: plan_type,
+          allowed_user: allowed_user,
+          plan_tiers
+        };
 
-      const plan = await instance.plans.create(planData);
-      console.log("plan", plan);
-
-      const data = {
-        plan_id: plan.id,
-        period: plan.period,
-        interval: plan.interval,
-        item: {
-          name: plan.item.name,
-          amount: plan.item.amount,
-          currency: plan.item.currency,
-          description: plan.item.description
-        },
-        amount_without_discount: plan.notes.amount_without_discount,
-        trial_period_days: plan.notes.trial_period_days,
-        plan_type: plan.notes.plan_type,
-        allowed_user: plan.notes.allowed_user,
-        plan_tiers
-      };
-
-      console.log('data', data);
-
+        if (billing_cycles) {
+          data.item.billing_cycles = billing_cycles
+        }
+        if (individual_selected) {
+          data.individual_selected = true
+        }
+        if (plan_variety === "freemium") {
+          data.plan_variety = plan_variety
+        }
+        console.log('data', data);
+      }
       returnData = new Plan(data);
       await returnData.save();
     }
-
     res.json({ message: "Plan created successfully", data: returnData, code: 200 });
   } catch (error) {
     utils.handleError(res, error);
