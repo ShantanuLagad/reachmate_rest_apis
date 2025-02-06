@@ -3076,7 +3076,6 @@ exports.createSubscription = async (req, res) => {
       if (isSubscriptionPaidByCompany) return utils.handleError(res, { message: "You can not create subscription because you are in company plan", code: 400 })
     }
 
-
     if (isSubcriptionExist && isSubcriptionExist.status === "created") {
       console.log(isSubcriptionExist)
       const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
@@ -3085,13 +3084,11 @@ exports.createSubscription = async (req, res) => {
       if (["created"].includes(status)) {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
 
-
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
       } else if (["authenticated", "active", "paused", "pending", "halted"].includes(status)) {
         return res.json({ message: `You already have ${status} subscription`, code: 400 })
       }
     }
-
 
     if (isSubcriptionExist && ["authenticated", "active"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription, It will take some to reflect here`, code: 400 })
@@ -3100,7 +3097,6 @@ exports.createSubscription = async (req, res) => {
     if (isSubcriptionExist && ["pending", "halted"].includes(isSubcriptionExist.status)) {
       return res.json({ message: `You already have ${isSubcriptionExist.status} subscription , Please update your payment method`, code: 400 })
     }
-
 
 
     if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
@@ -3129,9 +3125,6 @@ exports.createSubscription = async (req, res) => {
     //   res.josn({message : "subscription exits"})
     //  }
     // }
-
-
-
 
 
 
@@ -3351,6 +3344,7 @@ exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
     const plans = await Plan.find({ plan_type: "individual" })
+    console.log("plans : ", plans)
 
     const checkIsTrialExits = await Trial.findOne({ user_id });
     console.log("checkIsTrialExits", checkIsTrialExits)
@@ -4320,3 +4314,22 @@ exports.checkProfileIsExist = async (req, res) => {
   }
 };
 
+
+/*Honey work start here */
+exports.getUserPlans = async (req, res) => {
+  try {
+    const usersPlan = await Plan.find({
+      plan_type: 'individual',
+      individual_selected: true
+    })
+    console.log("usersPlan : ", usersPlan)
+    return res.status(200).json({
+      message: "User plans fetched successfully",
+      data: usersPlan,
+      code: 200
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
