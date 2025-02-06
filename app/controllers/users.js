@@ -2920,6 +2920,7 @@ async function isSubscriptionActiveOrNot(user) {
     //console.log('user>>>>----',user)
     const user_id = user._id;
     var subcriptionActive = false
+    console.log("user.user_type : ", user.user_type)
     if (user.user_type === "personal") {
       subcriptionActive = await checkSusbcriptionIsActive(user_id)
     } else if (user.user_type === "corporate") {
@@ -2962,10 +2963,11 @@ exports.isSubscriptionActive = async (req, res) => {
   try {
     const user_id = req.user._id;
     const user = req.user;
+    console.log("user : ", user, " user_id : ", user_id)
 
-    if (!user.is_card_created) return res.json({ data: false, code: 200 })
+    // if (!user.is_card_created) return res.json({ data: false, code: 200 })
     var isSubscriptionActive = await isSubscriptionActiveOrNot(user);
-
+    console.log("isSubscriptionActive : ", isSubscriptionActive)
 
     // var isSubscriptionActive = false;
     // if (user.user_type === "personal") {
@@ -3044,6 +3046,11 @@ function getTotalCount(interval) {
   } else if (interval === 1) {
     return 120
   }
+}
+
+async function SubscriptionId() {
+  const token = await crypto.randomBytes(8).toString('hex')
+  return `sub_${token}`
 }
 
 exports.createSubscription = async (req, res) => {
@@ -3126,66 +3133,88 @@ exports.createSubscription = async (req, res) => {
     //  }
     // }
 
-
-
     const plan = await await Plan.findOne({ plan_id: plan_id });
+    console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
 
     if (plan.plan_type !== "individual") return utils.handleError(res, { message: "This plan is not for individiual", code: 400 });
 
-    const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
-    let trail = {}
+    // const trailToBeGiven = await isTrailNeedToBeGiven(user_id)
+    // let trail = {}
 
-    const currentDate = moment();
-    const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
-    if (trailToBeGiven === true) {
-      const timestamp = Math.floor(futureDate.valueOf() / 1000)
-      trail = { start_at: timestamp }
-    }
+    // const currentDate = moment();
+    // const futureDate = currentDate.add((plan?.trial_period_days ?? 180), 'days');
+    // if (trailToBeGiven === true) {
+    //   const timestamp = Math.floor(futureDate.valueOf() / 1000)
+    //   trail = { start_at: timestamp }
+    // }
 
-    const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
-    console.log('getTotalCount(plan.interval)', getTotalCount(plan.interval))
-    console.log('instance : ', instance)
+    // const expireTime = Math.floor((Date.now() + (10 * 60 * 1000)) / 1000);
+    // console.log('getTotalCount(plan.interval)', getTotalCount(plan.interval))
+    // console.log('instance : ', instance)
 
-    console.log('Creating subscription with:', {
-      plan_id: plan.plan_id,
-      total_count: getTotalCount(plan.interval),
-      quantity: 1,
-      customer_notify: 1,
-      expire_by: expireTime
-    });
-
-    const subcription = await instance.subscriptions.create({
-      "plan_id": plan.plan_id,
-      "total_count": getTotalCount(plan.interval),
-      "quantity": 1,
-      "customer_notify": 1,
-      // ...trail,
-      expire_by: expireTime,
-      "notes": {
-        "user_id": user_id.toString(),
-        "user_type": "individual"
-      }
-    })
-
-    console.log("futureDate", futureDate)
-    console.log("futureDate.valueOf", futureDate.valueOf())
     const now = new Date()
-    const dataForDatabase = {
-      user_id: user_id,
-      subscription_id: subcription.id,
-      plan_id: plan.plan_id,
-      plan_started_at: now,
-      start_at: now,
-      end_at: trailToBeGiven === true ? new Date(futureDate.valueOf()) : now,
-      status: subcription.status
+    let startOfPeriod
+    let endOfPeriod
+    if (plan.period === "monthly") {
+      startOfPeriod = new Date(now)
+      endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
     }
+    if (plan.period === "yearly") {
+      startOfPeriod = new Date(now)
+      endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
+    }
+    let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+    let newSubscription
+    let newTrial
 
-    const saveToDB = new Subscription(dataForDatabase);
-    await saveToDB.save()
+    if (plan.plan_variety === "freemium") {
+      newTrial = await Trial.create({
+        user_id,
+        start_at: startOfPeriod,
+        end_at: endOfPeriod,
+        status: 'active'
+      })
+      console.log("newTrial : ", newTrial)
+    } else {
+      console.log('Creating subscription with:', {
+        plan_id: plan.plan_id,
+        total_count: getTotalCount(plan.interval),
+        quantity: 1,
+        customer_notify: 1,
+        expire_by: expireBy
+      });
+
+      const subcription = await instance.subscriptions.create({
+        "plan_id": plan.plan_id,
+        "total_count": getTotalCount(plan.interval),
+        "quantity": 1,
+        "customer_notify": 1,
+        // ...trail,
+        expire_by: expireBy,
+        "notes": {
+          "user_id": user_id.toString(),
+          "user_type": "individual"
+        }
+      })
+
+      const dataForDatabase = {
+        user_id: user_id,
+        subscription_id: subcription.id,
+        plan_id: plan.plan_id,
+        plan_started_at: startOfPeriod,
+        start_at: startOfPeriod,
+        end_at: endOfPeriod,
+        status: subcription.status
+      }
+
+      newSubscription = new Subscription(dataForDatabase);
+      await newSubscription.save()
 
 
-    res.json({ data: subcription, code: 200 })
+      res.json({ data: newSubscription ? newSubscription : newTrial, code: 200 })
+    }
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
@@ -3359,6 +3388,7 @@ exports.plansList = async (req, res) => {
         activeSubscription = null
       } else {
         const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+        console.log("subcription : ", subcription)
         if (subcription.has_scheduled_changes === true) {
           const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
           const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
@@ -4321,7 +4351,7 @@ exports.getUserPlans = async (req, res) => {
     const usersPlan = await Plan.find({
       plan_type: 'individual',
       individual_selected: true
-    })
+    }).sort({ 'item.amount': 1 })
     console.log("usersPlan : ", usersPlan)
     return res.status(200).json({
       message: "User plans fetched successfully",
