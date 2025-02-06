@@ -3380,7 +3380,7 @@ exports.webhook = async (req, res) => {
 exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
-    const plans = await Plan.find({ plan_type: "individual" })
+    const plans = await Plan.find({ plan_type: "individual", individual_selected: true })
     console.log("plans : ", plans)
 
     const checkIsTrialExits = await Trial.findOne({ user_id });
