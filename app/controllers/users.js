@@ -3076,6 +3076,14 @@ exports.createSubscription = async (req, res) => {
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log("checkIsTrialExits", checkIsTrialExits)
+
+    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      const result = await Trial.findOneAndDelete({ user_id })
+      console.log("result : ", result)
+    }
+
     const getCard = await CardDetials.findOne({ owner_id: user_id })
 
     if (getCard) {
