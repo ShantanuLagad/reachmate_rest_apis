@@ -3242,7 +3242,6 @@ exports.webhook = async (req, res) => {
 
   if (signature === expectedSignature) {
 
-
     console.log("req.body.card>>>>>>>>>>>>>>>>>", req.body?.payload?.payment?.entity?.card)
     var event = req.body.event;
     console.log("event", event)
@@ -3671,7 +3670,13 @@ exports.updateSubscription = async (req, res) => {
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
     if (plan.plan_type !== "individual") return utils.handleError(res, { message: "This plan is not for individiual", code: 400 });
 
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log("checkIsTrialExits", checkIsTrialExits)
 
+    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      const result = await Trial.findOneAndDelete({ user_id })
+      console.log("result : ", result)
+    }
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
@@ -4387,3 +4392,25 @@ exports.getMyBillingAddress = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+exports.getPaymentHistoryByUser = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    console.log("user id : ", user_id)
+
+    const allPayments = await instance.payments.all({
+      count: 100,
+    });
+    console.log("allPayments : ", allPayments)
+
+    const userPayments = allPayments.items.filter(payment => {
+      return payment.notes && payment.notes.user_id === user_id.toString();
+    });
+    console.log("userPayments : ", userPayments)
+
+    res.json({ data: userPayments, code: 200 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error fetching payment history', code: 500 });
+  }
+};
