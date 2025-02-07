@@ -3687,13 +3687,17 @@ exports.updateSubscription = async (req, res) => {
     let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
     console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
 
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log("checkIsTrialExits", checkIsTrialExits)
+
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (plan.plan_variety === "premium") {
-      if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
+      if (!activeSubscription) {
+        if (!checkIsTrialExits) {
+          return res.json({ message: "You don not have any active subscription", code: 404 });
+        }
+      }
       else {
-        const checkIsTrialExits = await Trial.findOne({ user_id });
-        console.log("checkIsTrialExits", checkIsTrialExits)
-
         if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
           const result = await Trial.findOneAndDelete({ user_id })
           console.log("result : ", result)
