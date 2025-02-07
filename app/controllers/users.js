@@ -3692,20 +3692,79 @@ exports.updateSubscription = async (req, res) => {
     if (subcription.has_scheduled_changes === true) {
       await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
     }
+    let result
+    if (paymentMode === "upi") {
+      const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
+      console.log("Subscription canceled:", cancelResult);
 
-    const update = {
-      plan_id: plan_id,
-      schedule_change_at: "cycle_end",
-      customer_notify: true,
-      remaining_count: getTotalCount(plan.interval)
+      const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
+      console.log("deleteSubscription : ", deleteSubscription)
+
+      const now = new Date()
+      let startOfPeriod
+      let endOfPeriod
+      if (plan.period === "monthly") {
+        startOfPeriod = new Date(now)
+        endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
+      }
+      if (plan.period === "yearly") {
+        startOfPeriod = new Date(now)
+        endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
+      }
+      let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+      console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+
+      console.log('Creating subscription with:', {
+        plan_id: plan.plan_id,
+        total_count: getTotalCount(plan.interval),
+        quantity: 1,
+        customer_notify: 1,
+        expire_by: expireBy
+      });
+
+      const subcription = await instance.subscriptions.create({
+        "plan_id": plan.plan_id,
+        "total_count": getTotalCount(plan.interval),
+        "quantity": 1,
+        "customer_notify": 1,
+        "payment_method": "bank",
+        // ...trail,
+        expire_by: expireBy,
+        "notes": {
+          "user_id": user_id.toString(),
+          "user_type": "individual"
+        }
+      })
+
+      const dataForDatabase = {
+        user_id: user_id,
+        subscription_id: subcription.id,
+        plan_id: plan.plan_id,
+        plan_started_at: startOfPeriod,
+        start_at: startOfPeriod,
+        end_at: endOfPeriod,
+        status: subcription.status
+      }
+
+      result = new Subscription(dataForDatabase);
+      await result.save()
+
+      console.log("New subscription created:", result);
+    } else {
+      const update = {
+        plan_id: plan_id,
+        schedule_change_at: "cycle_end",
+        customer_notify: true,
+        remaining_count: getTotalCount(plan.interval)
+      }
+
+      console.log("update : ", update)
+
+      result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
+      console.log("result : ", result)
     }
 
-    console.log("update : ", update)
-
-    const result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
-    console.log("result : ", result)
-
-    res.json({ message: "Subscription updated successfully", code: 200 })
+    res.json({ message: "Subscription updated successfully", data: result, code: 200 })
   } catch (error) {
     console.log("errorewre", error)
     utils.handleError(res, error)
