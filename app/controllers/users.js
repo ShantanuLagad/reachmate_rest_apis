@@ -3670,100 +3670,114 @@ exports.updateSubscription = async (req, res) => {
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
     if (plan.plan_type !== "individual") return utils.handleError(res, { message: "This plan is not for individiual", code: 400 });
 
-    const checkIsTrialExits = await Trial.findOne({ user_id });
-    console.log("checkIsTrialExits", checkIsTrialExits)
-
-    if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-      const result = await Trial.findOneAndDelete({ user_id })
-      console.log("result : ", result)
-    }
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
-    if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
-
-    const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
-    console.log("subcription : ", subcription)
-    const status = subcription.status;
-    const paymentMode = subcription.payment_method;
-    console.log("paymentMode : ", paymentMode)
-    if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
-
-    if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
-
-    if (subcription.has_scheduled_changes === true) {
-      await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
-    }
     let result
-    if (paymentMode === "upi") {
-      const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
-      console.log("Subscription canceled:", cancelResult);
+    let trial
 
-      const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
-      console.log("deleteSubscription : ", deleteSubscription)
+    const now = new Date()
+    let startOfPeriod
+    let endOfPeriod
+    if (plan.period === "monthly") {
+      startOfPeriod = new Date(now)
+      endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
+    }
+    if (plan.period === "yearly") {
+      startOfPeriod = new Date(now)
+      endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
+    }
+    let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
 
-      const now = new Date()
-      let startOfPeriod
-      let endOfPeriod
-      if (plan.period === "monthly") {
-        startOfPeriod = new Date(now)
-        endOfPeriod = new Date(now.setMonth(now.getMonth() + 1))
-      }
-      if (plan.period === "yearly") {
-        startOfPeriod = new Date(now)
-        endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
-      }
-      let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
-      console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+    if (plan.plan_variety === "premium") {
+      if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
+      else {
+        const checkIsTrialExits = await Trial.findOne({ user_id });
+        console.log("checkIsTrialExits", checkIsTrialExits)
 
-      console.log('Creating subscription with:', {
-        plan_id: plan.plan_id,
-        total_count: getTotalCount(plan.interval),
-        quantity: 1,
-        customer_notify: 1,
-        expire_by: expireBy
-      });
-
-      const subcription = await instance.subscriptions.create({
-        "plan_id": plan.plan_id,
-        "total_count": getTotalCount(plan.interval),
-        "quantity": 1,
-        "customer_notify": 1,
-        // ...trail,
-        expire_by: expireBy,
-        "notes": {
-          "user_id": user_id.toString(),
-          "user_type": "individual"
+        if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+          const result = await Trial.findOneAndDelete({ user_id })
+          console.log("result : ", result)
         }
-      })
 
-      const dataForDatabase = {
-        user_id: user_id,
-        subscription_id: subcription.id,
-        plan_id: plan.plan_id,
-        plan_started_at: startOfPeriod,
+        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+        console.log("subcription : ", subcription)
+        const status = subcription.status;
+        const paymentMode = subcription.payment_method;
+        console.log("paymentMode : ", paymentMode)
+        if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+
+        if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+
+        if (subcription.has_scheduled_changes === true) {
+          await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+        }
+        if (paymentMode === "upi") {
+          const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
+          console.log("Subscription canceled:", cancelResult);
+
+          const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
+          console.log("deleteSubscription : ", deleteSubscription)
+
+          console.log('Creating subscription with:', {
+            plan_id: plan.plan_id,
+            total_count: getTotalCount(plan.interval),
+            quantity: 1,
+            customer_notify: 1,
+            expire_by: expireBy
+          });
+
+          const subcription = await instance.subscriptions.create({
+            "plan_id": plan.plan_id,
+            "total_count": getTotalCount(plan.interval),
+            "quantity": 1,
+            "customer_notify": 1,
+            // ...trail,
+            expire_by: expireBy,
+            "notes": {
+              "user_id": user_id.toString(),
+              "user_type": "individual"
+            }
+          })
+
+          const dataForDatabase = {
+            user_id: user_id,
+            subscription_id: subcription.id,
+            plan_id: plan.plan_id,
+            plan_started_at: startOfPeriod,
+            start_at: startOfPeriod,
+            end_at: endOfPeriod,
+            status: subcription.status
+          }
+
+          result = new Subscription(dataForDatabase);
+          await result.save()
+
+          console.log("New subscription created:", result);
+        } else {
+          const update = {
+            plan_id: plan_id,
+            schedule_change_at: "cycle_end",
+            customer_notify: true,
+            remaining_count: getTotalCount(plan.interval)
+          }
+
+          console.log("update : ", update)
+
+          result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
+          console.log("result : ", result)
+        }
+      }
+    } else {
+      trial = await Trial.create({
+        user_id,
         start_at: startOfPeriod,
         end_at: endOfPeriod,
-        status: subcription.status
-      }
-
-      result = new Subscription(dataForDatabase);
-      await result.save()
-
-      console.log("New subscription created:", result);
-    } else {
-      const update = {
-        plan_id: plan_id,
-        schedule_change_at: "cycle_end",
-        customer_notify: true,
-        remaining_count: getTotalCount(plan.interval)
-      }
-
-      console.log("update : ", update)
-
-      result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
-      console.log("result : ", result)
+        status: 'active'
+      })
+      console.log("newTrial : ", trial)
     }
 
-    res.json({ message: "Subscription updated successfully", data: result, code: 200 })
+    res.json({ message: result ? "Subscription updated successfully" : "Plan converted to Freemium", data: result ? result : trial, code: 200 })
   } catch (error) {
     console.log("errorewre", error)
     utils.handleError(res, error)
