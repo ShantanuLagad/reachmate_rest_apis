@@ -3683,6 +3683,8 @@ exports.updateSubscription = async (req, res) => {
     const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
     console.log("subcription : ", subcription)
     const status = subcription.status;
+    const paymentMode = subcription.payment_method;
+    console.log("paymentMode : ", paymentMode)
     if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
     if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
