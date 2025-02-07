@@ -3114,9 +3114,9 @@ exports.createSubscription = async (req, res) => {
     }
 
 
-    if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
-      return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
-    }
+    // if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
+    //   return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
+    // }
 
     // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
     //   return res.json({ message: "Please wait some time to swith the plan", code: 400 });
@@ -3681,6 +3681,7 @@ exports.updateSubscription = async (req, res) => {
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
     const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+    console.log("subcription : ", subcription)
     const status = subcription.status;
     if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 

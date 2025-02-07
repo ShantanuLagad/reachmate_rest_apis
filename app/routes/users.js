@@ -367,7 +367,6 @@ router.post(
 
 router.post("/webhook_payments", controller.webhook)
 
-
 router.post(
   "/plansList",
   requireAuth,
