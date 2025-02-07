@@ -3771,7 +3771,8 @@ exports.updateSubscription = async (req, res) => {
           console.log("result : ", result)
         }
       }
-    } else {
+    }
+    if (plan.plan_variety === "freemium") {
       trial = await Trial.create({
         user_id,
         start_at: startOfPeriod,
