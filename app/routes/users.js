@@ -507,4 +507,10 @@ router.get(
   controller.getUserPlans
 )
 
+router.get(
+  "/getMyBillingAddress",
+  trimRequest.all,
+  controller.getMyBillingAddress
+)
+
 module.exports = router
