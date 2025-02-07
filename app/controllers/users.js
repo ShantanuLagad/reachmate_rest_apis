@@ -3698,7 +3698,10 @@ exports.updateSubscription = async (req, res) => {
       remaining_count: getTotalCount(plan.interval)
     }
 
-    await instance.subscriptions.update(activeSubscription.subscription_id, update)
+    console.log("update : ", update)
+
+    const result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
+    console.log("result : ", result)
 
     res.json({ message: "Subscription updated successfully", code: 200 })
   } catch (error) {
