@@ -3673,7 +3673,7 @@ exports.updateSubscription = async (req, res) => {
     const checkIsTrialExits = await Trial.findOne({ user_id });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
-    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+    if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
       const result = await Trial.findOneAndDelete({ user_id })
       console.log("result : ", result)
     }
