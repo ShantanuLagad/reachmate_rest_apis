@@ -365,8 +365,7 @@ router.post(
   controller.createSubscription
 )
 
-router.post("/webhook", controller.webhook)
-
+router.post("/webhook_payments", controller.webhook)
 
 router.post(
   "/plansList",
@@ -512,6 +511,13 @@ router.get(
   trimRequest.all,
   requireAuth,
   controller.getMyBillingAddress
+)
+
+router.get(
+  "/getPaymentHistory",
+  trimRequest.all,
+  requireAuth,
+  controller.getPaymentHistoryByUser
 )
 
 module.exports = router

@@ -6,8 +6,8 @@ const mongoosePaginate = require('mongoose-paginate-v2')
 
 const UserSchema = new mongoose.Schema(
   {
-    profile_image:{
-      type:String
+    profile_image: {
+      type: String
     },
     first_name: {
       type: String,
@@ -15,8 +15,12 @@ const UserSchema = new mongoose.Schema(
     last_name: {
       type: String,
     },
-    full_name : {
+    full_name: {
       type: String
+    },
+    payment_mode: {
+      type: String,
+      enum: ["upi", "bank", "card"]
     },
     email: {
       type: String,
@@ -27,20 +31,20 @@ const UserSchema = new mongoose.Schema(
       lowercase: true,
       required: false,
     },
-    email_verified : {
-      type : Boolean,
+    email_verified: {
+      type: Boolean,
     },
-    designation:{
-      type:String
+    designation: {
+      type: String
     },
-    Phone_number:{
-      type:String
+    Phone_number: {
+      type: String
     },
-    dateOfBirth:{
-      type:String
+    dateOfBirth: {
+      type: String
     },
-    sex:{
-      type:String
+    sex: {
+      type: String
     },
     password: {
       type: String,
@@ -53,20 +57,20 @@ const UserSchema = new mongoose.Schema(
       // select: false
     },
     text_color: {
-      type : String,
-      default :""
+      type: String,
+      default: ""
     },
-    social_id : {
+    social_id: {
       type: String,
     },
     social_type: {
       type: String,
-      enum: ["google","apple", null],
+      enum: ["google", "apple", null],
       default: null,
     },
-    is_card_created : {
-      type : Boolean,
-      default : false
+    is_card_created: {
+      type: Boolean,
+      default: false
     },
     personal_cards: [
       {
@@ -74,41 +78,41 @@ const UserSchema = new mongoose.Schema(
         ref: 'CardDetails',
       },
     ],
-    user_type : {
-      type : String,
-      enum : ["personal" , "corporate"]
+    user_type: {
+      type: String,
+      enum: ["personal", "corporate"]
     },
-    notification : {
-      type : Boolean,
-      default : true,
+    notification: {
+      type: Boolean,
+      default: true,
     },
-    status : {
-      type : String,
-      enum : ["active" , "inactive"],
-      default : "active"
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active"
     },
     verification: {
       type: String
     },
-    customer_id : {
-      type : String
+    customer_id: {
+      type: String
     },
-    billing_address : {
-      country:String,
-      state:String,
-      city:String,
-      address_line_1 :  String,
-      address_line_2 :String,
-      pin_code :String
+    billing_address: {
+      country: String,
+      state: String,
+      city: String,
+      address_line_1: String,
+      address_line_2: String,
+      pin_code: String
     },
-  
-    companyAccessCardDetails:[
+
+    companyAccessCardDetails: [
       {
         company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
-        email_domain: { type: String }, 
-        company_name: { type: String }, 
-        access_code:{type:String},
-        _id:{
+        email_domain: { type: String },
+        company_name: { type: String },
+        access_code: { type: String },
+        _id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'TeamMember',
         },
@@ -158,7 +162,7 @@ const genSalt = (user, SALT_FACTOR, next) => {
   })
 }
 
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', function (next) {
   const that = this
   const SALT_FACTOR = 5
   if (!that.isModified('password')) {
@@ -167,7 +171,7 @@ UserSchema.pre('save', function(next) {
   return genSalt(that, SALT_FACTOR, next)
 })
 
-UserSchema.methods.comparePassword = function(passwordAttempt, cb) {
+UserSchema.methods.comparePassword = function (passwordAttempt, cb) {
   bcrypt.compare(passwordAttempt, this.password, (err, isMatch) =>
     err ? cb(err) : cb(null, isMatch)
   )

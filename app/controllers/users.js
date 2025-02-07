@@ -3114,9 +3114,9 @@ exports.createSubscription = async (req, res) => {
     }
 
 
-    if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
-      return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
-    }
+    // if (isSubcriptionExist && ["cancelled", "completed", "expired"].includes(isSubcriptionExist.status) && isSubcriptionExist.end_at > new Date()) {
+    //   return res.json({ message: `Your can create new subscription after the expiry time of current subscription`, code: 400 })
+    // }
 
     // if (isSubcriptionExist && isSubcriptionExist.status === "created" && plan_id !== isSubcriptionExist.plan_id && new Date(isSubcriptionExist.createdAt).getTime() + (5 * 60 * 1000) > new Date()) {
     //   return res.json({ message: "Please wait some time to swith the plan", code: 400 });
@@ -3241,7 +3241,6 @@ exports.webhook = async (req, res) => {
 
 
   if (signature === expectedSignature) {
-
 
     console.log("req.body.card>>>>>>>>>>>>>>>>>", req.body?.payload?.payment?.entity?.card)
     var event = req.body.event;
@@ -3671,11 +3670,18 @@ exports.updateSubscription = async (req, res) => {
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
     if (plan.plan_type !== "individual") return utils.handleError(res, { message: "This plan is not for individiual", code: 400 });
 
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log("checkIsTrialExits", checkIsTrialExits)
 
+    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      const result = await Trial.findOneAndDelete({ user_id })
+      console.log("result : ", result)
+    }
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
     const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+    console.log("subcription : ", subcription)
     const status = subcription.status;
     if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
@@ -4387,3 +4393,25 @@ exports.getMyBillingAddress = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+exports.getPaymentHistoryByUser = async (req, res) => {
+  try {
+    const user_id = req.user._id;
+    console.log("user id : ", user_id)
+
+    const allPayments = await instance.payments.all({
+      count: 100,
+    });
+    console.log("allPayments : ", allPayments)
+
+    const userPayments = allPayments.items.filter(payment => {
+      return payment.notes && payment.notes.user_id === user_id.toString();
+    });
+    console.log("userPayments : ", userPayments)
+
+    res.json({ data: userPayments, code: 200 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error fetching payment history', code: 500 });
+  }
+};
