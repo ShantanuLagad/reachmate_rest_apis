@@ -510,6 +510,7 @@ router.get(
 router.get(
   "/getMyBillingAddress",
   trimRequest.all,
+  requireAuth,
   controller.getMyBillingAddress
 )
 
