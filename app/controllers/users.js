@@ -3220,7 +3220,6 @@ exports.createSubscription = async (req, res) => {
       newSubscription = new Subscription(dataForDatabase);
       await newSubscription.save()
 
-
       res.json({ data: newSubscription ? newSubscription : newTrial, code: 200 })
     }
   } catch (error) {
@@ -4364,6 +4363,23 @@ exports.getUserPlans = async (req, res) => {
     return res.status(200).json({
       message: "User plans fetched successfully",
       data: usersPlan,
+      code: 200
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+exports.getMyBillingAddress = async (req, res) => {
+  try {
+    const userId = req.user._id
+    console.log("user id : ", userId)
+    const userdata = await User.findOne({ _id: userId })
+    console.log("userdata : ", userdata)
+    return res.status(200).json({
+      message: "Billing address fetched successfully",
+      data: userdata.billing_address,
       code: 200
     })
   } catch (error) {
