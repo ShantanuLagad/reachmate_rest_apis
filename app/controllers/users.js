@@ -3727,7 +3727,6 @@ exports.updateSubscription = async (req, res) => {
         "total_count": getTotalCount(plan.interval),
         "quantity": 1,
         "customer_notify": 1,
-        "payment_method": "bank",
         // ...trail,
         expire_by: expireBy,
         "notes": {
