@@ -3390,7 +3390,7 @@ exports.plansList = async (req, res) => {
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
     if (activeSubscription) {
-      if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled" && activeSubscription.end_at < new Date())) {
+      if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled")) {
         activeSubscription = null
       } else {
         const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
