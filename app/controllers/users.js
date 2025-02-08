@@ -3640,10 +3640,10 @@ exports.cancelSubscription = async (req, res) => {
     const user_id = req.user._id;
 
     let result
-    const isTrialExists = await Trial.findOne({ user_id, status: "active" })
+    const isTrialExists = await Trial.find({ user_id, status: "active" })
     console.log("isTrialExists : ", isTrialExists)
     if (isTrialExists) {
-      result = await Trial.findOneAndDelete({ _id: isTrialExists._id })
+      result = await Trial.deleteMany({ _id: isTrialExists._id })
       console.log("result : ", result)
     }
 
