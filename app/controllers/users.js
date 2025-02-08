@@ -3381,7 +3381,7 @@ exports.plansList = async (req, res) => {
     const plans = await Plan.find({ plan_type: "individual", individual_selected: true })
     console.log("plans : ", plans)
 
-    const checkIsTrialExits = await Trial.findOne({ user_id });
+    const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
@@ -3646,7 +3646,7 @@ exports.cancelSubscription = async (req, res) => {
     const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
     const status = subcription.status
 
-    if (!["authenticated", "active", "paused", "pending", "halted"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
+    if (!["authenticated", "active", "paused", "pending", "halted", "created"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
 
     if (subcription.has_scheduled_changes === true) {
       await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
@@ -3715,7 +3715,7 @@ exports.updateSubscription = async (req, res) => {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
       }
-      if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+      // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
       if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
 
