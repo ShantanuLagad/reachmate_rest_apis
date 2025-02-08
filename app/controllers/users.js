@@ -3381,7 +3381,7 @@ exports.plansList = async (req, res) => {
     const plans = await Plan.find({ plan_type: "individual", individual_selected: true })
     console.log("plans : ", plans)
 
-    const checkIsTrialExits = await Trial.findOne({ user_id });
+    const checkIsTrialExits = await Trial.findOne({ user_id, status = "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
