@@ -3208,7 +3208,7 @@ exports.createSubscription = async (req, res) => {
       endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
     }
     let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
-    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, " expireBy : ", expireBy)
     let newSubscription
     let newTrial
 
@@ -3220,6 +3220,7 @@ exports.createSubscription = async (req, res) => {
         status: 'active'
       })
       console.log("newTrial : ", newTrial)
+      return res.json({ message: "Freemium plan activated successfully", data: newTrial, code: 200 })
     } else {
       console.log('Creating subscription with:', {
         plan_id: plan.plan_id,
@@ -3255,7 +3256,7 @@ exports.createSubscription = async (req, res) => {
       newSubscription = new Subscription(dataForDatabase);
       await newSubscription.save()
 
-      res.json({ data: newSubscription ? newSubscription : newTrial, code: 200 })
+      res.json({ message: "subscription activated successfully", data: newSubscription, code: 200 })
     }
   } catch (error) {
     console.log(error)
