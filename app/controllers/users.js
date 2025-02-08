@@ -3044,7 +3044,7 @@ function getTotalCount(interval) {
   } else if (interval === 3) {
     return 40
   } else if (interval === 1) {
-    return 120
+    return 100
   }
 }
 
