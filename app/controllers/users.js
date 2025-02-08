@@ -3715,7 +3715,7 @@ exports.updateSubscription = async (req, res) => {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
       }
-      if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+      // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
       if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
 
