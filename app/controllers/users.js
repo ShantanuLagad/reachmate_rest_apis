@@ -1174,11 +1174,29 @@ exports.addSharedCard = async (req, res) => {
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
-
     const { card_id } = req.body;
     const user_id = req.user._id;
 
     const user1 = await User.findById(user_id);
+
+    const activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+
+    if (activeSubscription) {
+      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      console.log("plandata : ", plandata)
+      if (plandata.plan_variety === "freemium") {
+        const totalSharedCard = await SharedCards.countDocuments({ user_id })
+        console.log("totalSharedCard : ", totalSharedCard)
+        if (totalSharedCard >= 10) {
+          return res.status(403).json({
+            message: "You have reached the maximum limit of freemium plan",
+            code: 403
+          })
+        }
+      }
+    }
+
     //chech the user have a card and get user card id
     const userCard = await CardDetials.findOne({ owner_id: user_id })
     if (!userCard) {
@@ -1433,6 +1451,22 @@ exports.addPersonalCard = async (req, res) => {
     const user = req.user
     console.log('USerrr', user)
     const owner_id = req.user._id;
+
+    const activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+
+    if (activeSubscription) {
+      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      console.log("plandata : ", plandata)
+      if (plandata.plan_variety === "freemium") {
+        if (user.personal_cards.length >= 9 && user.companyAccessCardDetails.length === 1) {
+          return res.status(403).json({
+            message: "You have reached the maximum limit of freemium plan",
+            code: 403
+          })
+        }
+      }
+    }
 
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
     console.log('cardd is first card', isFirstCard)
@@ -3648,7 +3682,7 @@ exports.cancelSubscription = async (req, res) => {
       console.log("result : ", result)
     }
 
-    if (!isTrialExists) {
+    if (!isTrialExists && isTrialExists.length === 0) {
       const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
       if (!isSubcriptionExist) return res.json({ message: "Subscription not found", code: 404 });
