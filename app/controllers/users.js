@@ -3683,7 +3683,7 @@ exports.cancelSubscription = async (req, res) => {
     }
 
     if (!isTrialExists && isTrialExists.length === 0) {
-      const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+      const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 });
 
       if (!isSubcriptionExist) return res.json({ message: "Subscription not found", code: 404 });
 
