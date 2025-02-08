@@ -2158,12 +2158,13 @@ exports.getProfile = async (req, res) => {
 
     const userInfo = {
       id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      profile_image: user.profile_image,
-      dateOfBirth: user.dateOfBirth,
-      sex: user.sex,
+      first_name: user?.first_name,
+      last_name: user?.last_name,
+      email: user?.email,
+      profile_image: user?.profile_image,
+      dateOfBirth: user?.dateOfBirth,
+      sex: user?.sex,
+      payment_method: user?.payment_method
     };
 
     res.status(200).json({ data: userInfo });
