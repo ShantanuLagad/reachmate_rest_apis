@@ -1023,8 +1023,8 @@ exports.dashboardData = async (req, res) => {
     startOfPeriod = startOfWeek;
     endOfPeriod = endOfWeek;
     console.log("currentDate : ", currentDate, " startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
-    const totalTeamMate = await TeamMember.countDocuments({})
-    const newTeamMate = await TeamMember.countDocuments({ createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } })
+    const totalTeamMate = await TeamMember.countDocuments({ 'company_details.company_id': company_id })
+    const newTeamMate = await TeamMember.countDocuments({ 'company_details.company_id': company_id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } })
 
     res.json({ data: data[0], access_code: company?.access_code, totalTeamMate, newTeamMate, code: 200 })
   } catch (error) {

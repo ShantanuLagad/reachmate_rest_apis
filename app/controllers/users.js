@@ -3824,7 +3824,7 @@ exports.updateSubscription = async (req, res) => {
         result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
         console.log("result : ", result)
       }
-
+      return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
     }
     if (plan.plan_variety === "freemium") {
       trial = await Trial.create({
@@ -3834,8 +3834,8 @@ exports.updateSubscription = async (req, res) => {
         status: 'active'
       })
       console.log("newTrial : ", trial)
+      return res.json({ message: "Plan converted to Freemium", data: trial, code: 200 })
     }
-    res.json({ message: result ? "Subscription updated successfully" : "Plan converted to Freemium", data: result ? result : trial, code: 200 })
   } catch (error) {
     console.log("errorewre", error)
     utils.handleError(res, error)
