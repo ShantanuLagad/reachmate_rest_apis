@@ -3674,30 +3674,33 @@ exports.cancelSubscription = async (req, res) => {
   try {
     const user_id = req.user._id;
 
-    let result
-    const isTrialExists = await Trial.find({ user_id, status: "active" })
-    console.log("isTrialExists : ", isTrialExists)
-    if (isTrialExists) {
-      result = await Trial.deleteMany({ _id: isTrialExists._id })
-      console.log("result : ", result)
-    }
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 });
 
-    if (!isTrialExists && isTrialExists.length === 0) {
-      const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 });
-
-      if (!isSubcriptionExist) return res.json({ message: "Subscription not found", code: 404 });
-
-      const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
-      const status = subcription.status
-
-      if (!["authenticated", "active", "paused", "pending", "halted", "created"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
-
-      if (subcription.has_scheduled_changes === true) {
-        await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
+    if (!isSubcriptionExist) {
+      const isTrialExists = await Trial.findOne({ user_id, status: "active" })
+      console.log("isTrialExists : ", isTrialExists)
+      if (!isTrialExists) {
+        return res.json({ message: "Subscription not found", code: 404 });
       }
-      result = await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false)
+      if (isTrialExists) {
+        const result = await Trial.findOneAndDelete({ _id: isTrialExists._id })
+        console.log("result : ", result)
+        return res.json({ message: "cancellation successfull", code: 200, data: result });
+      }
     }
-    res.json({ message: "cancellation successfull", code: 200, data: result });
+
+    const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
+    const status = subcription.status
+
+    if (!["authenticated", "active", "paused", "pending", "halted", "created"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
+
+    if (subcription.has_scheduled_changes === true) {
+      await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
+    }
+
+    const subresult = await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false)
+
+    res.json({ message: "cancellation successfull", code: 200, data: subresult });
   } catch (error) {
     console.log
     utils.handleError(res, error)
