@@ -520,8 +520,8 @@ router.get(
   controller.getPaymentHistoryByUser
 )
 
-router.patch(
-  "/setDefaultPaymentMethod",
+router.put(
+  "/setPaymentMethod",
   trimRequest.all,
   requireAuth,
   controller.setDefaultPaymentMethod
