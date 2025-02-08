@@ -2164,7 +2164,7 @@ exports.getProfile = async (req, res) => {
       profile_image: user?.profile_image,
       dateOfBirth: user?.dateOfBirth,
       sex: user?.sex,
-      payment_method: user?.payment_method
+      payment_method: user?.payment_mode
     };
 
     res.status(200).json({ data: userInfo });
