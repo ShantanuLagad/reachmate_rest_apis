@@ -520,4 +520,11 @@ router.get(
   controller.getPaymentHistoryByUser
 )
 
+router.patch(
+  "/setDefaultPaymentMethod",
+  trimRequest.all,
+  requireAuth,
+  controller.setDefaultPaymentMethod
+)
+
 module.exports = router
