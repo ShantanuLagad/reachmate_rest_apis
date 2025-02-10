@@ -2997,7 +2997,7 @@ async function isSubscriptionActiveOrNot(user) {
 
 async function checkActiveSubscription(user) {
   var isSubscriptionActive = false
-  const checkIsTrialExits = await Trial.findOne({ user_id : user.user_id });
+  const checkIsTrialExits = await Trial.findOne({ user_id: user.user_id });
   console.log('endd date>>', checkIsTrialExits?.end_at)
   if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
     return isSubscriptionActive = true
@@ -3011,10 +3011,10 @@ async function checkActiveSubscription(user) {
     return isSubscriptionActive = true
   } else {
     const card = await CardDetials.findOne({ owner_id: user.user_id });
-    if (!card) return res.json({ data: false, code: 200 })
+    if (!card) return isSubscriptionActive = false
     const company_id = card.company_id;
     const email = card?.contact_details?.email;
-    if (!email) return res.json({ data: false, code: 200 })
+    if (!email) return isSubscriptionActive = false
     const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
     if (isSubscriptionPaidByCompany) {
       //Employee is subcription is paid by company
