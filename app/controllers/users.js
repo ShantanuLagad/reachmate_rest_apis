@@ -3739,7 +3739,8 @@ exports.updateSubscription = async (req, res) => {
     const checkIsTrialExits = await Trial.findOne({ user_id });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+    //{ $nin: ["expired", "created", "cancelled"] }
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created", "cancelled"] } }).sort({ createdAt: -1 })
     console.log("activeSubscription : ", activeSubscription)
     if (plan.plan_variety === "premium") {
       console.log("check...")
