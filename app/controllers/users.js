@@ -3760,6 +3760,9 @@ exports.updateSubscription = async (req, res) => {
       const paymentMode = subcription.payment_method;
       console.log("paymentMode : ", paymentMode)
       if (status === "created") {
+        return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
+      }
+      if (status !== "created") {
         await Subscription.findByIdAndDelete(isSubcriptionExist._id);
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
       }
