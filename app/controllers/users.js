@@ -3685,7 +3685,7 @@ exports.cancelSubscription = async (req, res) => {
         return res.json({ message: "Subscription not found", code: 404 });
       }
       if (isTrialExists) {
-        const result = await Trial.findOneAndDelete({ _id: isTrialExists._id })
+        const result = await Trial.deleteOne({ _id: isTrialExists._id })
         console.log("result : ", result)
         return res.json({ message: "cancellation successfull", code: 200, data: result });
       }
