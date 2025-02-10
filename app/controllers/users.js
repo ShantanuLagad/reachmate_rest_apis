@@ -3763,8 +3763,8 @@ exports.updateSubscription = async (req, res) => {
         return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
       }
       if (status !== "created") {
-        await Subscription.findByIdAndDelete(isSubcriptionExist._id);
-        await instance.subscriptions.cancel(isSubcriptionExist.subscription_id)
+        await Subscription.findByIdAndDelete(activeSubscription._id);
+        await instance.subscriptions.cancel(activeSubscription.subscription_id)
       }
       // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
