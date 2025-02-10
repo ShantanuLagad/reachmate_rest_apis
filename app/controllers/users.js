@@ -2997,7 +2997,7 @@ async function isSubscriptionActiveOrNot(user) {
 
 async function checkActiveSubscription(user) {
   var isSubscriptionActive = false
-  const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+  const checkIsTrialExits = await Trial.findOne({ user_id: user._id, status: "active" });
   console.log('endd date>>', checkIsTrialExits?.end_at, " checkIsTrialExits : ", checkIsTrialExits)
   if (checkIsTrialExits && checkIsTrialExits?.status === "active") {
     return isSubscriptionActive = true
