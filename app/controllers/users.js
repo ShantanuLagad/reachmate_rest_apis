@@ -2997,9 +2997,9 @@ async function isSubscriptionActiveOrNot(user) {
 
 async function checkActiveSubscription(user) {
   var isSubscriptionActive = false
-  const checkIsTrialExits = await Trial.findOne({ user_id: user._id });
-  console.log('endd date>>', checkIsTrialExits?.end_at)
-  if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+  const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+  console.log('endd date>>', checkIsTrialExits?.end_at, " checkIsTrialExits : ", checkIsTrialExits)
+  if (checkIsTrialExits && checkIsTrialExits?.status === "active") {
     return isSubscriptionActive = true
   }
 
@@ -3041,10 +3041,11 @@ exports.isSubscriptionActive = async (req, res) => {
 
     // if (!user.is_card_created) return res.json({ data: false, code: 200 })
     var isSubscriptionActive = false
-    const checkIsTrialExits = await Trial.findOne({ user_id });
-    console.log('endd date>>', checkIsTrialExits?.end_at)
-    if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-      return res.json({ data: true, code: 200 })
+    const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+    console.log('endd date>>', checkIsTrialExits?.end_at, " checkIsTrialExits : ", checkIsTrialExits)
+    if (checkIsTrialExits && checkIsTrialExits?.status === "active") {
+      isSubscriptionActive = true
+      return res.json({ data: isSubscriptionActive, code: 200 })
     }
 
     const subcription = await Subscription.findOne({ user_id: user_id, status: "active" })
