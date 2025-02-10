@@ -3675,7 +3675,8 @@ exports.cancelSubscription = async (req, res) => {
   try {
     const user_id = req.user._id;
 
-    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 });
+    const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" })
+    console.log("isSubcriptionExist : ", isSubcriptionExist)
 
     if (!isSubcriptionExist) {
       const isTrialExists = await Trial.findOne({ user_id, status: "active" })
