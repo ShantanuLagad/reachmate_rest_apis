@@ -786,17 +786,17 @@ function sendInvoiceEmailForTransaction(mailOptions) {
 async function checkSusbcriptionIsActive(user_id) {
 
   const checkIsTrialExits = await Trial.findOne({ user_id });
-  console.log('endd date>>', checkIsTrialExits.end_at)
-  if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+  console.log('endd date>>', checkIsTrialExits?.end_at)
+  if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
     return true
   }
 
   const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
-  console.log("subcription", subcription, 'subcription.end_at', subcription.end_at, 'subcription.status', subcription.status)
+  console.log("subcription", subcription, 'subcription.end_at', subcription?.end_at, 'subcription.status', subcription?.status)
   if (!subcription) return false
-  if (subcription.status === "created") return false
-  if (subcription.end_at < new Date()) return false
+  if (subcription?.status === "created") return false
+  if (subcription?.end_at < new Date()) return false
   return true
 }
 
@@ -2340,7 +2340,9 @@ exports.enableOrDisableLink = async (req, res) => {
 
 exports.getCard = async (req, res) => {
   try {
+    console.log("req.user : ", req.user)
     const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    console.log("isSubscriptionActive : ", isSubscriptionActive)
     if (isSubscriptionActive === false) {
       return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
     }
