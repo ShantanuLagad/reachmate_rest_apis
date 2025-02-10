@@ -3774,13 +3774,6 @@ exports.updateSubscription = async (req, res) => {
         await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
       }
       if (paymentMode === "upi") {
-        if (status !== "cancelled") {
-          const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
-          console.log("Subscription canceled:", cancelResult);
-          const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
-          console.log("deleteSubscription : ", deleteSubscription)
-        }
-
         console.log('Creating subscription with:', {
           plan_id: plan.plan_id,
           total_count: getTotalCount(plan.interval),
