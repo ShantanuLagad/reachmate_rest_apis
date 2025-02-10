@@ -3001,44 +3001,82 @@ exports.isSubscriptionActive = async (req, res) => {
     console.log("user : ", user, " user_id : ", user_id)
 
     // if (!user.is_card_created) return res.json({ data: false, code: 200 })
-    var isSubscriptionActive = await isSubscriptionActiveOrNot(user);
-    console.log("isSubscriptionActive : ", isSubscriptionActive)
+    var isSubscriptionActive = false
+    const checkIsTrialExits = await Trial.findOne({ user_id });
+    console.log('endd date>>', checkIsTrialExits?.end_at)
+    if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+      return res.json({ data: true, code: 200 })
+    }
 
-    // var isSubscriptionActive = false;
-    // if (user.user_type === "personal") {
-    //   isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
-    // } else if (user.user_type === "corporate") {
-    //   const card = await CardDetials.findOne({ owner_id: user_id });
-    //   if (!card) utils.handleError(res, { message: "Card not found", code: 400 });
-
-    //   const company_id = card.company_id;
-    //   const email = card?.contact_details?.email;
-    //   if (!email) return utils.handleError(res, { message: "Work email not found", code: 400 });
-
-    //   const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
-    //   if (isSubscriptionPaidByCompany) {
-    //     //Employee is subcription is paid by company
-    //     isSubscriptionActive = await checkSusbcriptionIsActive(company_id)
-    //   } else {
-    //     //Employee is subcription is not paid by company
-    //     //check for waiting period 
-
-    //     const waiting_end_time = card.waiting_end_time;
-    //     if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
-    //       isSubscriptionActive = true
-    //     } else {
-    //       isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
-    //     }
-    //   }
-
-    // }
-
-    res.json({ data: isSubscriptionActive, code: 200 })
+    const subcription = await Subscription.findOne({ user_id: user_id, status: "active" })
+    if (subcription) {
+      console.log("subcription", subcription, 'subcription.end_at', subcription?.end_at, 'subcription.status', subcription?.status)
+      // if (subcription?.status === "created") return false
+      // if (subcription?.end_at < new Date()) return false
+      return res.json({ data: true, code: 200 })
+    } else {
+      const card = await CardDetials.findOne({ owner_id: user_id });
+      if (!card) return res.json({ data: false, code: 200 })
+      const company_id = card.company_id;
+      const email = card?.contact_details?.email;
+      if (!email) return res.json({ data: false, code: 200 })
+      const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+      if (isSubscriptionPaidByCompany) {
+        //Employee is subcription is paid by company
+        isSubscriptionActive = false
+      } else {
+        //Employee is subcription is not paid by company
+        //check for waiting period 
+        const waiting_end_time = card.waiting_end_time;
+        if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+          isSubscriptionActive = true
+        } else {
+          isSubscriptionActive = false
+        }
+      }
+      return res.json({ data: isSubscriptionActive, code: 200 })
+    }
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
   }
 }
+
+
+// var isSubscriptionActive = await isSubscriptionActiveOrNot(user);
+// console.log("isSubscriptionActive : ", isSubscriptionActive)
+
+// var isSubscriptionActive = false;
+// if (user.user_type === "personal") {
+//   isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
+// } else if (user.user_type === "corporate") {
+//   const card = await CardDetials.findOne({ owner_id: user_id });
+//   if (!card) utils.handleError(res, { message: "Card not found", code: 400 });
+
+//   const company_id = card.company_id;
+//   const email = card?.contact_details?.email;
+//   if (!email) return utils.handleError(res, { message: "Work email not found", code: 400 });
+
+//   const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+//   if (isSubscriptionPaidByCompany) {
+//     //Employee is subcription is paid by company
+//     isSubscriptionActive = await checkSusbcriptionIsActive(company_id)
+//   } else {
+//     //Employee is subcription is not paid by company
+//     //check for waiting period 
+
+//     const waiting_end_time = card.waiting_end_time;
+//     if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+//       isSubscriptionActive = true
+//     } else {
+//       isSubscriptionActive = await checkSusbcriptionIsActive(user_id)
+//     }
+//   }
+
+// }
+
+// res.json({ data: isSubscriptionActive, code: 200 })
+
 
 exports.removeLogo = async (req, res) => {
   try {
@@ -3735,148 +3773,149 @@ exports.updateSubscription = async (req, res) => {
       endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
     }
     // let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    console.log("utc date : ", Date.UTC(endOfPeriod.getUTCFullYear(), endOfPeriod.getUTCMonth(), endOfPeriod.getUTCDate()))
     let expireBy = Math.floor(Date.UTC(endOfPeriod.getUTCFullYear(), endOfPeriod.getUTCMonth(), endOfPeriod.getUTCDate()) / 1000);
-    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, "expireBy ",expireBy)
+    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, "expireBy ", expireBy)
 
     const checkIsTrialExits = await Trial.findOne({ user_id });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
     //{ $nin: ["expired", "created", "cancelled"] }
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created", "cancelled"] } }).sort({ createdAt: -1 })
-    console.log("activeSubscription : ", activeSubscription)
+    // let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created", "cancelled"] } }).sort({ createdAt: -1 })
+    // console.log("activeSubscription : ", activeSubscription)
 
-    if (plan.plan_variety === "premium") {
-      console.log("check...")
-      if (!activeSubscription) {
-        if (!checkIsTrialExits) {
-          return res.json({ message: "You don not have any active subscription", code: 404 });
-        }
-      }
+    // if (plan.plan_variety === "premium") {
+    //   console.log("check...")
+    //   if (!activeSubscription) {
+    //     if (!checkIsTrialExits) {
+    //       return res.json({ message: "You don not have any active subscription", code: 404 });
+    //     }
+    //   }
 
-      if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-        const result = await Trial.deleteOne({ user_id })
-        console.log("result : ", result)
-      }
+    //   if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+    //     const result = await Trial.deleteOne({ user_id })
+    //     console.log("result : ", result)
+    //   }
 
-      if (activeSubscription) {
-        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
-        console.log("subcription : ", subcription)
-        const status = subcription.status;
-        const paymentMode = subcription.payment_method;
-        console.log("paymentMode : ", paymentMode)
-        if (status === "created") {
-          return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
-        }
-        if (status !== "created") {
-          await Subscription.findByIdAndDelete(activeSubscription._id);
-          await instance.subscriptions.cancel(activeSubscription.subscription_id)
-        }
-        // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+    //   if (activeSubscription) {
+    //     const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+    //     console.log("subcription : ", subcription)
+    //     const status = subcription.status;
+    //     const paymentMode = subcription.payment_method;
+    //     console.log("paymentMode : ", paymentMode)
+    //     if (status === "created") {
+    //       return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
+    //     }
+    //     if (status !== "created") {
+    //       await Subscription.findByIdAndDelete(activeSubscription._id);
+    //       await instance.subscriptions.cancel(activeSubscription.subscription_id)
+    //     }
+    //     // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
-        if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+    //     if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
 
-        if (subcription.has_scheduled_changes === true) {
-          await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
-        }
-        if (paymentMode === "upi") {
-          console.log('Creating subscription with:', {
-            plan_id: plan.plan_id,
-            total_count: getTotalCount(plan.interval),
-            quantity: 1,
-            customer_notify: 1,
-            expire_by: expireBy
-          });
+    //     if (subcription.has_scheduled_changes === true) {
+    //       await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+    //     }
+    //     if (paymentMode === "upi") {
+    //       console.log('Creating subscription with:', {
+    //         plan_id: plan.plan_id,
+    //         total_count: getTotalCount(plan.interval),
+    //         quantity: 1,
+    //         customer_notify: 1,
+    //         expire_by: expireBy
+    //       });
 
-          const subcription = await instance.subscriptions.create({
-            "plan_id": plan.plan_id,
-            "total_count": getTotalCount(plan.interval),
-            "quantity": 1,
-            "customer_notify": 1,
-            // ...trail,
-            expire_by: expireBy,
-            "notes": {
-              "user_id": user_id.toString(),
-              "user_type": "individual"
-            }
-          })
+    //       const subcription = await instance.subscriptions.create({
+    //         "plan_id": plan.plan_id,
+    //         "total_count": getTotalCount(plan.interval),
+    //         "quantity": 1,
+    //         "customer_notify": 1,
+    //         // ...trail,
+    //         expire_by: expireBy,
+    //         "notes": {
+    //           "user_id": user_id.toString(),
+    //           "user_type": "individual"
+    //         }
+    //       })
 
-          const dataForDatabase = {
-            user_id: user_id,
-            subscription_id: subcription.id,
-            plan_id: plan.plan_id,
-            plan_started_at: startOfPeriod,
-            start_at: startOfPeriod,
-            end_at: endOfPeriod,
-            status: subcription.status
-          }
+    //       const dataForDatabase = {
+    //         user_id: user_id,
+    //         subscription_id: subcription.id,
+    //         plan_id: plan.plan_id,
+    //         plan_started_at: startOfPeriod,
+    //         start_at: startOfPeriod,
+    //         end_at: endOfPeriod,
+    //         status: subcription.status
+    //       }
 
-          result = new Subscription(dataForDatabase);
-          await result.save()
+    //       result = new Subscription(dataForDatabase);
+    //       await result.save()
 
-          console.log("New subscription created:", result);
-        } else {
-          const update = {
-            plan_id: plan_id,
-            schedule_change_at: "cycle_end",
-            customer_notify: true,
-            remaining_count: getTotalCount(plan.interval)
-          }
+    //       console.log("New subscription created:", result);
+    //     } else {
+    //       const update = {
+    //         plan_id: plan_id,
+    //         schedule_change_at: "cycle_end",
+    //         customer_notify: true,
+    //         remaining_count: getTotalCount(plan.interval)
+    //       }
 
-          console.log("update : ", update)
+    //       console.log("update : ", update)
 
-          result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
-          console.log("result : ", result)
-        }
-        return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
-      } else {
-        console.log('Creating subscription with:', {
-          plan_id: plan.plan_id,
-          total_count: getTotalCount(plan.interval),
-          quantity: 1,
-          customer_notify: 1,
-          expire_by: expireBy
-        });
+    //       result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
+    //       console.log("result : ", result)
+    //     }
+    //     return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
+    //   } else {
+    //     console.log('Creating subscription with:', {
+    //       plan_id: plan.plan_id,
+    //       total_count: getTotalCount(plan.interval),
+    //       quantity: 1,
+    //       customer_notify: 1,
+    //       expire_by: expireBy
+    //     });
 
-        const subcription = await instance.subscriptions.create({
-          "plan_id": plan.plan_id,
-          "total_count": getTotalCount(plan.interval),
-          "quantity": 1,
-          "customer_notify": 1,
-          // ...trail,
-          expire_by: expireBy,
-          "notes": {
-            "user_id": user_id.toString(),
-            "user_type": "individual"
-          }
-        })
+    //     const subcription = await instance.subscriptions.create({
+    //       "plan_id": plan.plan_id,
+    //       "total_count": getTotalCount(plan.interval),
+    //       "quantity": 1,
+    //       "customer_notify": 1,
+    //       // ...trail,
+    //       expire_by: expireBy,
+    //       "notes": {
+    //         "user_id": user_id.toString(),
+    //         "user_type": "individual"
+    //       }
+    //     })
 
-        const dataForDatabase = {
-          user_id: user_id,
-          subscription_id: subcription.id,
-          plan_id: plan.plan_id,
-          plan_started_at: startOfPeriod,
-          start_at: startOfPeriod,
-          end_at: endOfPeriod,
-          status: subcription.status
-        }
+    //     const dataForDatabase = {
+    //       user_id: user_id,
+    //       subscription_id: subcription.id,
+    //       plan_id: plan.plan_id,
+    //       plan_started_at: startOfPeriod,
+    //       start_at: startOfPeriod,
+    //       end_at: endOfPeriod,
+    //       status: subcription.status
+    //     }
 
-        result = new Subscription(dataForDatabase);
-        await result.save()
+    //     result = new Subscription(dataForDatabase);
+    //     await result.save()
 
-        console.log("New subscription created:", result);
-        return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
-      }
-    }
-    if (plan.plan_variety === "freemium") {
-      trial = await Trial.create({
-        user_id,
-        start_at: startOfPeriod,
-        end_at: endOfPeriod,
-        status: 'active'
-      })
-      console.log("newTrial : ", trial)
-      return res.json({ message: "Plan converted to Freemium", data: trial, code: 200 })
-    }
+    //     console.log("New subscription created:", result);
+    //     return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
+    //   }
+    // }
+    // if (plan.plan_variety === "freemium") {
+    //   trial = await Trial.create({
+    //     user_id,
+    //     start_at: startOfPeriod,
+    //     end_at: endOfPeriod,
+    //     status: 'active'
+    //   })
+    //   console.log("newTrial : ", trial)
+    //   return res.json({ message: "Plan converted to Freemium", data: trial, code: 200 })
+    // }
   } catch (error) {
     console.log("errorewre", error)
     utils.handleError(res, error)
