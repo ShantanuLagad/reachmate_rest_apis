@@ -3742,6 +3742,10 @@ exports.updateSubscription = async (req, res) => {
     //{ $nin: ["expired", "created", "cancelled"] }
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created", "cancelled"] } }).sort({ createdAt: -1 })
     console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      return utils.handleError(res, { message: "No Active plan data found", code: 400 });
+    }
     if (plan.plan_variety === "premium") {
       console.log("check...")
       if (!activeSubscription) {
