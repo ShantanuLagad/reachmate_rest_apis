@@ -2995,22 +2995,22 @@ async function isSubscriptionActiveOrNot(user) {
 }
 
 
-async function checkActiveSubscription() {
+async function checkActiveSubscription(user) {
   var isSubscriptionActive = false
-  const checkIsTrialExits = await Trial.findOne({ user_id });
+  const checkIsTrialExits = await Trial.findOne({ user_id : user.user_id });
   console.log('endd date>>', checkIsTrialExits?.end_at)
   if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
     return isSubscriptionActive = true
   }
 
-  const subcription = await Subscription.findOne({ user_id: user_id, status: "active" })
+  const subcription = await Subscription.findOne({ user_id: user.user_id, status: "active" })
   if (subcription) {
     console.log("subcription", subcription, 'subcription.end_at', subcription?.end_at, 'subcription.status', subcription?.status)
     // if (subcription?.status === "created") return false
     // if (subcription?.end_at < new Date()) return false
     return isSubscriptionActive = true
   } else {
-    const card = await CardDetials.findOne({ owner_id: user_id });
+    const card = await CardDetials.findOne({ owner_id: user.user_id });
     if (!card) return res.json({ data: false, code: 200 })
     const company_id = card.company_id;
     const email = card?.contact_details?.email;
