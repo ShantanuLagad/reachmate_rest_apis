@@ -3750,7 +3750,7 @@ exports.updateSubscription = async (req, res) => {
       }
 
       if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-        const result = await Trial.findOneAndDelete({ user_id })
+        const result = await Trial.deleteOne({ user_id })
         console.log("result : ", result)
       }
 
@@ -3771,11 +3771,12 @@ exports.updateSubscription = async (req, res) => {
         await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
       }
       if (paymentMode === "upi") {
-        const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
-        console.log("Subscription canceled:", cancelResult);
-
-        const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
-        console.log("deleteSubscription : ", deleteSubscription)
+        if (status !== "cancelled") {
+          const cancelResult = await instance.subscriptions.cancel(activeSubscription.subscription_id);
+          console.log("Subscription canceled:", cancelResult);
+          const deleteSubscription = await Subscription.findOneAndDelete({ _id: activeSubscription._id })
+          console.log("deleteSubscription : ", deleteSubscription)
+        }
 
         console.log('Creating subscription with:', {
           plan_id: plan.plan_id,
