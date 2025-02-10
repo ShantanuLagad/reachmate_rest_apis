@@ -3207,7 +3207,8 @@ exports.createSubscription = async (req, res) => {
       startOfPeriod = new Date(now)
       endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
     }
-    let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    // let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    let expireBy = Math.floor(Date.UTC(endOfPeriod.getUTCFullYear(), endOfPeriod.getUTCMonth(), endOfPeriod.getUTCDate()) / 1000);
     console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, " expireBy : ", expireBy)
     let newSubscription
     let newTrial
@@ -3733,8 +3734,9 @@ exports.updateSubscription = async (req, res) => {
       startOfPeriod = new Date(now)
       endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1))
     }
-    let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
-    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod)
+    // let expireBy = Math.floor(endOfPeriod.getTime() / 1000);
+    let expireBy = Math.floor(Date.UTC(endOfPeriod.getUTCFullYear(), endOfPeriod.getUTCMonth(), endOfPeriod.getUTCDate()) / 1000);
+    console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, "expireBy ",expireBy)
 
     const checkIsTrialExits = await Trial.findOne({ user_id });
     console.log("checkIsTrialExits", checkIsTrialExits)
