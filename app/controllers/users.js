@@ -2341,7 +2341,8 @@ exports.enableOrDisableLink = async (req, res) => {
 exports.getCard = async (req, res) => {
   try {
     console.log("req.user : ", req.user)
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    const isSubscriptionActive = await checkActiveSubscription(req.user)
     console.log("isSubscriptionActive : ", isSubscriptionActive)
     if (isSubscriptionActive === false) {
       return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
@@ -2994,7 +2995,43 @@ async function isSubscriptionActiveOrNot(user) {
 }
 
 
+async function checkActiveSubscription() {
+  var isSubscriptionActive = false
+  const checkIsTrialExits = await Trial.findOne({ user_id });
+  console.log('endd date>>', checkIsTrialExits?.end_at)
+  if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+    return isSubscriptionActive = true
+  }
 
+  const subcription = await Subscription.findOne({ user_id: user_id, status: "active" })
+  if (subcription) {
+    console.log("subcription", subcription, 'subcription.end_at', subcription?.end_at, 'subcription.status', subcription?.status)
+    // if (subcription?.status === "created") return false
+    // if (subcription?.end_at < new Date()) return false
+    return isSubscriptionActive = true
+  } else {
+    const card = await CardDetials.findOne({ owner_id: user_id });
+    if (!card) return res.json({ data: false, code: 200 })
+    const company_id = card.company_id;
+    const email = card?.contact_details?.email;
+    if (!email) return res.json({ data: false, code: 200 })
+    const isSubscriptionPaidByCompany = await PaidByCompany.findOne({ company_id: company_id, email: email });
+    if (isSubscriptionPaidByCompany) {
+      //Employee is subcription is paid by company
+      isSubscriptionActive = false
+    } else {
+      //Employee is subcription is not paid by company
+      //check for waiting period 
+      const waiting_end_time = card.waiting_end_time;
+      if (waiting_end_time && new Date(waiting_end_time) > new Date()) {
+        isSubscriptionActive = true
+      } else {
+        isSubscriptionActive = false
+      }
+    }
+    return isSubscriptionActive
+  }
+}
 
 exports.isSubscriptionActive = async (req, res) => {
   try {
