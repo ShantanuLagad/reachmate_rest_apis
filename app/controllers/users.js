@@ -1459,7 +1459,7 @@ exports.addPersonalCard = async (req, res) => {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
       if (plandata.plan_variety === "freemium") {
-        if (user.personal_cards.length >= 9 && user.companyAccessCardDetails.length === 1) {
+        if (user.personal_cards.length >= 5 && user.companyAccessCardDetails.length >= 5) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
             code: 403
@@ -1735,6 +1735,24 @@ exports.matchAccessCode = async (req, res) => {
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
+
+    const activeSubscription = await Subscription.findOne({ user_id: user._id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+
+    if (activeSubscription) {
+      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      console.log("plandata : ", plandata)
+      if (plandata.plan_variety === "freemium") {
+        if (user.companyAccessCardDetails.length >= 5) {
+          return res.status(403).json({
+            message: "You have reached the maximum limit of freemium plan",
+            code: 403
+          })
+        }
+      }
+    }
+
+
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
