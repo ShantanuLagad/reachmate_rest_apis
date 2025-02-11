@@ -3614,12 +3614,13 @@ exports.plansList = async (req, res) => {
     const plans = await Plan.find({ plan_type: "individual", individual_selected: true }).sort({ 'item.amount': 1 })
     console.log("plans : ", plans)
 
-    const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+    let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
       checkIsTrialExits.plan_id = plans.plan_id
       await checkIsTrialExits.save()
+      console.log("checkIsTrialExits : ", checkIsTrialExits)
       return res.json({ data: plans, isTrialActive: true, active: checkIsTrialExits, update: updatedPlan ? updatedPlan : null, code: 200 });
     }
 
