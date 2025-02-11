@@ -732,12 +732,13 @@ const transporter = nodemailer.createTransport({
 });
 
 function sendInvoiceEmail(mailOptions) {
-
+  console.log("mailOptions : ", mailOptions)
   return new Promise(async (resolve, reject) => {
     try {
       var ejsFile = "./views/invoiceEmail.ejs";
 
       const emailBody = await ejs.renderFile(ejsFile, mailOptions);
+      console.log("emailBody : ", emailBody)
 
       mailOptions.html = emailBody;
 
