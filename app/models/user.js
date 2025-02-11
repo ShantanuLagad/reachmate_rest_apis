@@ -20,7 +20,8 @@ const UserSchema = new mongoose.Schema(
     },
     payment_mode: {
       type: String,
-      enum: ["upi", "bank", "card"]
+      enum: ["upi", "bank", "card"],
+      default : "upi"
     },
     email: {
       type: String,
@@ -110,6 +111,7 @@ const UserSchema = new mongoose.Schema(
       {
         company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
         email_domain: { type: String },
+        primary_card: { type: Boolean, default: false },
         company_name: { type: String },
         access_code: { type: String },
         _id: {
