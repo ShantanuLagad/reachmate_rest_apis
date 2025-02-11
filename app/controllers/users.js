@@ -1974,7 +1974,7 @@ exports.getAllAccessCards = async (req, res) => {
     const user = await User.findById(userId).select("companyAccessCardDetails");
     console.log("user : ", user)
     if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
-      return res.status(404).json({ message: "No company access cards found." });
+      return res.status(204).json({ message: "No company access cards found." });
     }
 
     const companyConditions = user.companyAccessCardDetails.map((detail) => ({
@@ -2524,7 +2524,7 @@ exports.getPersonalCards = async (req, res) => {
 
     if (!personalCards || personalCards.length === 0) {
       // console.log("No personal cards found for user:", userId);
-      return res.status(404).json({ errors: { msg: "No personal cards found for this user." } });
+      return res.status(204).json({ errors: { msg: "No personal cards found for this user." } });
     }
 
     res.status(200).json({ data: personalCards });
@@ -3611,13 +3611,15 @@ exports.webhook = async (req, res) => {
 exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
-    const plans = await Plan.find({ plan_type: "individual", individual_selected: true })
+    const plans = await Plan.find({ plan_type: "individual", individual_selected: true }).sort({ 'item.amount': 1 })
     console.log("plans : ", plans)
 
     const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      checkIsTrialExits.plan_id = plans.plan_id
+      await checkIsTrialExits.save()
       return res.json({ data: plans, isTrialActive: true, active: checkIsTrialExits, update: updatedPlan ? updatedPlan : null, code: 200 });
     }
 
