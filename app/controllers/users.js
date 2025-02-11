@@ -1313,6 +1313,7 @@ exports.getSharedCardsForUser = async (req, res) => {
     const { user_id, search } = req.params;
     const { limit = 10, offset = 0 } = req.query;
 
+    console.log("user_id : ", user_id)
     // Validate if user_id is provided
     if (!user_id) {
       return res.status(400).json({ code: 400, message: "User ID is required." });
@@ -1339,104 +1340,175 @@ exports.getSharedCardsForUser = async (req, res) => {
     }
 
     // Fetch shared cards for the user with $lookup, $skip, and $limit
-    const sharedCards = await SharedCards.aggregate([
-      {
-        $lookup: {
-          from: "card_details", // Collection name for CardDetails
-          localField: "card_id",
-          foreignField: "_id",
-          as: "cardDetails"
-        }
-      },
-      {
-        $unwind: "$cardDetails"
-      },
-      {
-        $lookup: {
-          from: "companies",
-          localField: "cardDetails.company_id",
-          foreignField: "_id",
-          as: "company",
+    const sharedCards = await SharedCards.aggregate(
+      [
+        {
+          $lookup: {
+            from: "card_details", // Collection name for CardDetails
+            localField: "card_id",
+            foreignField: "_id",
+            as: "cardDetails"
+          }
         },
-      },
-      {
-        $unwind: {
-          path: "$company",
-          preserveNullAndEmptyArrays: true,
+        {
+          $unwind: "$cardDetails"
         },
-      },
-      {
-        $addFields: {
-          'cardDetails.bio.business_name': {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.company_name',
-              else: '$cardDetails.bio.business_name'
-            }
+        {
+          $lookup: {
+            from: "companies",
+            localField: "cardDetails.company_id",
+            foreignField: "_id",
+            as: "company",
           },
-          'cardDetails.card_color': {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.card_color',
-              else: '$cardDetails.card_color'
-            }
+        },
+        {
+          $unwind: {
+            path: "$company",
+            preserveNullAndEmptyArrays: true,
           },
-          'cardDetails.text_color': {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.text_color',
-              else: '$cardDetails.text_color'
+        },
+        {
+          $addFields: {
+            'cardDetails.bio.business_name': {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.company_name',
+                else: '$cardDetails.bio.business_name'
+              }
+            },
+            'cardDetails.card_color': {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.card_color',
+                else: '$cardDetails.card_color'
+              }
+            },
+            'cardDetails.text_color': {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.text_color',
+                else: '$cardDetails.text_color'
+              }
+            },
+            "cardDetails.business_logo": {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.business_logo',
+                else: '$cardDetails.business_logo'
+              }
+            },
+            "cardDetails.business_and_logo_status": {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.business_and_logo_status',
+                else: '$cardDetails.business_and_logo_status'
+              }
+            },
+            "cardDetails.address": {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.address',
+                else: '$cardDetails.address'
+              }
+            },
+            "cardDetails.contact_details.website": {
+              $cond: {
+                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+                then: '$company.contact_details.website',
+                else: '$cardDetails.contact_details.website'
+              }
+            },
+          }
+        },
+        {
+          $match: query
+        },
+        {
+          $addFields: {
+            "cardDetails.social_links": {
+              $cond: {
+                if: {
+                  $eq: [
+                    new mongoose.Types.ObjectId(user_id),
+                    "$card_owner_id"
+                  ]
+                },
+                then: "$cardDetails.social_links",
+                else: {
+                  linkedin: {
+                    $cond: {
+                      if: {
+                        $eq: [
+                          "$cardDetails.social_links.linkedin_enabled",
+                          true
+                        ]
+                      },
+                      then: "$cardDetails.social_links.linkedin",
+                      else: null
+                    }
+                  },
+                  linkedin_enabled: "$cardDetails.social_links.linkedin_enabled",
+                  instagram: {
+                    $cond: {
+                      if: {
+                        $eq: [
+                          "$cardDetails.social_links.instagram_enabled",
+                          true
+                        ]
+                      },
+                      then: "$cardDetails.social_links.instagram",
+                      else: null
+                    }
+                  },
+                  instagram_enabled: "$cardDetails.social_links.instagram_enabled",
+                  youtube: {
+                    $cond: {
+                      if: {
+                        $eq: [
+                          "$cardDetails.social_links.youtube_enabled",
+                          true
+                        ]
+                      },
+                      then: "$cardDetails.social_links.youtube",
+                      else: null
+                    }
+                  },
+                  youtube_enabled: "$cardDetails.social_links.youtube_enabled",
+                  x: {
+                    $cond: {
+                      if: {
+                        $eq: [
+                          "$cardDetails.social_links.x_enabled",
+                          true
+                        ]
+                      },
+                      then: "$cardDetails.social_links.x",
+                      else: null
+                    }
+                  },
+                  x_enabled: "$cardDetails.social_links.x_enabled"
+                }
+              }
             }
-          },
-          "cardDetails.business_logo": {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.business_logo',
-              else: '$cardDetails.business_logo'
-            }
-          },
-          "cardDetails.business_and_logo_status": {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.business_and_logo_status',
-              else: '$cardDetails.business_and_logo_status'
-            }
-          },
-          "cardDetails.address": {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.address',
-              else: '$cardDetails.address'
-            }
-          },
-          "cardDetails.contact_details.website": {
-            $cond: {
-              if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-              then: '$company.contact_details.website',
-              else: '$cardDetails.contact_details.website'
-            }
-          },
+          }
+        },
+        {
+          $skip: offsetInt
+        },
+        {
+          $limit: limitInt
+        },
+        {
+          $project: {
+            _id: 0, // Exclude the default _id field
+            card_id: "$card_id",
+            user_id: "$user_id",
+            card_owner_id: "$card_owner_id",
+            cardDetails: "$cardDetails",
+          }
         }
-      },
-      {
-        $match: query
-      },
-      {
-        $skip: offsetInt
-      },
-      {
-        $limit: limitInt
-      },
-      {
-        $project: {
-          _id: 0, // Exclude the default _id field
-          card_id: "$card_id",
-          user_id: "$user_id",
-          card_owner_id: "$card_owner_id",
-          cardDetails: "$cardDetails",
-        }
-      }
-    ]);
+      ]
+    );
 
     res.json({ code: 200, sharedCards });
   } catch (error) {
@@ -1752,7 +1824,14 @@ exports.matchAccessCode = async (req, res) => {
         }
       }
     }
-
+    const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
+    console.log("checkTeamSize : ", checkTeamSize)
+    if (checkTeamSize.length !== 0) {
+      return res.status(403).json({
+        message: "Only one Team can be created on access code",
+        code: 403
+      })
+    }
 
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
@@ -1911,7 +1990,7 @@ exports.getAllAccessCards = async (req, res) => {
     console.log("companies : ", companies)
 
     if (companies.length === 0) {
-      return res.status(404).json({ message: "No companies found for the access cards." });
+      return res.status(204).json({ message: "No companies found for the access cards." });
     }
     const enrichedCompanies = await Promise.all(
       companies.map(async (company) => {
@@ -2767,13 +2846,15 @@ exports.exportCardToExcel = async (req, res) => {
       user_id: mongoose.Types.ObjectId(user_id)
     };
 
+    console.log("query : ", query)
+
     const sharedCards = await SharedCards.aggregate([
       {
         $match: query
       },
       {
         $lookup: {
-          from: "card_details", // Collection name for CardDetails
+          from: "card_details",
           localField: "card_id",
           foreignField: "_id",
           as: "cardDetails"
@@ -2874,6 +2955,11 @@ exports.exportCardToExcel = async (req, res) => {
       }
     ]);
 
+    console.log("sharedCards : ", sharedCards)
+    if (!sharedCards || sharedCards.length === 0) {
+      return utils.handleError(res, { message: "No card found", code: 400 });
+    }
+
     // Convert JSON to Excel
     const ws = XLSX.utils.json_to_sheet(sharedCards);
     const wb = XLSX.utils.book_new();
@@ -2881,16 +2967,23 @@ exports.exportCardToExcel = async (req, res) => {
 
     // Specify the server folder path and Excel file name
     const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
+    // const serverFolderPath = '/public'
+    console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
+    console.log("excelFilePath : ", excelFilePath)
 
     // Save the Excel file to the server folder
+    // const dir = path.join(__dirname, 'public', 'cardExcelSheet');
+    // if (!fs.existsSync(dir)) {
+    //   fs.mkdirSync(dir, { recursive: true });
+    // }
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
-
 
     // const media = await uploadFilefromPath(excelFilePath)
 
     const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
+    console.log("path : ", path)
 
     console.log(email)
     let mailOptions = {
@@ -2906,9 +2999,14 @@ exports.exportCardToExcel = async (req, res) => {
       path: path,
     });
 
-    await sendInvoiceEmail(mailOptions);
+    try {
+      await sendInvoiceEmail(mailOptions);
+      res.json({ data: "Mail sent to your email with the Excel sheet", code: 200 });
+    } catch (sendError) {
+      console.error("Error sending email:", sendError);
+      utils.handleError(res, { message: "Failed to send email", code: 500 });
+    }
 
-    res.json({ data: "Mail send to you email with excel sheet", code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
