@@ -31,6 +31,11 @@ const CompanySchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+    payment_mode: {
+      type: String,
+      enum: ["upi", "bank", "card"],
+      default: "upi"
+    },
     gst_no: {
       type: String,
       default: ""

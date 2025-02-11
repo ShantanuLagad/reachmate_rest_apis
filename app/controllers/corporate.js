@@ -2531,3 +2531,35 @@ exports.getPaymentHistory = async (req, res) => {
     utils.handleError(res, error);
   }
 }
+
+
+exports.setDefaultPaymentMethod = async (req, res) => {
+  try {
+    const userId = req.user._id
+    console.log("userId : ", userId)
+    const userdata = await Company.findOne({ _id: userId })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: "Authentication failed. please login again",
+        code: 404
+      })
+    }
+    const { method } = req.body
+    if (!["upi", "bank", "card"].includes(method)) {
+      return res.status(403).json({
+        message: "Invalid method",
+        code: 404
+      })
+    }
+    userdata.payment_mode = method
+    await userdata.save()
+    return res.status(200).json({
+      message: "Payment method set successfully",
+      code: 200
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
