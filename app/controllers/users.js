@@ -1207,8 +1207,12 @@ exports.addSharedCard = async (req, res) => {
     }
 
     //chech the user have a card and get user card id
-    const userCard = await CardDetials.findOne({ _id: card_id })
+    let userCard = await CardDetials.findOne({ _id: card_id })
     console.log("userCard : ", userCard)
+    // if (!userCard) {
+    //   let userCard = await Company.findOne({ _id: card_id })
+    //   console.log("userCard : ", userCard)
+    // }
     if (!userCard) {
       return utils.handleError(res, { message: "Your card not found", code: 404 });
     }
@@ -1546,7 +1550,7 @@ exports.addPersonalCard = async (req, res) => {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
       if (plandata.plan_variety === "freemium") {
-        if (user.personal_cards.length >= 1) {
+        if (user.personal_cards.length === 1) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
             code: 403
