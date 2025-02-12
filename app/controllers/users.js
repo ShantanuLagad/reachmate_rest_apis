@@ -1178,8 +1178,10 @@ exports.addSharedCard = async (req, res) => {
 
     const { card_id } = req.body;
     const user_id = req.user._id;
+    console.log("user_id : ", user_id, " card_id : ", card_id)
 
     const user1 = await User.findById(user_id);
+    console.log("user1 : ", user1)
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" })
     console.log("activeSubscription : ", activeSubscription)
@@ -1206,11 +1208,13 @@ exports.addSharedCard = async (req, res) => {
 
     //chech the user have a card and get user card id
     const userCard = await CardDetials.findOne({ _id: user_id })
+    console.log("userCard : ", userCard)
     if (!userCard) {
       return utils.handleError(res, { message: "Your card not found", code: 404 });
     }
 
     const your_card_id = userCard._id;
+    console.log("your_card_id : ", your_card_id)
 
     // Fetch card details to get the owner_id
     console.log("card_id : ", card_id)
@@ -1225,6 +1229,7 @@ exports.addSharedCard = async (req, res) => {
 
     const card_owner_id = carddetails.data.owner_id;
     const user2 = await User.findById(card_owner_id);
+    console.log("user2 : ", user2)
 
     // Check if user is trying to add their own card
     if (user_id.equals(card_owner_id)) {
@@ -1233,6 +1238,7 @@ exports.addSharedCard = async (req, res) => {
 
     // Check if shared card already exists
     const existingSharedCard = await SharedCards.findOne({ card_id, user_id, card_owner_id });
+    console.log("existingSharedCard : ", existingSharedCard)
 
     if (existingSharedCard) {
       return res.status(400).json({ code: 400, message: "Shared card already exists." });
