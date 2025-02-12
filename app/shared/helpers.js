@@ -64,7 +64,7 @@ module.exports = {
       console.log("OBJ in upload file is here---", file.data);
       console.log("OBJ in upload file is here---", file.mimetype);
       console.log("object.path + / + filename", object.path + "/" + filename);
-      
+
       const params = {
         Bucket: Bucket,
         Key: object.path + "/" + filename,
@@ -82,6 +82,29 @@ module.exports = {
     });
   },
 
+  async uploadExcelFile(excelFilePath) {
+    const file = fs.readFileSync(excelFilePath);
+    const filename = path.basename(excelFilePath);
+
+    const params = {
+      Bucket: Bucket,
+      Key: object.path + "/" + filename,
+      Body: file.data,
+      ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+
+    return new Promise((resolve, reject) => {
+      bucket.upload(params, function (err, data) {
+        if (err) {
+          console.error("Upload error: ", err);
+          reject({ message: "File upload failed", error: err });
+        } else {
+          console.log("Upload success:", data);
+          resolve(data.Location);
+        }
+      });
+    });
+  },
 
 
   //S3 BUCKET

@@ -8,6 +8,7 @@ const {
   capitalizeFirstLetter,
   validateFileSize,
   objectToQueryString,
+  uploadExcelFile
 } = require("../shared/helpers");
 const { convert } = require('convert-svg-to-png');
 const cron = require("node-cron");
@@ -1180,8 +1181,13 @@ exports.addSharedCard = async (req, res) => {
 
     const user1 = await User.findById(user_id);
 
-    const activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" })
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" })
     console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id: user_id, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
 
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
@@ -2962,37 +2968,71 @@ exports.exportCardToExcel = async (req, res) => {
 
     // Convert JSON to Excel
     const ws = XLSX.utils.json_to_sheet(sharedCards);
+    console.log("ws : ", ws)
     const wb = XLSX.utils.book_new();
+    console.log("wb : ", wb)
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
+    console.log("ws and wb : ", ws, " ", wb)
 
     // Specify the server folder path and Excel file name
-    const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
-    // const serverFolderPath = '/public'
+    // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
+    const serverFolderPath = '/public'
     console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
-    
+
+    if (!fs.existsSync(excelFilePath)) {
+      fs.mkdirSync(excelFilePath, { recursive: true });
+      console.log('Directory created:', excelFilePath);
+    } else {
+      console.log('Directory already exists:', excelFilePath);
+    }
+
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
     // const media = await uploadFilefromPath(excelFilePath)
 
-    const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
+    // const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
+    // console.log("path : ", path)
+
+    // console.log(email)
+    // let mailOptions = {
+    //   to: email,
+    //   subject: `Exported Card from ${process.env.APP_NAME}`,
+    //   name: req.user.full_name,
+    //   logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
+    //   attachments: [],
+    // };
+
+    // mailOptions.attachments.push({
+    //   filename: `business_cards.xlsx`,
+    //   path: path,
+    // });
+
+    // try {
+    //   await sendInvoiceEmail(mailOptions);
+    //   res.json({ data: "Mail sent to your email with the Excel sheet", code: 200 });
+    // } catch (sendError) {
+    //   console.error("Error sending email:", sendError);
+    //   utils.handleError(res, { message: "Failed to send email", code: 500 });
+    // }
+
+    const path = await uploadExcelFile(excelFilePath);
     console.log("path : ", path)
 
-    console.log(email)
     let mailOptions = {
       to: email,
       subject: `Exported Card from ${process.env.APP_NAME}`,
       name: req.user.full_name,
       logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-      attachments: [],
+      attachments: [
+        {
+          filename: `business_cards.xlsx`,
+          path: path,
+        },
+      ],
     };
-
-    mailOptions.attachments.push({
-      filename: `business_cards.xlsx`,
-      path: path,
-    });
 
     try {
       await sendInvoiceEmail(mailOptions);
@@ -3001,6 +3041,7 @@ exports.exportCardToExcel = async (req, res) => {
       console.error("Error sending email:", sendError);
       utils.handleError(res, { message: "Failed to send email", code: 500 });
     }
+
 
   } catch (error) {
     console.log(error)
@@ -3407,6 +3448,7 @@ exports.createSubscription = async (req, res) => {
     if (plan.plan_variety === "freemium") {
       newTrial = await Trial.create({
         user_id,
+        plan_id,
         start_at: startOfPeriod,
         end_at: endOfPeriod,
         status: 'active'
@@ -4068,6 +4110,7 @@ exports.updateSubscription = async (req, res) => {
     if (plan.plan_variety === "freemium") {
       trial = await Trial.create({
         user_id,
+        plan_id,
         start_at: startOfPeriod,
         end_at: endOfPeriod,
         status: 'active'
