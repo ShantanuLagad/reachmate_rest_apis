@@ -1922,6 +1922,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       { email_domain: emailDomain },
       { password: 0, decoded_password: 0, bio: 0, social_links: 0 }
     );
+    console.log("company : ", company)
     if (!company) {
       return res.status(404).json({ message: 'Company not found.' });
     }
@@ -1958,6 +1959,32 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       },
     };
 
+    const carddata = {
+      // contact_details: {
+      //   coeuntry_code: '',
+      //   mobil_number: teamMember?.phone_number,
+      //   office_landline: '',
+      //   email: teamMember?.work_email,
+      //   website: '',
+      //   mobile_number_enabled: ''
+      // },
+      contact_details: company.contact_details,
+      bio: bio,
+      social_links: {
+        linkedin: teamMember.social_links?.linkedin || "",
+        x: teamMember.social_links?.x || "",
+        instagram: teamMember.social_links?.instagram || "",
+        youtube: teamMember.social_links?.youtube || ""
+      },
+      business_logo: company?.business_logo,
+      text_color: company?.text_color,
+      card_color: company?.card_color,
+      card_type: 'corporate',
+      owner_id: userId,
+      company_id: teamMember?.company_details?.company_id,
+      business_and_logo_status: company?.business_and_logo_status
+    }
+
     const existingIndex = user.companyAccessCardDetails.findIndex(
       (detail) => detail.company_id.toString() === company._id.toString()
     );
@@ -1975,6 +2002,9 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     }
 
     await user.save();
+
+    const newCard = await CardDetials.create(carddata)
+    console.log("newCard : ", newCard)
 
     otpRecord.used = true;
     await otpRecord.save();
