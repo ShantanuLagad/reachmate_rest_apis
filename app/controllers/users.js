@@ -1205,7 +1205,7 @@ exports.addSharedCard = async (req, res) => {
     }
 
     //chech the user have a card and get user card id
-    const userCard = await CardDetials.findOne({_id: user_id })
+    const userCard = await CardDetials.findOne({ _id: user_id })
     if (!userCard) {
       return utils.handleError(res, { message: "Your card not found", code: 404 });
     }
@@ -1215,8 +1215,8 @@ exports.addSharedCard = async (req, res) => {
     // Fetch card details to get the owner_id
     console.log("card_id : ", card_id)
 
-    // const carddetails = await getItemThroughId(CardDetials, card_id);
-    const carddetails = await CardDetials.findOne({ _id: card_id })
+    const carddetails = await getItemThroughId(CardDetials, card_id);
+    // const carddetails = await CardDetials.findOne({ _id: card_id })
     console.log("Card details are---", carddetails.data)
 
     if (!carddetails || carddetails === null) {
