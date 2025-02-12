@@ -1622,7 +1622,7 @@ exports.addPersonalCard = async (req, res) => {
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
-    res.json({
+    return res.json({
       code: 200, message: "Card Save successfully",
       cardData: cardData
     })
