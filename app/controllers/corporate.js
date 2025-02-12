@@ -893,6 +893,9 @@ exports.deleteTeamMemberByID = async (req, res) => {
     const objectId = mongoose.Types.ObjectId(_id);
 
     const teamMember = await TeamMember.findByIdAndDelete(objectId);
+    console.log("teamMember : ", teamMember)
+    const company_id = teamMember?.company_details?.company_id
+    console.log("company_id : ", company_id)
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
     }
@@ -905,11 +908,11 @@ exports.deleteTeamMemberByID = async (req, res) => {
       { new: true }
     );
 
-    if (!user) {
-      return res.status(404).json({
-        message: 'No user found with the specified team member ID in companyAccessCardDetails.',
-      });
-    }
+    // if (!user) {
+    //   return res.status(404).json({
+    //     message: 'No user found with the specified team member ID in companyAccessCardDetails.',
+    //   });
+    // }
 
     console.log('Updated user after removing team member:', user);
 
