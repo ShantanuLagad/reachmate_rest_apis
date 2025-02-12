@@ -3933,7 +3933,7 @@ exports.cancelSubscription = async (req, res) => {
     const subcription = await instance.subscriptions.fetch(isSubcriptionExist.subscription_id);
     const status = subcription.status
 
-    if (!["authenticated", "active", "paused", "pending", "halted", "created"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
+    if (!["authenticated", "active", "paused", "pending", "halted", "created", "expired"].includes(status)) return res.json({ message: `${status} subscription can not be cancelled`, code: 400 });
 
     if (subcription.has_scheduled_changes === true) {
       await instance.subscriptions.cancelScheduledChanges(isSubcriptionExist.subscription_id);
