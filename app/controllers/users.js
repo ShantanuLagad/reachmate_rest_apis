@@ -1850,12 +1850,12 @@ exports.matchAccessCode = async (req, res) => {
     }
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
-    if (checkTeamSize.length >= 1) {
-      return res.status(403).json({
-        message: "Only one Team can be created on access code",
-        code: 403
-      })
-    }
+    // if (checkTeamSize.length >= 1) {
+    //   return res.status(403).json({
+    //     message: "Only one Team can be created on access code",
+    //     code: 403
+    //   })
+    // }
 
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
