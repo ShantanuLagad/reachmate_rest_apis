@@ -1213,11 +1213,13 @@ exports.addSharedCard = async (req, res) => {
     const your_card_id = userCard._id;
 
     // Fetch card details to get the owner_id
+    console.log("card_id : ", card_id)
 
-    const carddetails = await getItemThroughId(CardDetials, card_id);
+    // const carddetails = await getItemThroughId(CardDetials, card_id);
+    const carddetails = await CardDetials.findOne({ _id: card_id })
     console.log("Card details are---", carddetails.data)
 
-    if (!carddetails) {
+    if (!carddetails || carddetails === null) {
       return utils.handleError(res, { message: "Shared card not found", code: 404 });
     }
 
