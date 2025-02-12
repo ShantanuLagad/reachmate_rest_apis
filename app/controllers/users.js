@@ -1543,14 +1543,19 @@ exports.addPersonalCard = async (req, res) => {
     console.log('USerrr', user)
     const owner_id = req.user._id;
 
-    const activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
+    let activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
     console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
 
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
       if (plandata.plan_variety === "freemium") {
-        if (user.personal_cards.length === 1) {
+        if (user.personal_cards.length !== 0) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
             code: 403
@@ -1561,6 +1566,7 @@ exports.addPersonalCard = async (req, res) => {
 
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
     console.log('cardd is first card', isFirstCard)
+
     const data = req.body;
     const card = {
       owner_id,
