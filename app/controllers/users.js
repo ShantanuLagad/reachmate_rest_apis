@@ -2972,12 +2972,7 @@ exports.exportCardToExcel = async (req, res) => {
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
-
-    // Save the Excel file to the server folder
-    // const dir = path.join(__dirname, 'public', 'cardExcelSheet');
-    // if (!fs.existsSync(dir)) {
-    //   fs.mkdirSync(dir, { recursive: true });
-    // }
+    
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
     // const media = await uploadFilefromPath(excelFilePath)
@@ -3618,7 +3613,12 @@ exports.plansList = async (req, res) => {
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      return res.json({ data: plans, isTrialActive: true, active: { ...checkIsTrialExits, plan_id: plans.plan_id }, update: updatedPlan ? updatedPlan : null, code: 200 });
+      let result = { ...checkIsTrialExits.toObject() }
+      const freemium = plans.find(i => i.plan_variety === "freemium")
+      console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
+      result.plan_id = freemium?.plan_id
+      console.log("result : ", result)
+      return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
     }
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
