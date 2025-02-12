@@ -3618,10 +3618,7 @@ exports.plansList = async (req, res) => {
     console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      checkIsTrialExits.plan_id = plans.plan_id
-      await checkIsTrialExits.save()
-      console.log("checkIsTrialExits : ", checkIsTrialExits)
-      return res.json({ data: plans, isTrialActive: true, active: checkIsTrialExits, update: updatedPlan ? updatedPlan : null, code: 200 });
+      return res.json({ data: plans, isTrialActive: true, active: { ...checkIsTrialExits, plan_id: plans.plan_id }, update: updatedPlan ? updatedPlan : null, code: 200 });
     }
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
