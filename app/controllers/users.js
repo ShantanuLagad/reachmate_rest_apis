@@ -1850,7 +1850,7 @@ exports.matchAccessCode = async (req, res) => {
     }
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
-    if (checkTeamSize.length !== 0) {
+    if (checkTeamSize.length >= 1) {
       return res.status(403).json({
         message: "Only one Team can be created on access code",
         code: 403
