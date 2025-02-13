@@ -926,7 +926,7 @@ exports.dashBoardCard = async (req, res) => {
           _id: null,
           amount: {
             $sum: {
-              $toInt
+              $toDouble
                 : "$amount"
             }
           }
@@ -2550,7 +2550,7 @@ exports.chartData = async (req, res) => {
           },
           amount: {
             $sum: {
-              $toInt
+              $toDouble
                 : "$amount"
             }
           }
