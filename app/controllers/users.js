@@ -1543,25 +1543,25 @@ exports.addPersonalCard = async (req, res) => {
     console.log('USerrr', user)
     const owner_id = req.user._id;
 
-    let activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
-    console.log("activeSubscription : ", activeSubscription)
+    let activePremiumSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
+    console.log("activeSubscription : ", activePremiumSubscription)
 
-    if (!activeSubscription) {
-      activeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
-      console.log("activeSubscription : ", activeSubscription)
-    }
+    // if (!activePremiumSubscription) {
+    // let  activeFreeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
+    //   console.log("activeSubscription : ", activeSubscription)
+    // }
 
-    if (activeSubscription) {
-      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
-      console.log("plandata : ", plandata)
-      if (plandata.plan_variety === "freemium") {
+    if (!activePremiumSubscription) {
+      // const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      // console.log("plandata : ", plandata)
+      // if (plandata.plan_variety === "freemium") {
         if (user.personal_cards.length > 1) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
             code: 403
           })
         }
-      }
+      // }
     }
 
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
@@ -3711,20 +3711,10 @@ exports.plansList = async (req, res) => {
     const user_id = req.user._id;
     const plans = await Plan.find({ plan_type: "individual", individual_selected: true }).sort({ 'item.amount': 1 })
     console.log("plans : ", plans)
-
-    let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
-    console.log("checkIsTrialExits", checkIsTrialExits)
     let updatedPlan = null;
-    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      let result = { ...checkIsTrialExits.toObject() }
-      const freemium = plans.find(i => i.plan_variety === "freemium")
-      console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
-      result.plan_id = freemium?.plan_id
-      console.log("result : ", result)
-      return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
-    }
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
+    console.log("subss",activeSubscription)
     if (activeSubscription) {
       if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled")) {
         activeSubscription = null
@@ -3740,10 +3730,33 @@ exports.plansList = async (req, res) => {
             planfromDatabase
           }
         }
+        console.log("subss in",{activeSubscription,subcription})
+        res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
+        return;
       }
+
+     
+    }
+    
+    
+   
+
+    let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+    console.log("checkIsTrialExits", checkIsTrialExits)
+ 
+    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      let result = { ...checkIsTrialExits.toObject() }
+      const freemium = plans.find(i => i.plan_variety === "freemium")
+      console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
+      result.plan_id = freemium?.plan_id
+      console.log("result : ", result)
+
+
+
+      return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
     }
 
-    res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
+    
 
   } catch (error) {
     utils.handleError(res, error)

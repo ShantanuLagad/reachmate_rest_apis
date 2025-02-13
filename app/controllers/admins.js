@@ -1456,11 +1456,28 @@ exports.getContactUsList = async (req, res) => {
 
 exports.getRegistrationList = async (req, res) => {
   try {
-    const { limit = 10, offset = 0, sort = -1 } = req.query;
-
+    const { search, limit = 10, offset = 0, sort = -1 } = req.query;
+    let filter = {}
+    if (search) {
+      filter['$or'] = [
+        {
+          email: { $regex: search, $options: 'i' }
+        },
+        {
+          company_name: { $regex: search, $options: 'i' }
+        },
+        {
+          first_name: { $regex: search, $options: 'i' }
+        },
+        {
+          last_name: { $regex: search, $options: 'i' }
+        }
+      ]
+    }
     const start_date = moment().subtract(30, "days").toDate()
     const count = await Registration.countDocuments({})
     const registration = await Registration.find({
+      ...filter,
       $or: [
         { status: "pending" },
         {
@@ -2934,6 +2951,12 @@ exports.getUser = async (req, res) => {
         $match: filter
       },
       {
+        $project: {
+          password: 0,
+          confirm_password: 0
+        }
+      },
+      {
         $sort: {
           createdAt: -1
         }
@@ -2959,3 +2982,122 @@ exports.getUser = async (req, res) => {
   }
 }
 
+
+exports.getSingleUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    console.log("id : ", id)
+    const userdata = await User.findOne({ _id: id })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: 'User not found',
+        code: 404
+      })
+    }
+    return res.status(200).json({
+      message: 'User data fetched successfully',
+      data: userdata,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.editSignleUser = async (req, res) => {
+  try {
+    const { user_id } = req.body
+    console.log("id : ", user_id)
+    const userdata = await User.findOne({ _id: user_id })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: 'User not found',
+        code: 404
+      })
+    }
+
+    const data = req.body
+    delete data.user_id
+    const result = await User.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(user_id)
+      },
+      {
+        $set: data
+      }, { new: true }
+    )
+    return res.status(200).json({
+      message: "user edited successfully",
+      data: result,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.deleteSignleUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    console.log("id : ", id)
+    const userdata = await User.findOne({ _id: id })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: 'User not found',
+        code: 404
+      })
+    }
+
+    const result = await User.findOneAndDelete(
+      {
+        _id: new mongoose.Types.ObjectId(id)
+      }
+    )
+    return res.status(200).json({
+      message: "user deleted successfully",
+      data: result,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { user_id, password, confirm_password } = req.body
+    console.log("id : ", user_id)
+    const userdata = await User.findOne({ _id: user_id })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: 'User not found',
+        code: 404
+      })
+    }
+
+    if (password.toString() !== confirm_password.toString()) {
+      return res.status(403).json({
+        message: 'Password does not matched',
+        code: 404
+      })
+    }
+
+    userdata.password = password
+    userdata.confirm_password = confirm_password
+    await userdata.save()
+
+    return res.status(200).json({
+      message: "User password reset successfully",
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}

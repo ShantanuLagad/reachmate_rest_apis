@@ -375,4 +375,34 @@ router.get(
   controller.getUser
 )
 
+router.get(
+  "/getSingleUserData/:id",
+  trimRequest.all,
+  requireAuth,
+  controller.getSingleUser
+)
+
+router.patch(
+  "/editSingleUserData",
+  trimRequest.all,
+  requireAuth,
+  controller.editSignleUser
+)
+
+router.delete(
+  "/deleteSingleUserData/:id",
+  trimRequest.all,
+  requireAuth,
+  controller.deleteSignleUser
+)
+
+
+router.post(
+  "/resetUserPassword",
+  trimRequest.all,
+  requireAuth,
+  controller.resetUserPassword
+)
+
+
 module.exports = router
