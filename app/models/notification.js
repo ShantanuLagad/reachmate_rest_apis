@@ -17,7 +17,8 @@ const NotificationSchema = new mongoose.Schema(
                 "company",
                 "card_shared",
                 "by_admin",
-                "removed_from_paid"
+                "removed_from_paid",
+                "need_subscription_upgrade"
             ],
             required: true,
         },

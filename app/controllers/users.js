@@ -1261,40 +1261,14 @@ exports.addSharedCard = async (req, res) => {
 
     //share card to opposite side
 
-    const isOppositeSieCardAlreadyExist = await SharedCards.findOne({ card_id: your_card_id, user_id: card_owner_id, card_owner_id: user_id });
 
-    if (!isOppositeSieCardAlreadyExist) {
+    let card_owner_subscription = await Subscription.findOne({ user_id: card_owner_id, status: "active" })
+    console.log("card_owner_subscription : ", card_owner_subscription)
 
-      const shareCardToOppositeSide = new SharedCards({
-        card_id: your_card_id,
-        user_id: card_owner_id,
-        card_owner_id: user_id,
-      })
-
-      await shareCardToOppositeSide.save();
+    if (!card_owner_subscription) {
+      card_owner_subscription = await Trial.findOne({ user_id: card_owner_id, status: "active" })
+      console.log("card_owner_subscription : ", card_owner_subscription)
     }
-
-
-
-    const notificationUser1 = {
-      sender_id: card_owner_id,
-      receiver_id: user_id,
-      type: "card_shared",
-      title: "Business Card Shared",
-      body: `${carddetails?.data?.bio?.full_name} has shared their business card`
-    }
-
-    const saveNotificationForUser1 = new Notification(notificationUser1)
-    await saveNotificationForUser1.save()
-
-
-    if (user1.notification) {
-      const device_token = await FCMDevice.findOne({ user_id: user_id })
-      console.log("device_token1", device_token)
-      if (!device_token) return
-      utils.sendPushNotification([device_token.token], notificationUser1.title, notificationUser1.body)
-    }
-
 
     const notificationUser2 = {
       sender_id: user_id,
@@ -1304,16 +1278,73 @@ exports.addSharedCard = async (req, res) => {
       body: `${userCard?.bio?.full_name} has shared their business card`
     }
 
+    const notificationUser1 = {
+      sender_id: card_owner_id,
+      receiver_id: user_id,
+      type: "card_shared",
+      title: "Business Card Shared",
+      body: `${carddetails?.data?.bio?.full_name} has shared their business card`
+    }
+
+
+    if (card_owner_subscription) {
+      const plandata = await Plan.findOne({ plan_id: card_owner_subscription.plan_id })
+      console.log("plandata : ", plandata)
+      if (plandata.plan_variety === "premium") {
+        const isOppositeSieCardAlreadyExist = await SharedCards.findOne({ card_id: your_card_id, user_id: card_owner_id, card_owner_id: user_id });
+
+        if (!isOppositeSieCardAlreadyExist) {
+
+          const shareCardToOppositeSide = new SharedCards({
+            card_id: your_card_id,
+            user_id: card_owner_id,
+            card_owner_id: user_id,
+          })
+
+          await shareCardToOppositeSide.save();
+        }
+
+        const saveNotificationForUser1 = new Notification(notificationUser1)
+        await saveNotificationForUser1.save()
+
+
+        if (user2.notification) {
+          const device_token = await FCMDevice.findOne({ user_id: user2._id })
+          console.log("device_token2", device_token)
+          if (!device_token) return
+          utils.sendPushNotification([device_token.token], notificationUser2.title, notificationUser2.body)
+        }
+      }
+      const fremiumNotification = {
+        sender_id: card_owner_id,
+        receiver_id: user_id,
+        type: "need_subscription_upgrade",
+        title: "Need to Upgrade your plan",
+        body: `${carddetails?.data?.bio?.full_name} has shared their business card but due to your Freemium Subscription you can't received it. Please upgrade your plan`
+      }
+
+      const saveFreemiumNotification = new Notification(fremiumNotification)
+      await saveFreemiumNotification.save()
+
+
+      if (user2.notification) {
+        const device_token = await FCMDevice.findOne({ user_id: user2._id })
+        console.log("device_token2", device_token)
+        if (!device_token) return
+        utils.sendPushNotification([device_token.token], fremiumNotification.title, fremiumNotification.body)
+      }
+    }
+
+    if (user1.notification) {
+      const device_token = await FCMDevice.findOne({ user_id: user_id })
+      console.log("device_token1", device_token)
+      if (!device_token) return
+      utils.sendPushNotification([device_token.token], notificationUser1.title, notificationUser1.body)
+    }
+
+
     const saveNotificationForUser2 = new Notification(notificationUser2)
     await saveNotificationForUser2.save()
-
-
-    if (user2.notification) {
-      const device_token = await FCMDevice.findOne({ user_id: user2._id })
-      console.log("device_token2", device_token)
-      if (!device_token) return
-      utils.sendPushNotification([device_token.token], notificationUser2.title, notificationUser2.body)
-    }
 
 
     res.json({ code: 200, message: "Shared card added successfully." });
@@ -1338,8 +1369,16 @@ exports.getSharedCardsForUser = async (req, res) => {
     }
 
     const user = await User.findById(user_id);
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(user);
-    if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    let activeSubscription = await Subscription.findOne({ user_id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
+
+    // const isSubscriptionActive = await isSubscriptionActiveOrNot(user);
+    if (!activeSubscription) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     // Convert limit and offset to integers
     const limitInt = parseInt(limit, 10);
