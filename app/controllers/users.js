@@ -1555,12 +1555,12 @@ exports.addPersonalCard = async (req, res) => {
       // const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       // console.log("plandata : ", plandata)
       // if (plandata.plan_variety === "freemium") {
-        if (user.personal_cards.length > 1) {
-          return res.status(403).json({
-            message: "You have reached the maximum limit of freemium plan",
-            code: 403
-          })
-        }
+      if (user.personal_cards.length > 1) {
+        return res.status(403).json({
+          message: "You have reached the maximum limit of freemium plan",
+          code: 403
+        })
+      }
       // }
     }
 
@@ -3714,7 +3714,7 @@ exports.plansList = async (req, res) => {
     let updatedPlan = null;
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
-    console.log("subss",activeSubscription)
+    console.log("subss", activeSubscription)
     if (activeSubscription) {
       if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled")) {
         activeSubscription = null
@@ -3730,34 +3730,23 @@ exports.plansList = async (req, res) => {
             planfromDatabase
           }
         }
-        console.log("subss in",{activeSubscription,subcription})
-        res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
-        return;
+        console.log("subss in", { activeSubscription, subcription })
+        return res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
       }
+    } else {
 
-     
+      let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+      console.log("checkIsTrialExits", checkIsTrialExits)
+
+      if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+        let result = { ...checkIsTrialExits.toObject() }
+        const freemium = plans.find(i => i.plan_variety === "freemium")
+        console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
+        result.plan_id = freemium?.plan_id
+        console.log("result : ", result)
+        return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
+      }
     }
-    
-    
-   
-
-    let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
-    console.log("checkIsTrialExits", checkIsTrialExits)
- 
-    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      let result = { ...checkIsTrialExits.toObject() }
-      const freemium = plans.find(i => i.plan_variety === "freemium")
-      console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
-      result.plan_id = freemium?.plan_id
-      console.log("result : ", result)
-
-
-
-      return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
-    }
-
-    
-
   } catch (error) {
     utils.handleError(res, error)
   }
