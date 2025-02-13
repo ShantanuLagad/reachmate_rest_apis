@@ -3713,26 +3713,22 @@ exports.plansList = async (req, res) => {
     console.log("plans : ", plans)
     let updatedPlan = null;
 
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
-    console.log("subss", activeSubscription)
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: 'active' }).sort({ createdAt: -1 })
+    console.log("activeSubscription", activeSubscription)
     if (activeSubscription) {
-      if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled")) {
-        activeSubscription = null
-      } else {
-        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
-        console.log("subcription : ", subcription)
-        if (subcription.has_scheduled_changes === true) {
-          const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
-          const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
+      const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+      console.log("subcription : ", subcription)
+      if (subcription.has_scheduled_changes === true) {
+        const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
+        const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
 
-          updatedPlan = {
-            update,
-            planfromDatabase
-          }
+        updatedPlan = {
+          update,
+          planfromDatabase
         }
-        console.log("subss in", { activeSubscription, subcription })
-        return res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
       }
+      console.log("subscriptions ", { activeSubscription, subcription })
+      return res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
     } else {
 
       let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
@@ -3747,6 +3743,7 @@ exports.plansList = async (req, res) => {
         return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
       }
     }
+    return res.json({ data: plans, isTrialActive: false, active: null, update: null, code: 200 });
   } catch (error) {
     utils.handleError(res, error)
   }
