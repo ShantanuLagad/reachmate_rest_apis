@@ -1543,25 +1543,26 @@ exports.addPersonalCard = async (req, res) => {
     console.log('USerrr', user)
     const owner_id = req.user._id;
 
-    let activePremiumSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
-    console.log("activeSubscription : ", activePremiumSubscription)
+    let activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
 
-    // if (!activePremiumSubscription) {
-    // let  activeFreeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
-    //   console.log("activeSubscription : ", activeSubscription)
-    // }
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
 
-    if (!activePremiumSubscription) {
-      // const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
-      // console.log("plandata : ", plandata)
-      // if (plandata.plan_variety === "freemium") {
-      if (user.personal_cards.length > 1) {
-        return res.status(403).json({
-          message: "You have reached the maximum limit of freemium plan",
-          code: 403
-        })
+    if (activeSubscription) {
+      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      console.log("plandata : ", plandata, " plandata.plan_variety : ", plandata.plan_variety)
+      if (plandata.plan_variety === "freemium") {
+        console.log("user?.personal_cards?.length : ", user?.personal_cards?.length)
+        if (user?.personal_cards?.length >= 1) {
+          return res.status(403).json({
+            message: "You have reached the maximum limit of freemium plan",
+            code: 403
+          })
+        }
       }
-      // }
     }
 
     const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
@@ -1833,14 +1834,19 @@ exports.matchAccessCode = async (req, res) => {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
 
-    const activeSubscription = await Subscription.findOne({ user_id: user._id, status: "active" })
+    let activeSubscription = await Subscription.findOne({ user_id: userId, status: "active" })
     console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id: userId, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
 
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
       if (plandata.plan_variety === "freemium") {
-        if (user.companyAccessCardDetails.length > 1) {
+        if (user?.companyAccessCardDetails?.length >= 1) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
             code: 403
@@ -1848,6 +1854,7 @@ exports.matchAccessCode = async (req, res) => {
         }
       }
     }
+
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
     // if (checkTeamSize.length >= 1) {
@@ -1858,6 +1865,17 @@ exports.matchAccessCode = async (req, res) => {
     // }
 
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
+    console.log("email_domain : ", email_domain)
+
+    if (user && Array.isArray(user.companyAccessCardDetails) && user.companyAccessCardDetails.length !== 0) {
+      const isSameDomainExists = await user.companyAccessCardDetails.find(i => i.email_domain.toString() === email_domain.toString())
+      console.log("isSameDomainExists : ", isSameDomainExists)
+
+      if (isSameDomainExists) {
+        return utils.handleError(res, { message: "Email and Access Code Already used", code: 404 });
+      }
+    }
+
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
     if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
