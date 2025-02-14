@@ -1884,7 +1884,9 @@ exports.matchAccessCode = async (req, res) => {
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
+      console.log("plandata?.plan_variety : ", plandata?.plan_variety)
       if (plandata?.plan_variety === "freemium") {
+        console.log("plandata?.plan_variety : ", plandata?.plan_variety)
         if (user?.companyAccessCardDetails?.length >= 1) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
