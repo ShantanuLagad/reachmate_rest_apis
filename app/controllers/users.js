@@ -1202,6 +1202,15 @@ exports.addSharedCard = async (req, res) => {
             message: "You have reached the maximum limit of freemium plan",
             code: 403
           })
+        } else {
+          if (Array.isArray(user1?.personal_cards) && Array.isArray(user1?.companyAccessCardDetails)) {
+            if (user1?.personal_cards?.length >= 5 && user1?.companyAccessCardDetails?.length >= 5) {
+              return res.status(403).json({
+                message: "You have reached the maximum limit of freemium plan",
+                code: 403
+              })
+            }
+          }
         }
       }
     }
