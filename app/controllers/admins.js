@@ -1474,20 +1474,29 @@ exports.getRegistrationList = async (req, res) => {
         }
       ]
     }
+    console.log("filter : ", filter)
     const start_date = moment().subtract(30, "days").toDate()
     const count = await Registration.countDocuments({})
-    const registration = await Registration.find({
-      ...filter,
-      $or: [
-        { status: "pending" },
+    const registration = await Registration.aggregate(
+      [
         {
-          $and: [
-            { status: "declined" },
-            { createdAt: { $gte: start_date } }
-          ]
+          $match: {
+            $or: [
+              { status: "pending" },
+              {
+                $and: [
+                  { status: "declined" },
+                  { createdAt: { $gte: start_date } }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          $match: { ...filter }
         }
       ]
-    }).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
+    ).sort({ createdAt: +sort }).skip(+offset).limit(+limit);
 
 
     res.json({ data: registration, count, code: 200 })
