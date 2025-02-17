@@ -2940,7 +2940,7 @@ exports.userOverview = async (req, res) => {
 
 exports.getUser = async (req, res) => {
   try {
-    const { offset = 0, limit = 10, search } = req.query
+    const { offset = 0, limit = 10, search, user_type } = req.query
     let filter = {}
     if (search) {
       filter['$or'] = [
@@ -2954,6 +2954,10 @@ exports.getUser = async (req, res) => {
           email: { $regex: search, $options: 'i' }
         }
       ]
+    }
+
+    if (user_type) {
+      filter.user_type = user_type
     }
     const user_data = await User.aggregate([
       {
@@ -3104,6 +3108,28 @@ exports.resetUserPassword = async (req, res) => {
 
     return res.status(200).json({
       message: "User password reset successfully",
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+exports.changeUserStatus = async (req, res) => {
+  try {
+    const { user_id, status } = req.body
+    const userdata = await User.findOne({ _id: user_id })
+    console.log("userdata : ", userdata)
+    if (!userdata) {
+      return res.status(404).json({
+        message: 'User not found',
+        code: 404
+      })
+    }
+    userdata.isActive = status
+    await userdata.save()
+    return res.status(200).json({
+      message: `User profile ${status} successfully`,
       code: 200
     })
   } catch (error) {
