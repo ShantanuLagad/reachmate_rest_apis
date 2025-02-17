@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema(
     payment_mode: {
       type: String,
       enum: ["upi", "bank", "card"],
-      default : "upi"
+      default: "upi"
     },
     email: {
       type: String,
@@ -72,6 +72,11 @@ const UserSchema = new mongoose.Schema(
     is_card_created: {
       type: Boolean,
       default: false
+    },
+    isActivated: {
+      type: String,
+      enum: ['Active', 'Inactive'],
+      default: 'Inactive'
     },
     personal_cards: [
       {

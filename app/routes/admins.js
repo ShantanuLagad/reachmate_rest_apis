@@ -404,5 +404,12 @@ router.post(
   controller.resetUserPassword
 )
 
+router.patch(
+  "/changeUserStatus",
+  trimRequest.all,
+  requireAuth,
+  controller.changeUserStatus
+)
+
 
 module.exports = router
