@@ -3126,7 +3126,7 @@ exports.changeUserStatus = async (req, res) => {
         code: 404
       })
     }
-    userdata.isActivated = status
+    userdata.status = status
     await userdata.save()
     return res.status(200).json({
       message: `User profile ${status} successfully`,
