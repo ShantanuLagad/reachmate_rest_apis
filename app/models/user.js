@@ -73,11 +73,11 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    isActivated: {
-      type: String,
-      enum: ['Active', 'Inactive'],
-      default: 'Inactive'
-    },
+    // isActivated: {
+    //   type: String,
+    //   enum: ['Active', 'Inactive'],
+    //   default: 'Inactive'
+    // },
     personal_cards: [
       {
         type: mongoose.Schema.Types.ObjectId,
