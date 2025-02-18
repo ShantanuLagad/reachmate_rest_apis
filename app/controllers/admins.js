@@ -3199,8 +3199,9 @@ exports.changeUserStatus = async (req, res) => {
 
 exports.getUserAccountLog = async (req, res) => {
   try {
-    const { user_id } = req.params
-    const userlog = await user_account_log.find({ user_id })
+    const { user_id, offset = 0, limit = 10 } = req.query
+    const userlog = await user_account_log.find({ user_id }).skip(Number(offset)).limit(Number(limit))
+    const count = await user_account_log.countDocuments({ user_id })
     console.log("userlog : ", userlog)
     // if (!userlog || userlog.length === 0) {
     //   return res.status(404).json({
@@ -3211,6 +3212,7 @@ exports.getUserAccountLog = async (req, res) => {
     return res.status(200).json({
       message: "User account log history fetched successfully",
       data: userlog,
+      count,
       code: 200
     })
   } catch (error) {

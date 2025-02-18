@@ -414,7 +414,7 @@ router.patch(
 
 
 router.get(
-  "/getUserAccountLog/:user_id",
+  "/getUserAccountLog",
   trimRequest.all,
   requireAuth,
   controller.getUserAccountLog
