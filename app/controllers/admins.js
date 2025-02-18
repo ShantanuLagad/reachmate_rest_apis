@@ -3253,3 +3253,64 @@ exports.getUserAccountLog = async (req, res) => {
     handleError(res, error);
   }
 }
+
+
+exports.sendFeedbackReply = async (req, res) => {
+  try {
+    const { feedback_id, reply } = req.body
+    console.log("feedback_id : ", feedback_id)
+    const feedbackdata = await Feedback.aggregate(
+      [
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(feedback_id)
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            let: { id: "$user_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$_id"]
+                  }
+                }
+              }
+            ],
+            as: "userdata"
+          }
+        },
+        {
+          $unwind: {
+            path: "$userdata",
+            preserveNullAndEmptyArrays: true
+          }
+        }
+      ]
+    )
+    let data = feedbackdata[0]
+    let mailOptions = {
+      to: data?.userdata?.email,
+      subject: "Reply to your Feedback",
+      full_name: `${capitalizeFirstLetter(data?.userdata?.full_name)}`,
+      query_topic: data?.message,
+      user_query: data?.message,
+      response_text: reply,
+      response_link: '',
+      social_link: '',
+      privacy_link: 'https://reachmate.vercel.app/privacypolicy',
+      terms_link: 'https://reachmate.vercel.app/termsCondition',
+      help_link: 'https://reachmate.vercel.app/contactus'
+    }
+    const locale = req.getLocale()
+    emailer.sendMyEmail(locale, mailOptions, 'feedback_reply')
+    return res.status(200).json({
+      message: "Reply sent successfully",
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}

@@ -6,7 +6,7 @@ const { itemAlreadyExists } = require('../middleware/utils')
 const { app } = require("../../config/emailer");
 const APP_NAME = process.env.APP_NAME;
 const { capitalizeFirstLetter } = require("../shared/helpers");
-const VerificationToken=require("../models/verificationToken")
+const VerificationToken = require("../models/verificationToken")
 var jwt = require("jsonwebtoken");
 const moment = require('moment');
 
@@ -133,7 +133,7 @@ module.exports = {
 
   //---------------------User---------SEND EMAIL VERIFICATION URL----------
 
-  async sendVerificationEmail(locale, user, template,Token) {
+  async sendVerificationEmail(locale, user, template, Token) {
     return new Promise(async (resolve, reject) => {
       try {
         user = JSON.parse(JSON.stringify(user));
@@ -153,8 +153,8 @@ module.exports = {
         await verificationToken.save();
         const isProduction = process.env.NODE_ENV === 'production';
         const baseURL = isProduction
-        ? process.env.PRODUCTION_WEBSITE_URL
-        : process.env.LOCAL_WEBSITE_URL;
+          ? process.env.PRODUCTION_WEBSITE_URL
+          : process.env.LOCAL_WEBSITE_URL;
 
         app.mailer.send(
           `${locale}/${template}`,
@@ -190,11 +190,11 @@ module.exports = {
 
         //console.log("user========", user)
         const otpHtml = String(user.otp)
-        .split('')
-        .map(digit => 
-          `<span style="font-size: 35px; color: #ef7f1a; margin-right: 20px;"><b>${digit}</b></span>`
-        )
-        .join('');
+          .split('')
+          .map(digit =>
+            `<span style="font-size: 35px; color: #ef7f1a; margin-right: 20px;"><b>${digit}</b></span>`
+          )
+          .join('');
         if (!user.first_name) {
           user.first_name = "user";
         }
@@ -222,7 +222,7 @@ module.exports = {
             name: `${user.first_name} ${user.last_name}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-            otp:otpHtml
+            otp: otpHtml
           },
           function (err) {
             if (err) {
@@ -236,7 +236,7 @@ module.exports = {
         );
       } catch (err) {
         console.error("Error in sendAccessCodeOTP_Email:", err);
-        reject(buildErrObject(422, err.message || err)); 
+        reject(buildErrObject(422, err.message || err));
       }
     })
   },
@@ -245,7 +245,7 @@ module.exports = {
   async sendAccessCodeToTeamMemberByCompany(locale, user, template) {
     return new Promise(async (resolve, reject) => {
       try {
-       // console.log("user========", user)
+        // console.log("user========", user)
         user = JSON.parse(JSON.stringify(user));
         //const token = jwt.sign({ data: user._id, }, process.env.JWT_SECRET, { expiresIn: "24h" });
         if (!user.first_name) {
@@ -261,9 +261,9 @@ module.exports = {
             subject: `Access Code - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
-            company_name:user.company_name ? user.company_name:user.company_details.company_name,
-            access_code:user.access_code ? user.access_code :user.company_details.access_code,
-            logo:`${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
+            company_name: user.company_name ? user.company_name : user.company_details.company_name,
+            access_code: user.access_code ? user.access_code : user.company_details.access_code,
+            logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
           function (err) {
             if (err) {
@@ -282,7 +282,7 @@ module.exports = {
   },
 
   //--------------------Register Business Team Set Password---------
-  async setPasswordBusinessTeamEmail(locale, user, template,Token) {
+  async setPasswordBusinessTeamEmail(locale, user, template, Token) {
     return new Promise(async (resolve, reject) => {
       try {
         user = JSON.parse(JSON.stringify(user));
@@ -301,8 +301,8 @@ module.exports = {
         await verificationToken.save();
         const isProduction = process.env.NODE_ENV === 'production';
         const baseURL = isProduction
-        ? process.env.PRODUCTION_WEBSITE_URL
-        : process.env.LOCAL_WEBSITE_URL;
+          ? process.env.PRODUCTION_WEBSITE_URL
+          : process.env.LOCAL_WEBSITE_URL;
         app.mailer.send(
           `${locale}/${template}`,
           {
@@ -310,7 +310,7 @@ module.exports = {
             subject: `Set Password - ${process.env.APP_NAME}`,
             name: `${user.first_name} ${user.last_name}`,
             verification_link: `${baseURL}/CreateAccount?token=${Token}`,
-            company_name:user.company_name,
+            company_name: user.company_name,
             website_url: process.env.PRODUCTION_WEBSITE_URL,
             logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`
           },
@@ -563,7 +563,7 @@ module.exports = {
           user.company_name = "User";
         }
 
-        console.log("user.access_code" ,user.access_code)
+        console.log("user.access_code", user.access_code)
         app.mailer.send(
           `${locale}/${template}`,
           {
@@ -778,4 +778,24 @@ module.exports = {
 
     })
   },
+
+
+  async sendMyEmail(locale, mailOptions, template) {
+    console.log("mailOptions", mailOptions)
+
+    locale = locale == null ? "" : `${locale}`
+
+    app.mailer.send(
+      `${locale}/${template}`,
+      mailOptions,
+      function (err, message) {
+        if (err) {
+          console.log("There was an error sending the email" + err);
+        } else {
+          console.log("Mail sent");
+        }
+      }
+    );
+  },
+
 }
