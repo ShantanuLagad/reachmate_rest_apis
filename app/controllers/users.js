@@ -72,6 +72,7 @@ const { start } = require('repl');
 const TeamMember = require('../models/teamMember');
 const UserAccess = require('../models/userAccess');
 const { generateToken } = require('./corporate');
+const user_account_log = require('../models/user_account_log');
 /*********************
  * Private functions *
  *********************/
@@ -1160,6 +1161,17 @@ exports.changePassword = async (req, res) => {
 
       user.password = newPassword;
       await user.save();
+
+      const accountlog = await user_account_log.create({
+        user_id: user?._id,
+        action: 'Password Changed',
+        previous_status: 'Password Changed',
+        new_status: 'Password Changed',
+        performed_by: 'user',
+        date_and_time: new Date()
+      })
+      console.log("accountlog : ", accountlog)
+
       res.json({ code: 200, message: "Password changed successfully." });
     }
 
@@ -1354,6 +1366,27 @@ exports.addSharedCard = async (req, res) => {
 
     const saveNotificationForUser2 = new Notification(notificationUser2)
     await saveNotificationForUser2.save()
+
+
+    const user1accountlog = await user_account_log.create({
+      user_id: user1?._id,
+      action: `Card Scanned of ${user2?.full_name}`,
+      previous_status: `Card Scanned of ${user2?.full_name}`,
+      new_status: `Card Scanned of ${user2?.full_name}`,
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("user1accountlog : ", user1accountlog)
+
+    const user2accountlog = await user_account_log.create({
+      user_id: user2?._id,
+      action: `Card Scanned by ${user1?.full_name}`,
+      previous_status: `Card Scanned by ${user1?.full_name}`,
+      new_status: `Card Scanned by ${user1?.full_name}`,
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("user2accountlog : ", user2accountlog)
 
 
     res.json({ code: 200, message: "Shared card added successfully." });
@@ -1671,6 +1704,17 @@ exports.addPersonalCard = async (req, res) => {
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
+    const accountlog = await user_account_log.create({
+      user_id: owner_id,
+      action: 'Personal Card Added',
+      previous_status: 'Personal Card Added',
+      new_status: 'Personal Card Added',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
+
     return res.json({
       code: 200, message: "Card Save successfully",
       cardData: cardData
@@ -1757,6 +1801,17 @@ exports.editCardDetails = async (req, res) => {
       await companyTeammate.save()
     }
     await existingEntity.save();
+
+    const accountlog = await user_account_log.create({
+      user_id: owner_id,
+      action: `${type} card edited`,
+      previous_status: `${type} card edited`,
+      new_status: `${type} card edited`,
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     res.json({ code: 200, message: `${type === "corporate" ? "Company" : "Individual"} updated successfully` });
 
   } catch (error) {
@@ -1861,6 +1916,17 @@ exports.makeIndividualCardPrimary = async (req, res) => {
       existingAccessCard.primary_card = true;
       await existingAccessCard.save();
     }
+
+    const accountlog = await user_account_log.create({
+      user_id: owner_id,
+      action: 'Individual Card become primary',
+      previous_status: 'Individual Card become primary',
+      new_status: 'Individual Card become primary',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     res.json({ code: 200, message: "Primary card updated successfully" });
   } catch (error) {
     console.error("Error updating primary card:", error);
@@ -2076,6 +2142,16 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 
     otpRecord.used = true;
     await otpRecord.save();
+
+    const accountlog = await user_account_log.create({
+      user_id: userId,
+      action: 'Access Card created',
+      previous_status: 'Access Card created',
+      new_status: 'Access Card created',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
 
     res.status(200).json({
       message: existingIndex > -1
@@ -2815,7 +2891,15 @@ exports.deleteAccount = async (req, res) => {
       }
     }
 
-
+    const accountlog = await user_account_log.create({
+      user_id: user_id,
+      action: 'Account Deleted',
+      previous_status: 'Account Deleted',
+      new_status: 'Account Deleted',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
 
     res.json({ message: "Your account is deleted successfully" });
   } catch (error) {
@@ -3619,6 +3703,16 @@ exports.createSubscription = async (req, res) => {
       newSubscription = new Subscription(dataForDatabase);
       await newSubscription.save()
 
+      const accountlog = await user_account_log.create({
+        user_id: user_id,
+        action: 'Subscription created',
+        previous_status: 'Subscription created',
+        new_status: 'Subscription created',
+        performed_by: 'user',
+        date_and_time: new Date()
+      })
+      console.log("accountlog : ", accountlog)
+
       res.json({ message: "subscription activated successfully", data: newSubscription, code: 200 })
     }
   } catch (error) {
@@ -4069,6 +4163,16 @@ exports.cancelSubscription = async (req, res) => {
 
     const subresult = await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false)
 
+    const accountlog = await user_account_log.create({
+      user_id: user_id,
+      action: 'Subscription Cancelled',
+      previous_status: 'Subscription Cancelled',
+      new_status: 'Subscription Cancelled',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     res.json({ message: "cancellation successfull", code: 200, data: subresult });
   } catch (error) {
     console.log
@@ -4195,6 +4299,17 @@ exports.updateSubscription = async (req, res) => {
           result = await instance.subscriptions.update(activeSubscription.subscription_id, update)
           console.log("result : ", result)
         }
+
+        const accountlog = await user_account_log.create({
+          user_id: user_id,
+          action: 'Subscription updated',
+          previous_status: 'Subscription updated',
+          new_status: 'Subscription updated',
+          performed_by: 'user',
+          date_and_time: new Date()
+        })
+        console.log("accountlog : ", accountlog)
+
         return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
       } else {
         console.log('Creating subscription with:', {
@@ -4232,6 +4347,17 @@ exports.updateSubscription = async (req, res) => {
         await result.save()
 
         console.log("New subscription created:", result);
+
+        const accountlog = await user_account_log.create({
+          user_id: user_id,
+          action: 'Subscription updated',
+          previous_status: 'Subscription updated',
+          new_status: 'Subscription updated',
+          performed_by: 'user',
+          date_and_time: new Date()
+        })
+        console.log("accountlog : ", accountlog)
+
         return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
       }
     }
@@ -4244,6 +4370,17 @@ exports.updateSubscription = async (req, res) => {
         status: 'active'
       })
       console.log("newTrial : ", trial)
+
+      const accountlog = await user_account_log.create({
+        user_id: user_id,
+        action: 'Subscription converted to Freemium',
+        previous_status: 'Subscription converted to Freemium',
+        new_status: 'Subscription converted to Freemium',
+        performed_by: 'user',
+        date_and_time: new Date()
+      })
+      console.log("accountlog : ", accountlog)
+
       return res.json({ message: "Plan converted to Freemium", data: trial, code: 200 })
     }
   } catch (error) {
