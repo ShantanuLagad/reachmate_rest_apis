@@ -3093,7 +3093,7 @@ exports.getSingleUser = async (req, res) => {
   try {
     const { id } = req.params
     console.log("id : ", id)
-    const userdata = await User.findOne({ _id: id })
+    const userdata = await User.findOne({ _id: id }).select('-password -confirm_password');
     console.log("userdata : ", userdata)
     if (!userdata) {
       return res.status(404).json({
