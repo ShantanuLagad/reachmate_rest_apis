@@ -3202,12 +3202,12 @@ exports.getUserAccountLog = async (req, res) => {
     const { user_id } = req.params
     const userlog = await user_account_log.find({ user_id })
     console.log("userlog : ", userlog)
-    if (!userlog || userlog.length === 0) {
-      return res.status(404).json({
-        message: "No Account Log History Found",
-        code: 404
-      })
-    }
+    // if (!userlog || userlog.length === 0) {
+    //   return res.status(404).json({
+    //     message: "No Account Log History Found",
+    //     code: 404
+    //   })
+    // }
     return res.status(200).json({
       message: "User account log history fetched successfully",
       data: userlog,
