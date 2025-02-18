@@ -412,4 +412,13 @@ router.patch(
 )
 
 
+
+router.get(
+  "/getUserAccountLog/:user_id",
+  trimRequest.all,
+  requireAuth,
+  controller.getUserAccountLog
+)
+
+
 module.exports = router

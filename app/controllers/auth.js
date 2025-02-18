@@ -28,6 +28,7 @@ const bcrypt = require('bcrypt');
 const moment = require("moment");
 const cardDetials = require('../models/cardDetials');
 const teamMember = require('../models/teamMember');
+const user_account_log = require('../models/user_account_log');
 /*********************
  * Private functions *
  *********************/
@@ -924,6 +925,16 @@ exports.registerUser = async (req, res) => {
     await emailer.sendVerificationEmail(req.body.locale || 'en',
       userInfo, "emailVerification", verificationToken);
 
+    const accountlog = await user_account_log.create({
+      user_id: savedUser?._id,
+      action: 'Account Registered',
+      previous_status: 'Signup',
+      new_status: 'Signup',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     res.status(201).json({
       userInfo: userInfo,
       token: verificationToken,
@@ -991,6 +1002,17 @@ exports.editUser = async (req, res) => {
       sex: updatedUser.sex,
     };
 
+
+    const accountlog = await user_account_log.create({
+      user_id: updatedUser?._id,
+      action: 'Account edited',
+      previous_status: 'Edit account',
+      new_status: 'Edit account',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     res.status(200).json({
       userInfo,
       message: emailChanged ? 'User updated successfully. Verification email sent.' : 'User updated successfully.'
@@ -1030,6 +1052,18 @@ exports.verifyEmail = async (req, res) => {
       { email: verifydata.email },
       { $set: { is_email_verified: true } }
     );
+
+    const userdata = await User.findOne({ email: verifydata.email })
+    console.log("userdata : ", userdata)
+    const accountlog = await user_account_log.create({
+      user_id: userdata?._id,
+      action: 'Email Verified',
+      previous_status: 'Email Verified',
+      new_status: 'Email Verified',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
 
     return res
       .status(200)
@@ -1196,6 +1230,7 @@ const verifyPassword = async (plainPassword, hashedPassword) => {
     return false; // Return false in case of an error
   }
 };
+
 exports.loginUser = async (req, res) => {
   try {
     const { email, password, login_from } = req.body;
@@ -1226,6 +1261,15 @@ exports.loginUser = async (req, res) => {
 
     const savedCard = await getPreviewCard(user._id)
 
+    const accountlog = await user_account_log.create({
+      user_id: user?._id,
+      action: 'Account Login',
+      previous_status: 'Login',
+      new_status: 'Login',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
 
     // if (login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
 
@@ -1281,6 +1325,17 @@ exports.changepassword = async (req, res) => {
     user.confirm_password = newPassword;
     await user.save();
 
+    const accountlog = await user_account_log.create({
+      user_id: user?._id,
+      action: 'Password Changed',
+      previous_status: 'Password Changed',
+      new_status: 'Password Changed',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
+
     res.status(200).json({ message: 'Password change successfully.' });
   } catch (error) {
     console.error(error);
@@ -1308,6 +1363,17 @@ exports.resetpassword = async (req, res) => {
     user.password = password;
     user.confirm_password = password;
     await user.save();
+
+    const accountlog = await user_account_log.create({
+      user_id: user?._id,
+      action: 'Password Reset',
+      previous_status: 'Password Reset',
+      new_status: 'Password Reset',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
 
     res.status(200).json({ message: 'Password change successfully.' });
   } catch (error) {
@@ -1352,6 +1418,16 @@ exports.socialLogin = async (req, res) => {
       userExists.last_sign_in = new Date();
       console.log("user", user)
       // if(data.login_from === "web" && user.is_card_created !== true) return res.status(400).json({ errors: { msg: 'You have not create your card yet' } });
+
+      const accountlog = await user_account_log.create({
+        user_id: user?._id,
+        action: 'Social Login',
+        previous_status: 'Social Login',
+        new_status: 'Social Login',
+        performed_by: 'user',
+        date_and_time: new Date()
+      })
+      console.log("accountlog : ", accountlog)
 
       return res.status(200).json(
         {
@@ -1447,6 +1523,16 @@ exports.forgotPassword = async (req, res) => {
     },
       "OTP"
     )
+
+    const accountlog = await user_account_log.create({
+      user_id: user?._id,
+      action: 'Forget Password Request Sent',
+      previous_status: 'Forget Password',
+      new_status: 'Forget Password',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
 
     // emailer.sendResetPasswordEmailMessage(locale, item)
     res.status(200).json(forgotPasswordResponse(item))

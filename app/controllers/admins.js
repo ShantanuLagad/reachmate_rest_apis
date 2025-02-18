@@ -66,6 +66,7 @@ const { stat } = require('fs')
 const user = require('../models/user')
 const cardDetials = require('../models/cardDetials')
 const sharedCards = require('../models/sharedCards.js')
+const user_account_log = require('../models/user_account_log.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -2928,8 +2929,12 @@ exports.userOverview = async (req, res) => {
 
       const startOfMonth = new Date(year, month, 1);
       const endOfMonth = new Date(year, month + 1, 0);
+      console.log("startOfMonth : ", startOfMonth)
+      console.log("endOfMonth : ", endOfMonth)
+      // console.log("endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
 
       const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+      console.log("weeksInMonth : ", weeksInMonth)
 
       const weeklyData = await User.aggregate([
         { $match: filter },
@@ -3184,6 +3189,28 @@ exports.changeUserStatus = async (req, res) => {
     await userdata.save()
     return res.status(200).json({
       message: `User profile ${status} successfully`,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.getUserAccountLog = async (req, res) => {
+  try {
+    const { user_id } = req.params
+    const userlog = await user_account_log.find({ user_id })
+    console.log("userlog : ", userlog)
+    if (!userlog || userlog.length === 0) {
+      return res.status(404).json({
+        message: "No Account Log History Found",
+        code: 404
+      })
+    }
+    return res.status(200).json({
+      message: "User account log history fetched successfully",
+      data: userlog,
       code: 200
     })
   } catch (error) {
