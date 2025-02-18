@@ -2676,29 +2676,55 @@ exports.getSubscription = async (req, res) => {
 
 // exports.userOverview = async (req, res) => {
 //   try {
-//     const [totalUser, totalActiveUser, totalInactiveUser, totalBusinessCard, totalSharedCard, totalSavedAndReceivedCard] = await Promise.all([User.countDocuments(), User.countDocuments({ status: 'active' }), User.countDocuments({ status: 'inactive' }), cardDetials.countDocuments({ card_type: 'corporate' }), sharedCards.countDocuments(), User.countDocuments({
-//       $expr: {
-//         $or: [
-//           { $gt: [{ $size: "$personal_cards" }, 0] },
-//           { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
-//         ]
-//       }
-//     })])
-//     // const totalUser = await User.countDocuments();
-//     // const totalActiveUser = await User.countDocuments({ status: 'active' })
-//     // const totalInactiveUser = await User.countDocuments({ status: 'inactive' })
-//     // const totalBusinessCard = await cardDetials.countDocuments({ card_type: 'corporate' })
-//     // const totalSharedCard = await sharedCards.countDocuments()
-//     // const totalSavedAndReceivedCard = await User.countDocuments({
-//     //   $expr: {
-//     //     $or: [
-//     //       { $gt: [{ $size: "$personal_cards" }, 0] },
-//     //       { $gte: [{ $size: "$companyAccessCardDetails" }, 0] }
-//     //     ]
-//     //   }
-//     // });
+//     const [
+//       totalUser,
+//       totalActiveUser,
+//       totalInactiveUser,
+//       totalBusinessCard,
+//       totalSharedCard,
+//       totalSavedAndReceivedCard
+//     ] = await Promise.all([
+//       User.countDocuments(),
+//       User.countDocuments({ status: 'active' }),
+//       User.countDocuments({ status: 'inactive' }),
+//       cardDetials.countDocuments({ card_type: 'corporate' }),
+//       sharedCards.countDocuments(),
+//       User.aggregate([
+//         {
+//           $project: {
+//             personalCardCount: {
+//               $cond: {
+//                 if: { $eq: [{ $type: "$personal_cards" }, "array"] },
+//                 then: { $size: "$personal_cards" },
+//                 else: 0
+//               }
+//             },
+//             companyCardCount: {
+//               $cond: {
+//                 if: { $eq: [{ $type: "$companyAccessCardDetails" }, "array"] },
+//                 then: { $size: "$companyAccessCardDetails" },
+//                 else: 0
+//               }
+//             }
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: null,
+//             totalPersonalCards: { $sum: "$personalCardCount" },
+//             totalCompanyCards: { $sum: "$companyCardCount" }
+//           }
+//         },
+//         {
+//           $project: {
+//             _id: 0,
+//             totalCards: { $add: ["$totalPersonalCards", "$totalCompanyCards"] }
+//           }
+//         }
+//       ])
+//     ]);
 
-//     // user chart data
+//     // User chart data
 //     const { selectedPeriod } = req.query;
 //     let currentDate = new Date();
 //     let startOfPeriod, endOfPeriod;
@@ -2722,49 +2748,36 @@ exports.getSubscription = async (req, res) => {
 //       startOfPeriod = new Date(year, 0, 1);
 //       endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
 //     }
-//     console.log("start date : ", startOfPeriod, " end date : ", endOfPeriod)
+
+//     console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
 //     let filter = {};
 //     let data = [];
 //     if (selectedPeriod) {
 //       filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
 //     }
-//     console.log("filter : ", filter)
+
+//     console.log("filter:", filter);
 
 //     if (selectedPeriod === 'daily') {
 //       const hourlyData = await User.aggregate([
-//         { $match: { ...filter } },
-//         {
-//           $project: {
-//             hour: { $hour: "$createdAt" }
-//           }
-//         },
-//         {
-//           $group: {
-//             _id: "$hour",
-//             count: { $sum: 1 }
-//           }
-//         },
+//         { $match: filter },
+//         { $project: { hour: { $hour: "$createdAt" } } },
+//         { $group: { _id: "$hour", count: { $sum: 1 } } },
 //         { $sort: { _id: 1 } }
 //       ]);
-//       console.log("hourly data : ", hourlyData)
+
+//       console.log("hourly data:", hourlyData);
 //       data = Array(24).fill(0);
 //       hourlyData.forEach(item => {
 //         data[item._id] = item.count;
 //       });
+
 //     } else if (selectedPeriod === 'weekly') {
 //       const dailyData = await User.aggregate([
 //         { $match: filter },
-//         {
-//           $project: {
-//             day: { $dayOfMonth: "$createdAt" }
-//           }
-//         },
-//         {
-//           $group: {
-//             _id: "$day",
-//             count: { $sum: 1 }
-//           }
-//         },
+//         { $project: { day: { $dayOfMonth: "$createdAt" } } },
+//         { $group: { _id: "$day", count: { $sum: 1 } } },
 //         { $sort: { _id: 1 } }
 //       ]);
 
@@ -2773,23 +2786,16 @@ exports.getSubscription = async (req, res) => {
 //       dailyData.forEach(item => {
 //         data[item._id - 1] = item.count;
 //       });
+
 //     } else if (selectedPeriod === 'yearly') {
 //       const monthlyData = await User.aggregate([
-//         { $match: { ...filter } },
-//         {
-//           $project: {
-//             month: { $month: "$createdAt" }
-//           }
-//         },
-//         {
-//           $group: {
-//             _id: "$month",
-//             count: { $sum: 1 }
-//           }
-//         },
+//         { $match: filter },
+//         { $project: { month: { $month: "$createdAt" } } },
+//         { $group: { _id: "$month", count: { $sum: 1 } } },
 //         { $sort: { _id: 1 } }
 //       ]);
-//       console.log("monthly data : ", monthlyData)
+
+//       console.log("monthly data:", monthlyData);
 //       data = Array(12).fill(0);
 //       monthlyData.forEach(item => {
 //         data[item._id - 1] = item.count;
@@ -2797,23 +2803,24 @@ exports.getSubscription = async (req, res) => {
 //     }
 
 //     return res.json({
-//       message: "user overview fetched successfully",
+//       message: "User overview fetched successfully",
 //       data: {
 //         totalUser,
 //         totalActiveUser,
 //         totalInactiveUser,
 //         totalBusinessCard,
 //         totalSharedCard,
-//         totalSavedAndReceivedCard,
+//         totalSavedAndReceivedCard : totalSavedAndReceivedCard[0]?.totalCards,
 //         graphData: data
 //       },
-//       code: 200,
+//       code: 200
 //     });
 
 //   } catch (error) {
 //     handleError(res, error);
 //   }
-// }
+// };
+
 
 exports.userOverview = async (req, res) => {
   try {
@@ -2823,21 +2830,46 @@ exports.userOverview = async (req, res) => {
       totalInactiveUser,
       totalBusinessCard,
       totalSharedCard,
-      // totalSavedAndReceivedCard
+      totalSavedAndReceivedCard
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ status: 'active' }),
       User.countDocuments({ status: 'inactive' }),
       cardDetials.countDocuments({ card_type: 'corporate' }),
       sharedCards.countDocuments(),
-      // User.countDocuments({
-      //   $expr: {
-      //     $or: [
-      //       { $gt: [{ $size: "$personal_cards" }, 0] },
-      //       { $gt: [{ $size: "$companyAccessCardDetails" }, 0] }
-      //     ]
-      //   }
-      // })
+      User.aggregate([
+        {
+          $project: {
+            personalCardCount: {
+              $cond: {
+                if: { $eq: [{ $type: "$personal_cards" }, "array"] },
+                then: { $size: "$personal_cards" },
+                else: 0
+              }
+            },
+            companyCardCount: {
+              $cond: {
+                if: { $eq: [{ $type: "$companyAccessCardDetails" }, "array"] },
+                then: { $size: "$companyAccessCardDetails" },
+                else: 0
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalPersonalCards: { $sum: "$personalCardCount" },
+            totalCompanyCards: { $sum: "$companyCardCount" }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalCards: { $add: ["$totalPersonalCards", "$totalCompanyCards"] }
+          }
+        }
+      ])
     ]);
 
     // User chart data
@@ -2876,44 +2908,65 @@ exports.userOverview = async (req, res) => {
     console.log("filter:", filter);
 
     if (selectedPeriod === 'daily') {
-      const hourlyData = await User.aggregate([
-        { $match: filter },
-        { $project: { hour: { $hour: "$createdAt" } } },
-        { $group: { _id: "$hour", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } }
-      ]);
-
-      console.log("hourly data:", hourlyData);
-      data = Array(24).fill(0);
-      hourlyData.forEach(item => {
-        data[item._id] = item.count;
-      });
-
-    } else if (selectedPeriod === 'weekly') {
       const dailyData = await User.aggregate([
         { $match: filter },
-        { $project: { day: { $dayOfMonth: "$createdAt" } } },
-        { $group: { _id: "$day", count: { $sum: 1 } } },
+        { $project: { dayOfWeek: { $dayOfWeek: "$createdAt" } } },
+        { $group: { _id: "$dayOfWeek", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
 
-      const daysInWeek = 7;
-      data = Array(daysInWeek).fill(0);
+      console.log("daily data:", dailyData);
+
+      data = Array(7).fill(0);
       dailyData.forEach(item => {
         data[item._id - 1] = item.count;
       });
 
+    } else if (selectedPeriod === 'weekly') {
+      const month = currentDate.getMonth();
+      const year = currentDate.getFullYear();
+
+      const startOfMonth = new Date(year, month, 1);
+      const endOfMonth = new Date(year, month + 1, 0);
+
+      const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+
+      const weeklyData = await User.aggregate([
+        { $match: filter },
+        {
+          $project: {
+            weekOfMonth: {
+              $ceil: {
+                $divide: [
+                  { $subtract: ["$createdAt", startOfMonth] },
+                  1000 * 60 * 60 * 24 * 7
+                ]
+              }
+            }
+          }
+        },
+        { $group: { _id: "$weekOfMonth", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("weekly data:", weeklyData);
+
+      data = Array(weeksInMonth).fill(0);
+      weeklyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+
     } else if (selectedPeriod === 'yearly') {
-      const monthlyData = await User.aggregate([
+      const yearlyData = await User.aggregate([
         { $match: filter },
         { $project: { month: { $month: "$createdAt" } } },
         { $group: { _id: "$month", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
 
-      console.log("monthly data:", monthlyData);
+      console.log("yearly data:", yearlyData);
       data = Array(12).fill(0);
-      monthlyData.forEach(item => {
+      yearlyData.forEach(item => {
         data[item._id - 1] = item.count;
       });
     }
@@ -2926,7 +2979,7 @@ exports.userOverview = async (req, res) => {
         totalInactiveUser,
         totalBusinessCard,
         totalSharedCard,
-        // totalSavedAndReceivedCard,
+        totalSavedAndReceivedCard: totalSavedAndReceivedCard[0]?.totalCards,
         graphData: data
       },
       code: 200
@@ -2936,6 +2989,7 @@ exports.userOverview = async (req, res) => {
     handleError(res, error);
   }
 };
+
 
 
 exports.getUser = async (req, res) => {
