@@ -421,4 +421,12 @@ router.get(
 )
 
 
+router.post(
+  "/sendFeedbackReply",
+  trimRequest.all,
+  requireAuth,
+  controller.sendFeedbackReply
+)
+
+
 module.exports = router
