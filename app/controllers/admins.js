@@ -939,7 +939,41 @@ exports.dashBoardCard = async (req, res) => {
     console.log("revenue", revenue)
     const totalRevenue = revenue[0]?.amount ?? 0
 
-    res.json({ data: { users: totalUser.length, company: totalComany, revenue: totalRevenue }, code: 200 })
+    const demographicChart = await User.aggregate(
+      [
+        {
+          $project: {
+            sex: { $ifNull: ["$sex", "Other"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$sex",
+            count: { $sum: 1 }
+          }
+        }
+      ]
+    );
+
+    const totalUsersCount = await User.countDocuments({})
+    console.log("totalUsersCount : ", totalUsersCount)
+
+    const pieChartData = demographicChart.map(item => {
+      const percentage = ((item.count / totalUsersCount) * 100).toFixed(2);
+      return {
+        label: item._id,
+        value: percentage
+      };
+    });
+
+    if (pieChartData.length === 0) {
+      pieChartData.push({
+        label: 'No data',
+        value: 100
+      });
+    }
+
+    res.json({ data: { users: totalUser.length, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
   } catch (error) {
     console.log(error)
     handleError(res, error)
