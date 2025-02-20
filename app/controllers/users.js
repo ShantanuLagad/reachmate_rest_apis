@@ -2666,7 +2666,8 @@ exports.getCard = async (req, res) => {
     const primaryPersonalCards = await Promise.all(
       user_data.personal_cards.map(async (i) => {
         const card = await CardDetials.findOne({ _id: i });
-        return card && card.primary_card ? card : null;
+        console.log("fetched card : ", card)
+        return card && card?.primary_card ? card : null;
       })
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryPersonalCards : ", primaryPersonalCards);
@@ -2674,6 +2675,7 @@ exports.getCard = async (req, res) => {
     let primaryCompanyCards = await Promise.all(
       user_data.companyAccessCardDetails.map(async (i) => {
         const company = await Company.findOne({ _id: i.company_id }, { bio: 0, password: 0, decoded_password: 0 });
+        console.log('Fetched company:', company);
         if (company && company.primary_card) {
           const data = await TeamMember.findOne({ 'company_details.company_id': company._id });
           const bio = data ? {

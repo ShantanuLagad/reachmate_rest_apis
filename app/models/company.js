@@ -27,6 +27,10 @@ const CompanySchema = new mongoose.Schema(
     email_domain: {
       type: String,
     },
+    profile_image: {
+      type: String,
+      default: ''
+    },
     company_name: {
       type: String,
       default: ""

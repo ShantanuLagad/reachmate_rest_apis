@@ -249,10 +249,14 @@ exports.getProfile = async (req, res) => {
       company_id = req.user.company_id
     }
 
+    const companydata = await getProfileFromDB(company_id)
+    const registrationdata = await Registration.findOne({ email: companydata.email })
+    const returndata = {
+      ...companydata,
+      mobile_number: registrationdata.mobile_number
+    }
 
-
-
-    res.status(200).json({ data: await getProfileFromDB(company_id), code: 200 })
+    res.status(200).json({ data: returndata, code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
