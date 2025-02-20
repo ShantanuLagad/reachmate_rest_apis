@@ -250,16 +250,16 @@ exports.getProfile = async (req, res) => {
     }
 
     const companydata = await getProfileFromDB(company_id)
-    console.log("companydata : ", companydata)
-    const registrationdata = await Registration.findOne({ email: companydata.email })
-    console.log("registrationdata : ", registrationdata)
-    const returndata = {
-      ...companydata,
-      mobile_number: registrationdata?.mobile_number
-    }
-    console.log("returndata : ", returndata)
+    // console.log("companydata : ", companydata)
+    // const registrationdata = await Registration.findOne({ email: companydata.email })
+    // console.log("registrationdata : ", registrationdata)
+    // const returndata = {
+    //   ...companydata,
+    //   mobile_number: registrationdata?.mobile_number
+    // }
+    // console.log("returndata : ", returndata)
 
-    res.status(200).json({ data: returndata, code: 200 })
+    res.status(200).json({ data: companydata, code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
