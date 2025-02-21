@@ -534,7 +534,12 @@ exports.createCompanyAccount = async (req, res) => {
         email: isEmailRegistered?.email ?? ""
       },
       address: {
-        country: isEmailRegistered.country
+        country: isEmailRegistered.country,
+        state : '',
+        city : '',
+        address_line_1 : '',
+        address_line_2 : '',
+        pin_code : ''
       }
     }
 
