@@ -709,7 +709,8 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let totalteamcount = await TeamMember.countDocuments({ 'company_details.email_domain': companyDomain })
     console.log("totalteamcount : ", totalteamcount)
-    if (isActiveSubscription.trial_period) {
+    if (isActiveSubscription.trial_period && isActiveSubscription.trial_period.end > new Date()) {
+      console.log("inside freemium....")
       if (totalteamcount > 1) {
         return res.status(400).json({
           errors: {
