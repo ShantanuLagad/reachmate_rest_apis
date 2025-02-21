@@ -676,7 +676,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       });
     }
 
-    const plandata = await Plan.aggregate(
+    let plandata = await Plan.aggregate(
       [
         {
           $match: {
