@@ -547,10 +547,23 @@ exports.completeProfile = async (req, res) => {
     const data = req.body;
     console.log("data", data)
     if (req.user.is_profile_completed === true) return utils.handleError(res, { message: "Card is already created", code: 400 });
-    data.is_profile_completed = true
-    data.bio.full_name = data?.bio?.first_name + " " + data?.bio?.last_name
-    const response = await Company.findOneAndUpdate({ _id: company_id }, { $set: data }, { new: true });
-    console.log("response : ", response)
+    const companydata = await Company.findOne({ _id: company_id })
+    console.log("companydata : ", companydata)
+    if (!companydata) {
+      return utils.handleError(res, { message: "Company not found", code: 400 });
+    }
+    companydata.is_profile_completed = true
+    companydata.bio.full_name = data?.bio?.first_name + " " + data?.bio?.last_name
+    companydata.bio.first_name = data?.bio?.first_name
+    companydata.bio.last_name = data?.bio?.last_name
+    companydata.business_and_logo_status = data?.business_and_logo_status
+    companydata.business_logo = data?.business_logo
+    companydata.card_color = data?.card_color
+    companydata.company_name = data?.company_name
+    companydata.address = data?.address
+    companydata.contact_details.website = data.contact_details.website
+    companydata.text_color = data?.text_color
+    await companydata.save()
     res.json({ message: "Card created successfully", code: 200 })
   } catch (error) {
     utils.handleError(res, error)
