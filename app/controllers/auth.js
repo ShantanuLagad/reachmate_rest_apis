@@ -503,6 +503,7 @@ exports.createCompanyAccount = async (req, res) => {
 
 
     const isEmailRegistered = await Registration.findOne({ email: email });
+    console.log("isEmailRegistered : ", isEmailRegistered)
     // if (!isApprovedByAdmin || isApprovedByAdmin.status !== "accepted") return utils.handleError(res, { message: "You're email is not approved by admin", code: 400 });
 
     // const access_code = generator.generate({
@@ -530,6 +531,7 @@ exports.createCompanyAccount = async (req, res) => {
       contact_details: {
         country_code: isEmailRegistered?.country_code ?? "",
         mobile_number: isEmailRegistered?.mobile_number ?? "",
+        email: isEmailRegistered?.email ?? ""
       },
       address: {
         country: isEmailRegistered.country
