@@ -662,8 +662,74 @@ exports.corporateCardHolder = async (req, res) => {
 exports.addTeamMemberByBusinessTeam = async (req, res) => {
   try {
     const userData = req.body;
+    const userId = req.user._id
     const workEmailDomain = userData.work_email.split('@')[1];
     const companyDomain = req.user.email_domain;
+    let isActiveSubscription = await Subscription.findOne({ user_id: userId, status: 'active' })
+    console.log("isActiveSubscription : ", isActiveSubscription)
+
+    if (!isActiveSubscription) {
+      return res.status(404).json({
+        errors: {
+          msg: 'No Subscription found',
+        },
+      });
+    }
+
+    const plandata = await Plan.aggregate(
+      [
+        {
+          $match: {
+            plan_id: isActiveSubscription?.plan_id
+          }
+        },
+        {
+          $unwind: {
+            path: '$plan_tiers',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: {
+            "plan_tiers._id": new mongoose.Types.ObjectId(isActiveSubscription?.plan_tier?.tier_id)
+          }
+        }
+      ]
+    )
+    console.log("plandata : ", plandata)
+    plandata = plandata[0]
+
+    if (isActiveSubscription?.trial_period && isActiveSubscription?.trial_period?.end < new Date()) {
+      return res.status(400).json({
+        errors: {
+          msg: 'Trial period expired . please active subscription',
+        },
+      });
+    }
+
+    let totalteamcount = await TeamMember.countDocuments({ 'company_details.email_domain': companyDomain })
+    console.log("totalteamcount : ", totalteamcount)
+    if (isActiveSubscription?.trial_period) {
+      if (totalteamcount > 1) {
+        return res.status(400).json({
+          errors: {
+            msg: 'You have exceed the freemium plan limit . please active subscription',
+          },
+        });
+      }
+    }
+
+    if (!isActiveSubscription?.trial_period && isActiveSubscription?.end_at > new Date()) {
+      if (totalteamcount > plandata?.plan_tiers?.max_users) {
+        return res.status(400).json({
+          errors: {
+            msg: 'You have exceed the premium plan limit maximum user limit . please upgrade plan tier',
+          },
+        });
+      }
+    }
+
+
     if (workEmailDomain !== companyDomain) {
       return res.status(400).json({
         errors: {
