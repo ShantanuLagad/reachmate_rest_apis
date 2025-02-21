@@ -684,7 +684,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
     let planId = isActiveSubscription ? isActiveSubscription?.plan_id : trialdata?.plan_id
     console.log("planId : ", planId)
     let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier_id
-    console.log("planId : ", planId)
+    console.log("planTierId : ", planTierId)
 
     let plandata = await Plan.aggregate(
       [
@@ -730,7 +730,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       }
     }
 
-    if (isActiveSubscription && isActiveSubscription.end_at > new Date()) {
+    if (isActiveSubscription && isActiveSubscription.status == 'active') {
       if (totalteamcount > plandata?.plan_tiers?.max_users) {
         return res.status(400).json({
           errors: {
