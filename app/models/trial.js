@@ -10,6 +10,9 @@ const trialSchema = new mongoose.Schema(
         plan_id: {
             type: String
         },
+        plan_tier_id: {
+            type: mongoose.Schema.Types.ObjectId
+        },
         start_at: {
             type: Date,
         },
