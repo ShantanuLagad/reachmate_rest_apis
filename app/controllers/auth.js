@@ -1207,6 +1207,9 @@ exports.verifyotpemailNew = async (req, res) => {
     }
     else {
       const newUser = new UserModel(data);
+      delete newUser.password;
+      delete newUser.confirm_password;
+
       newuser = await newUser.save();
       console.log("newuser : ", newuser)
       // savedUser.email_verified = true; 
