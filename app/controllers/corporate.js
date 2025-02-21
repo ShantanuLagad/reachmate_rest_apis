@@ -824,6 +824,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
     const totalCount = await TeamMember.countDocuments(query);
 
     const teamMembers = await TeamMember.find(query)
+      .sort({ createdAt: -1 })
       .skip(paginationOffset)
       .limit(paginationLimit);
 
