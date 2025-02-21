@@ -1218,7 +1218,7 @@ exports.verifyotpemailNew = async (req, res) => {
 
 
 
-    res.status(200).json({ message: 'OTP verified and user activated successfully.', userInfo: newuser, code: 200 });
+    res.status(200).json({ message: 'OTP verified and user activated successfully.', userInfo: newuser, token: generateToken(newuser._id), code: 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
