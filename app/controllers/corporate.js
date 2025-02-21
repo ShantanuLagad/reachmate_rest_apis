@@ -548,8 +548,8 @@ exports.completeProfile = async (req, res) => {
     console.log("data", data)
     if (req.user.is_profile_completed === true) return utils.handleError(res, { message: "Card is already created", code: 400 });
     data.is_profile_completed = true
-    await Company.findByIdAndUpdate(company_id, data);
-
+    const response = await Company.findOneAndUpdate({ _id: company_id }, { $set: data }, { new: true });
+    console.log("response : ", response)
     res.json({ message: "Card created successfully", code: 200 })
   } catch (error) {
     utils.handleError(res, error)
