@@ -668,7 +668,12 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
     let isActiveSubscription = await Subscription.findOne({ user_id: userId, status: 'active' })
     console.log("isActiveSubscription : ", isActiveSubscription)
 
+    let trialdata
     if (!isActiveSubscription) {
+      trialdata = await Trial.findOne({ user_id: userId });
+      console.log("trialdata : ", trialdata)
+    }
+    if (!trialdata) {
       return res.status(404).json({
         errors: {
           msg: 'No Subscription found',
@@ -676,11 +681,16 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       });
     }
 
+    let planId = isActiveSubscription ? isActiveSubscription?.plan_id : trialdata?.plan_id
+    console.log("planId : ", planId)
+    let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier_id
+    console.log("planId : ", planId)
+
     let plandata = await Plan.aggregate(
       [
         {
           $match: {
-            plan_id: isActiveSubscription?.plan_id
+            plan_id: planId
           }
         },
         {
@@ -691,7 +701,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
         },
         {
           $match: {
-            "plan_tiers._id": new mongoose.Types.ObjectId(isActiveSubscription?.plan_tier?.tier_id)
+            "plan_tiers._id": new mongoose.Types.ObjectId(planTierId)
           }
         }
       ]
@@ -699,7 +709,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
     console.log("plandata : ", plandata)
     plandata = plandata[0]
 
-    if (isActiveSubscription.trial_period && isActiveSubscription.trial_period.end < new Date()) {
+    if (trialdata && trialdata.end_at < new Date()) {
       return res.status(400).json({
         errors: {
           msg: 'Trial period expired . please active subscription',
@@ -709,7 +719,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let totalteamcount = await TeamMember.countDocuments({ 'company_details.email_domain': companyDomain })
     console.log("totalteamcount : ", totalteamcount)
-    if (isActiveSubscription.trial_period && isActiveSubscription.trial_period.end > new Date()) {
+    if (trialdata && trialdata.end_at > new Date()) {
       console.log("inside freemium....")
       if (totalteamcount > 1) {
         return res.status(400).json({
@@ -720,7 +730,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       }
     }
 
-    if (!isActiveSubscription.trial_period && isActiveSubscription.end_at > new Date()) {
+    if (isActiveSubscription && isActiveSubscription.end_at > new Date()) {
       if (totalteamcount > plandata?.plan_tiers?.max_users) {
         return res.status(400).json({
           errors: {
@@ -1985,6 +1995,15 @@ exports.createSubscription = async (req, res) => {
           start: startOfPeriod,
           end: endOfPeriod
         }
+        const newTrial = await Trial.create({
+          user_id,
+          plan_id: planId,
+          start_at: startOfPeriod,
+          end_at: endOfPeriod,
+          status: 'active',
+          plan_tier: tierPlanData
+        })
+        console.log("newTrial : ", newTrial)
       }
       console.log("dataForDatabase : ", dataForDatabase)
 
