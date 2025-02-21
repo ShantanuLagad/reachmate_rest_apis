@@ -699,7 +699,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
     console.log("plandata : ", plandata)
     plandata = plandata[0]
 
-    if (isActiveSubscription?.trial_period && isActiveSubscription?.trial_period?.end < new Date()) {
+    if (isActiveSubscription.trial_period && isActiveSubscription.trial_period.end < new Date()) {
       return res.status(400).json({
         errors: {
           msg: 'Trial period expired . please active subscription',
@@ -709,7 +709,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let totalteamcount = await TeamMember.countDocuments({ 'company_details.email_domain': companyDomain })
     console.log("totalteamcount : ", totalteamcount)
-    if (isActiveSubscription?.trial_period) {
+    if (isActiveSubscription.trial_period) {
       if (totalteamcount > 1) {
         return res.status(400).json({
           errors: {
@@ -719,7 +719,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       }
     }
 
-    if (!isActiveSubscription?.trial_period && isActiveSubscription?.end_at > new Date()) {
+    if (!isActiveSubscription.trial_period && isActiveSubscription.end_at > new Date()) {
       if (totalteamcount > plandata?.plan_tiers?.max_users) {
         return res.status(400).json({
           errors: {
