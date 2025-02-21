@@ -1194,6 +1194,7 @@ exports.verifyotpemailNew = async (req, res) => {
     //   return res.status(404).json({ errors: { msg: 'User not found.' } });
     // }
     const doesEmailExist = await UserModel.findOne({ email: email });
+    let newuser
 
     if (doesEmailExist) {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
@@ -1206,14 +1207,15 @@ exports.verifyotpemailNew = async (req, res) => {
     }
     else {
       const newUser = new UserModel(data);
-      const savedUser = await newUser.save();
+      newuser = await newUser.save();
+      console.log("newuser : ", newuser)
       // savedUser.email_verified = true; 
       // await user.save();
     }
 
 
 
-    res.status(200).json({ message: 'OTP verified and user activated successfully.' });
+    res.status(200).json({ message: 'OTP verified and user activated successfully.', data: newuser, code: 200 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ errors: { msg: 'Internal Server Error' } });
