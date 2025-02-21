@@ -673,7 +673,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       trialdata = await Trial.findOne({ user_id: userId });
       console.log("trialdata : ", trialdata)
     }
-    if (!trialdata) {
+    if (!trialdata && !isActiveSubscription) {
       return res.status(404).json({
         errors: {
           msg: 'No Subscription found',
