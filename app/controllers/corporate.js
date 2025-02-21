@@ -707,7 +707,6 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       ]
     )
     console.log("plandata : ", plandata)
-    let flatplandata = plandata[0]
 
     if (trialdata && trialdata.end_at < new Date()) {
       return res.status(400).json({
@@ -731,8 +730,8 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
     }
 
     if (isActiveSubscription && isActiveSubscription.status == 'active' && isActiveSubscription.end_at > new Date()) {
-      console.log("inside max user condition...")
-      if (totalteamcount > flatplandata?.plan_tiers?.max_users) {
+      console.log("inside max user condition...", isActiveSubscription?.plan_tier?.user_count)
+      if (totalteamcount > isActiveSubscription?.plan_tier?.user_count) {
         return res.status(400).json({
           errors: {
             msg: 'You have exceed the premium plan limit maximum user limit . please upgrade plan tier',
