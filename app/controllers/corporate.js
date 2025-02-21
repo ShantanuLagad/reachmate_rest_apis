@@ -703,16 +703,11 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
           $match: {
             "plan_tiers._id": new mongoose.Types.ObjectId(planTierId)
           }
-        },
-        {
-          $unwind: {
-            path: '$root',
-            preserveNullAndEmptyArrays: true
-          }
         }
       ]
     )
     console.log("plandata : ", plandata)
+    let flatplandata = plandata[0]
 
     if (trialdata && trialdata.end_at < new Date()) {
       return res.status(400).json({
@@ -737,7 +732,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     if (isActiveSubscription && isActiveSubscription.status == 'active' && isActiveSubscription.end_at > new Date()) {
       console.log("inside max user condition...")
-      if (totalteamcount > plandata?.plan_tiers?.max_users) {
+      if (totalteamcount > flatplandata?.plan_tiers?.max_users) {
         return res.status(400).json({
           errors: {
             msg: 'You have exceed the premium plan limit maximum user limit . please upgrade plan tier',
