@@ -2110,6 +2110,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
         instagram: teamMember.social_links?.instagram || "",
         youtube: teamMember.social_links?.youtube || ""
       },
+      address: company?.address,
       business_logo: company?.business_logo,
       text_color: company?.text_color,
       card_color: company?.card_color,
@@ -2226,12 +2227,12 @@ exports.getAllAccessCards = async (req, res) => {
     );
 
 
-    // res.status(200).json({
-    //   code: 200,
-    //   message: "Access Cards retrieved successfully.",
-    //   count: enrichedCompanies.length,
-    //   data: enrichedCompanies,
-    // });
+    res.status(200).json({
+      code: 200,
+      message: "Access Cards retrieved successfully.",
+      count: enrichedCompanies.length,
+      data: enrichedCompanies,
+    });
 
     // const Allaccesscard = await CardDetials.find({ owner_id: userId, card_type: 'corporate' })
     // console.log("Allaccesscard : ", Allaccesscard)
