@@ -2603,7 +2603,7 @@ exports.paymentVerification = async (req, res) => {
     const updaterequest = await updateSubscriptionRequest.findOne({ user_id: userId, subscription_id: subscription_data.subscription_id, status: 'pending' })
     console.log("updaterequest : ", updaterequest)
 
-    if (razorpay_payment_data.status === "captured") {
+    if (!["failed", "cancelled"].includes(razorpay_payment_data.status)) {
       subscription_data.user_id = updaterequest?.user_id
       subscription_data.plan_id = updaterequest?.plan_id
       subscription_data.plan_started_at = updaterequest?.start_at
