@@ -40,6 +40,7 @@ const { resolve } = require('path');
 const Razorpay = require('razorpay');
 const payments = require('../models/payments')
 const { default: axios } = require('axios')
+const updateSubscriptionRequest = require('../models/updateSubscriptionRequest')
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -2138,19 +2139,32 @@ exports.updateSubscription = async (req, res) => {
         endOfPeriod = new Date(now.setFullYear(now.getFullYear() + 1));
       }
 
-      activeSubscription.user_id = user_id
-      activeSubscription.plan_id = plan.plan_id
-      activeSubscription.plan_started_at = startOfPeriod
-      activeSubscription.start_at = startOfPeriod
-      activeSubscription.end_at = endOfPeriod
-      activeSubscription.status = "active"
-      activeSubscription.plan_tier = tierPlanData
+      // activeSubscription.user_id = user_id
+      // activeSubscription.plan_id = plan.plan_id
+      // activeSubscription.plan_started_at = startOfPeriod
+      // activeSubscription.start_at = startOfPeriod
+      // activeSubscription.end_at = endOfPeriod
+      // activeSubscription.status = "active"
+      // activeSubscription.plan_tier = tierPlanData
 
       const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
       activeSubscription.plan_tier.razorpay_order = razorpayOrder
       console.log("razorpayOrder : ", razorpayOrder)
 
-      await activeSubscription.save()
+      tierPlanData.razorpay_order.id = razorpayOrder.id
+      const updaterequest = await updateSubscriptionRequest.create(
+        {
+          user_id,
+          plan_id: plan.plan_id,
+          plan_started_at: startOfPeriod,
+          start_at: startOfPeriod,
+          end_at: endOfPeriod,
+          plan_tier: tierPlanData
+        }
+      )
+      console.log("updaterequest : ", updaterequest)
+
+      // await activeSubscription.save()
     } else {
       const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
       const status = subcription.status;
@@ -2580,6 +2594,23 @@ exports.paymentVerification = async (req, res) => {
 
     const razorpay_payment_data = await instance.payments.fetch(razorpay_payment_id);
     console.log("razorpay_payment_data : ", razorpay_payment_data)
+
+    const updaterequest = await updateSubscriptionRequest.findOne({ user_id: userId, subscription_id, status: 'pending' })
+    console.log("updaterequest : ", updaterequest)
+
+    if (razorpay_payment_data.status === "captured") {
+      subscription_data.user_id = updaterequest?.user_id
+      subscription_data.plan_id = updaterequest?.plan_id
+      subscription_data.plan_started_at = updaterequest?.start_at
+      subscription_data.start_at = updaterequest?.start_at
+      subscription_data.end_at = updaterequest?.end_at
+      subscription_data.status = "active"
+      subscription_data.plan_tier = updaterequest?.tierPlanData
+      subscription_data.save()
+
+      updaterequest.status = "approved"
+      await updaterequest.save()
+    }
 
     const paymentdata = {
       razorpay_payment_id,
