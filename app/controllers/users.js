@@ -2175,55 +2175,55 @@ exports.getAllAccessCards = async (req, res) => {
       return res.status(204).json({ message: "No company access cards found." });
     }
 
-    // const companyConditions = user.companyAccessCardDetails.map((detail) => ({
-    //   email_domain: detail.email_domain,
-    //   access_code: detail.access_code,
-    // }));
-    // console.log("companyConditions : ", companyConditions)
+    const companyConditions = user.companyAccessCardDetails.map((detail) => ({
+      email_domain: detail.email_domain,
+      access_code: detail.access_code,
+    }));
+    console.log("companyConditions : ", companyConditions)
 
-    // const companies = await Company.find(
-    //   { $or: companyConditions },
-    //   { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
-    // );
-    // console.log("companies : ", companies)
+    const companies = await Company.find(
+      { $or: companyConditions },
+      { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
+    );
+    console.log("companies : ", companies)
 
-    // if (companies.length === 0) {
-    //   return res.status(204).json({ message: "No companies found for the access cards." });
-    // }
-    // const enrichedCompanies = await Promise.all(
-    //   companies.map(async (company) => {
-    //     const userAccessCardDetail = user.companyAccessCardDetails.find(
-    //       (detail) => detail.email_domain === company.email_domain
-    //     );
+    if (companies.length === 0) {
+      return res.status(204).json({ message: "No companies found for the access cards." });
+    }
+    const enrichedCompanies = await Promise.all(
+      companies.map(async (company) => {
+        const userAccessCardDetail = user.companyAccessCardDetails.find(
+          (detail) => detail.email_domain === company.email_domain
+        );
 
-    //     const teamMember = userAccessCardDetail?._id
-    //       ? await TeamMember.findById(userAccessCardDetail._id)
-    //       : null;
-    //     // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
-    //     // console.log('teammmmmm',teamMember)
-    //     const bio = teamMember
-    //       ? {
-    //         first_name: teamMember.first_name,
-    //         last_name: teamMember.last_name,
-    //         full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-    //         designation: teamMember.designation || "",
-    //         work_email: teamMember.work_email,
-    //         phone_number: teamMember.phone_number
-    //       }
-    //       : null;
-    //     // console.log('bio',bio)
-    //     return {
-    //       bio,
-    //       ...company.toObject(),
-    //       social_links: userAccessCardDetail?.accessCard_social_links || {
-    //         linkedin: "",
-    //         x: "",
-    //         instagram: "",
-    //         youtube: "",
-    //       },
-    //     };
-    //   })
-    // );
+        const teamMember = userAccessCardDetail?._id
+          ? await TeamMember.findById(userAccessCardDetail._id)
+          : null;
+        // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
+        // console.log('teammmmmm',teamMember)
+        const bio = teamMember
+          ? {
+            first_name: teamMember.first_name,
+            last_name: teamMember.last_name,
+            full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+            designation: teamMember.designation || "",
+            work_email: teamMember.work_email,
+            phone_number: teamMember.phone_number
+          }
+          : null;
+        // console.log('bio',bio)
+        return {
+          bio,
+          ...company.toObject(),
+          social_links: userAccessCardDetail?.accessCard_social_links || {
+            linkedin: "",
+            x: "",
+            instagram: "",
+            youtube: "",
+          },
+        };
+      })
+    );
 
 
     // res.status(200).json({
@@ -2233,18 +2233,18 @@ exports.getAllAccessCards = async (req, res) => {
     //   data: enrichedCompanies,
     // });
 
-    const Allaccesscard = await CardDetials.find({ owner_id: userId, card_type: 'corporate' })
-    console.log("Allaccesscard : ", Allaccesscard)
-    const count = await CardDetials.countDocuments({ owner_id: userId, card_type: 'corporate' })
-    if (!Allaccesscard || Allaccesscard.length === 0) {
-      return res.status(204).json({ message: "No company access cards found." });
-    }
-    return res.status(200).json({
-      message: "Access card fetched successfully",
-      data: Allaccesscard,
-      count,
-      code: 200
-    })
+    // const Allaccesscard = await CardDetials.find({ owner_id: userId, card_type: 'corporate' })
+    // console.log("Allaccesscard : ", Allaccesscard)
+    // const count = await CardDetials.countDocuments({ owner_id: userId, card_type: 'corporate' })
+    // if (!Allaccesscard || Allaccesscard.length === 0) {
+    //   return res.status(204).json({ message: "No company access cards found." });
+    // }
+    // return res.status(200).json({
+    //   message: "Access card fetched successfully",
+    //   data: Allaccesscard,
+    //   count,
+    //   code: 200
+    // })
   } catch (error) {
     console.error("Error in getAllAccessCards API:", error);
     utils.handleError(res, error);
