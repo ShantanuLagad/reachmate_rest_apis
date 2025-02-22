@@ -2161,7 +2161,8 @@ exports.updateSubscription = async (req, res) => {
           plan_started_at: startOfPeriod,
           start_at: startOfPeriod,
           end_at: endOfPeriod,
-          plan_tier: tierPlanData
+          plan_tier: tierPlanData,
+          subscription_id: activeSubscription?.subscription_id
         }
       )
       console.log("updaterequest : ", updaterequest)
