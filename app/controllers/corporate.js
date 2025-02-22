@@ -2610,7 +2610,7 @@ exports.paymentVerification = async (req, res) => {
       subscription_data.start_at = updaterequest?.start_at
       subscription_data.end_at = updaterequest?.end_at
       subscription_data.status = "active"
-      subscription_data.plan_tier = updaterequest?.tierPlanData
+      subscription_data.plan_tier = updaterequest?.plan_tier
       await subscription_data.save()
 
       updaterequest.status = "approved"
