@@ -2151,7 +2151,9 @@ exports.updateSubscription = async (req, res) => {
       activeSubscription.plan_tier.razorpay_order = razorpayOrder
       console.log("razorpayOrder : ", razorpayOrder)
 
-      tierPlanData.razorpay_order.id = razorpayOrder.id
+      tierPlanData.razorpay_order = {
+        id: razorpayOrder?.id
+      }
       const updaterequest = await updateSubscriptionRequest.create(
         {
           user_id,
@@ -2163,6 +2165,8 @@ exports.updateSubscription = async (req, res) => {
         }
       )
       console.log("updaterequest : ", updaterequest)
+
+      res.json({ message: "Subscription updated successfully. Waiting for payment verification", code: 200 })
 
       // await activeSubscription.save()
     } else {
