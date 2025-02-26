@@ -3862,11 +3862,11 @@ exports.webhook = async (req, res) => {
         console.log('Unhandled event:', event);
     }
 
-    res.sendStatus(200);
+    return res.sendStatus(200);
   } else {
     // Signature verification failed
     console.error('Invalid webhook signature');
-    res.sendStatus(403);
+    return res.sendStatus(200);
   }
 }
 
