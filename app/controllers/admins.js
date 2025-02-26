@@ -1663,15 +1663,16 @@ exports.deleteCompany = async (req, res) => {
     const company_id = req.params.company_id;
     console.log("company_id", company_id)
 
-    await Company.deleteOne({ _id: mongoose.Types.ObjectId(company_id) })
-    await CardDetials.deleteOne({ company_id: mongoose.Types.ObjectId(company_id) })
+    const result = await Company.findOneAndDelete({ _id: mongoose.Types.ObjectId(company_id) })
+    const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
+
+    console.log("result : ", result, " response : ", response)
 
     res.json({ message: "Company and all related Card are deleted successfully", code: 200 });
   } catch (error) {
     utils.handleError(res, error)
   }
 }
-
 
 
 
@@ -3314,3 +3315,44 @@ exports.sendFeedbackReply = async (req, res) => {
     handleError(res, error);
   }
 }
+
+
+// exports.deleteCompany = async (req, res) => {
+//   try {
+//     const userId = req.user._id
+//     console.log("userId : ", userId)
+
+//     const admindata = await Admin.findOne({ _id: userId })
+//     console.log("admindata : ", admindata)
+
+//     if (!admindata) {
+//       return res.status(404).json({
+//         message: 'Unauthorized',
+//         code: 404
+//       })
+//     }
+
+//     const { id } = req.params
+//     const companydata = await Company.findOne({ _id: id })
+//     console.log('companydata : ', companydata)
+//     if (!companydata) {
+//       return res.status(404).json({
+//         message: 'No data found',
+//         code: 404
+//       })
+//     }
+
+//     const result = await Company.findOneAndDelete(
+//       {
+//         _id: id
+//       }
+//     )
+//     console.log("result : ", result)
+//     return res.status(200).json({
+//       message: "Company data removed successfully",
+//       code: 200
+//     })
+//   } catch (error) {
+//     handleError(res, error);
+//   }
+// }
