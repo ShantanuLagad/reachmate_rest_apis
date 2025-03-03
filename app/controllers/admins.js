@@ -3322,7 +3322,7 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
   try {
     const { plan_tier_type } = req.query
     console.log("plan_tier_type : ", plan_tier_type)
-    const data = await Subscription.aggregate(
+    let data = await Subscription.aggregate(
       [
         {
           $lookup: {
@@ -3509,6 +3509,18 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
       ]
     )
     console.log("data : ", data[0])
+    if(data[0] === undefined){
+      data[0] = {
+        total_bt_revenue : 0,
+        total_individual_revenue: 0
+      }
+    }
+
+    return res.status(200).json({
+      message : "chart data fetched successfully",
+      data : data[0],
+      code : 200
+    })
   } catch (error) {
     handleError(res, error)
   }
