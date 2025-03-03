@@ -3318,251 +3318,379 @@ exports.sendFeedbackReply = async (req, res) => {
 }
 
 
-exports.getSubscriptionRevenueChartData = async (req, res) => {
-  try {
-    const { plan_tier_type } = req.query
-    console.log("plan_tier_type : ", plan_tier_type)
-    let data = await Subscription.aggregate(
-      [
-        {
-          $lookup: {
-            from: "plans",
-            let: { id: "$plan_id" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $eq: ["$$id", "$plan_id"]
-                  }
-                }
-              }
-            ],
-            as: "plan_data"
-          }
-        },
-        {
-          $unwind: {
-            path: "$plan_data",
-            preserveNullAndEmptyArrays: true
-          }
-        },
-        {
-          $lookup: {
-            from: "plans",
-            let: { id: "$plan_tier.tier_id" },
-            pipeline: [
-              {
-                $unwind: {
-                  path: "$plan_tiers",
-                  preserveNullAndEmptyArrays: true
-                }
-              },
-              {
-                $match: {
-                  $expr: {
-                    $eq: ["$$id", "$plan_tiers._id"]
-                  }
-                }
-              },
-              {
-                $addFields: {
-                  single_plan_data: {
-                    $cond: {
-                      if: {
-                        $ne: [
-                          "$plan_tiers.tier_type",
-                          null
-                        ]
-                      },
-                      then: "$plan_tiers",
-                      else: null
-                    }
-                  }
-                }
-              },
-              {
-                $project: {
-                  single_plan_data: 1
-                }
-              }
-            ],
-            as: "plan_tier_data"
-          }
-        },
-        {
-          $unwind: {
-            path: "$plan_tier_data",
-            preserveNullAndEmptyArrays: true
-          }
-        },
-
-        {
-          $addFields: {
-            bt_revenue: {
-              $cond: {
-                if: {
-                  $and: [
-                    {
-                      $ne: [
-                        "$plan_data.plan_tiers",
-                        null
-                      ]
-                    },
-                    {
-                      $gt: [
-                        {
-                          $size: "$plan_data.plan_tiers"
-                        },
-                        0
-                      ]
-                    },
-                    {
-                      $eq: [
-                        "$plan_data.plan_type",
-                        "company"
-                      ]
-                    }
-                  ]
-                },
-                then: "$plan_tier.amount",
-                else:
-                  // $divide: [
-                  //   "$plan_data.item.amount",
-                  //   100
-                  // ]
-                  0
-              }
-            }
-          }
-        },
-        {
-          $addFields: {
-            individual_revenue: {
-              $cond: {
-                if: {
-                  $and: [
-                    // {
-                    //   $ne: [
-                    //     "$plan_data.plan_tiers",
-                    //     null
-                    //   ]
-                    // },
-                    // {
-                    //   $gt: [
-                    //     {
-                    //       $size: "$plan_data.plan_tiers"
-                    //     },
-                    //     0
-                    //   ]
-                    // },
-                    {
-                      $eq: [
-                        "$plan_data.plan_type",
-                        "individual"
-                      ]
-                    }
-                  ]
-                },
-                then: {
-                  $divide: [
-                    "$plan_data.item.amount",
-                    100
-                  ]
-                },
-                else:
-                  // $divide: [
-                  //   "$plan_data.item.amount",
-                  //   100
-                  // ]
-                  0
-              }
-            }
-          }
-        },
-        {
-          $match: {
-            "plan_tier_data.single_plan_data.tier_type":
-              plan_tier_type
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            total_bt_revenue: {
-              $sum: { $ifNull: ["$bt_revenue", 0] }
-            },
-            total_individual_revenue: {
-              $sum: {
-                $ifNull: ["$individual_revenue", 0]
-              }
-            }
-          }
-        },
-
-        {
-          $project: {
-            _id: 0,
-            total_bt_revenue: 1,
-            total_individual_revenue: 1
-          }
-        }
-      ]
-    )
-    console.log("data : ", data[0])
-    if(data[0] === undefined){
-      data[0] = {
-        total_bt_revenue : 0,
-        total_individual_revenue: 0
-      }
-    }
-
-    return res.status(200).json({
-      message : "chart data fetched successfully",
-      data : data[0],
-      code : 200
-    })
-  } catch (error) {
-    handleError(res, error)
-  }
-}
-
-
-// exports.deleteCompany = async (req, res) => {
+// exports.getSubscriptionRevenueChartData = async (req, res) => {
 //   try {
-//     const userId = req.user._id
-//     console.log("userId : ", userId)
+//     const { plan_tier_type } = req.query
+//     console.log("plan_tier_type : ", plan_tier_type)
+//     let data = await Subscription.aggregate(
+//       [
+//         {
+//           $lookup: {
+//             from: "plans",
+//             let: { id: "$plan_id" },
+//             pipeline: [
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $eq: ["$$id", "$plan_id"]
+//                   }
+//                 }
+//               }
+//             ],
+//             as: "plan_data"
+//           }
+//         },
+//         {
+//           $unwind: {
+//             path: "$plan_data",
+//             preserveNullAndEmptyArrays: true
+//           }
+//         },
+//         {
+//           $lookup: {
+//             from: "plans",
+//             let: { id: "$plan_tier.tier_id" },
+//             pipeline: [
+//               {
+//                 $unwind: {
+//                   path: "$plan_tiers",
+//                   preserveNullAndEmptyArrays: true
+//                 }
+//               },
+//               {
+//                 $match: {
+//                   $expr: {
+//                     $eq: ["$$id", "$plan_tiers._id"]
+//                   }
+//                 }
+//               },
+//               {
+//                 $addFields: {
+//                   single_plan_data: {
+//                     $cond: {
+//                       if: {
+//                         $ne: [
+//                           "$plan_tiers.tier_type",
+//                           null
+//                         ]
+//                       },
+//                       then: "$plan_tiers",
+//                       else: null
+//                     }
+//                   }
+//                 }
+//               },
+//               {
+//                 $project: {
+//                   single_plan_data: 1
+//                 }
+//               }
+//             ],
+//             as: "plan_tier_data"
+//           }
+//         },
+//         {
+//           $unwind: {
+//             path: "$plan_tier_data",
+//             preserveNullAndEmptyArrays: true
+//           }
+//         },
 
-//     const admindata = await Admin.findOne({ _id: userId })
-//     console.log("admindata : ", admindata)
+//         {
+//           $addFields: {
+//             bt_revenue: {
+//               $cond: {
+//                 if: {
+//                   $and: [
+//                     {
+//                       $ne: [
+//                         "$plan_data.plan_tiers",
+//                         null
+//                       ]
+//                     },
+//                     {
+//                       $gt: [
+//                         {
+//                           $size: "$plan_data.plan_tiers"
+//                         },
+//                         0
+//                       ]
+//                     },
+//                     {
+//                       $eq: [
+//                         "$plan_data.plan_type",
+//                         "company"
+//                       ]
+//                     }
+//                   ]
+//                 },
+//                 then: "$plan_tier.amount",
+//                 else:
+//                   // $divide: [
+//                   //   "$plan_data.item.amount",
+//                   //   100
+//                   // ]
+//                   0
+//               }
+//             }
+//           }
+//         },
+//         {
+//           $addFields: {
+//             individual_revenue: {
+//               $cond: {
+//                 if: {
+//                   $and: [
+//                     // {
+//                     //   $ne: [
+//                     //     "$plan_data.plan_tiers",
+//                     //     null
+//                     //   ]
+//                     // },
+//                     // {
+//                     //   $gt: [
+//                     //     {
+//                     //       $size: "$plan_data.plan_tiers"
+//                     //     },
+//                     //     0
+//                     //   ]
+//                     // },
+//                     {
+//                       $eq: [
+//                         "$plan_data.plan_type",
+//                         "individual"
+//                       ]
+//                     }
+//                   ]
+//                 },
+//                 then: {
+//                   $divide: [
+//                     "$plan_data.item.amount",
+//                     100
+//                   ]
+//                 },
+//                 else:
+//                   // $divide: [
+//                   //   "$plan_data.item.amount",
+//                   //   100
+//                   // ]
+//                   0
+//               }
+//             }
+//           }
+//         },
+//         {
+//           $match: {
+//             "plan_tier_data.single_plan_data.tier_type":
+//               plan_tier_type
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: null,
+//             total_bt_revenue: {
+//               $sum: { $ifNull: ["$bt_revenue", 0] }
+//             },
+//             total_individual_revenue: {
+//               $sum: {
+//                 $ifNull: ["$individual_revenue", 0]
+//               }
+//             }
+//           }
+//         },
 
-//     if (!admindata) {
-//       return res.status(404).json({
-//         message: 'Unauthorized',
-//         code: 404
-//       })
-//     }
-
-//     const { id } = req.params
-//     const companydata = await Company.findOne({ _id: id })
-//     console.log('companydata : ', companydata)
-//     if (!companydata) {
-//       return res.status(404).json({
-//         message: 'No data found',
-//         code: 404
-//       })
-//     }
-
-//     const result = await Company.findOneAndDelete(
-//       {
-//         _id: id
-//       }
+//         {
+//           $project: {
+//             _id: 0,
+//             total_bt_revenue: 1,
+//             total_individual_revenue: 1
+//           }
+//         }
+//       ]
 //     )
-//     console.log("result : ", result)
+//     console.log("data : ", data[0])
+//     if(data[0] === undefined){
+//       data[0] = {
+//         total_bt_revenue : 0,
+//         total_individual_revenue: 0
+//       }
+//     }
+
 //     return res.status(200).json({
-//       message: "Company data removed successfully",
-//       code: 200
+//       message : "chart data fetched successfully",
+//       data : data[0],
+//       code : 200
 //     })
 //   } catch (error) {
-//     handleError(res, error);
+//     handleError(res, error)
 //   }
 // }
+
+
+exports.getSubscriptionRevenueChartData = async (req, res) => {
+  try {
+    const { plan_tier_type } = req.query;
+    console.log("plan_tier_type : ", plan_tier_type);
+
+    const today = new Date();
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    console.log("sixMonthsAgo : ", sixMonthsAgo)
+
+    if (!plan_tier_type) {
+      return res.status(400).json({
+        message: "Missing plan tier type parameter",
+        code: 400
+      });
+    }
+
+    let data = await Subscription.aggregate([
+      {
+        $lookup: {
+          from: "plans",
+          let: { id: "$plan_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$$id", "$plan_id"] } } }
+          ],
+          as: "plan_data"
+        }
+      },
+      {
+        $unwind: {
+          path: "$plan_data",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: "plans",
+          let: { id: "$plan_tier.tier_id" },
+          pipeline: [
+            { $unwind: { path: "$plan_tiers", preserveNullAndEmptyArrays: true } },
+            { $match: { $expr: { $eq: ["$$id", "$plan_tiers._id"] } } },
+            {
+              $addFields: {
+                single_plan_data: {
+                  $cond: {
+                    if: { $ne: ["$plan_tiers.tier_type", null] },
+                    then: "$plan_tiers",
+                    else: null
+                  }
+                }
+              }
+            },
+            { $project: { single_plan_data: 1 } }
+          ],
+          as: "plan_tier_data"
+        }
+      },
+      {
+        $unwind: {
+          path: "$plan_tier_data",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $match: {
+          "plan_tier_data.single_plan_data.tier_type": plan_tier_type,
+          "start_at": { $gte: sixMonthsAgo }
+        }
+      },
+      {
+        $addFields: {
+          bt_revenue: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: ["$plan_data.plan_tiers", null] },
+                  { $gt: [{ $size: "$plan_data.plan_tiers" }, 0] },
+                  { $eq: ["$plan_data.plan_type", "company"] }
+                ]
+              },
+              then: "$plan_tier.amount",
+              else: 0
+            }
+          },
+          individual_revenue: {
+            $cond: {
+              if: { $eq: ["$plan_data.plan_type", "individual"] },
+              then: { $divide: ["$plan_data.item.amount", 100] },
+              else: 0
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          month: { $month: "$start_at" },
+          year: { $year: "$start_at" },
+          bt_revenue: 1,
+          individual_revenue: 1
+        }
+      },
+      {
+        $group: {
+          _id: { month: "$month", year: "$year" },
+          total_bt_revenue: { $sum: { $ifNull: ["$bt_revenue", 0] } },
+          total_individual_revenue: { $sum: { $ifNull: ["$individual_revenue", 0] } }
+        }
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 }
+      },
+      {
+        $project: {
+          month: "$_id.month",
+          year: "$_id.year",
+          total_bt_revenue: 1,
+          total_individual_revenue: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    const allMonths = Array.from({ length: 6 }, (_, i) => {
+      const month = (today.getMonth() - i + 12) % 12;
+      const year = today.getFullYear() - (month > today.getMonth() ? 1 : 0);
+      return {
+        month: month + 1,
+        year: year
+      };
+    }).reverse();
+
+    const result = allMonths.map(monthData => {
+      const existingData = data.find(
+        entry => entry.month === monthData.month && entry.year === monthData.year
+      );
+      return existingData || {
+        ...monthData,
+        total_bt_revenue: 0,
+        total_individual_revenue: 0
+      };
+    });
+
+    return res.status(200).json({
+      message: "Chart data fetched successfully",
+      data: result,
+      code: 200
+    });
+
+  } catch (error) {
+    console.error("Error: ", error);
+    return res.status(500).json({
+      message: "An error occurred while fetching data.",
+      error: error.message,
+      code: 500
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
