@@ -67,6 +67,7 @@ const user = require('../models/user')
 const cardDetials = require('../models/cardDetials')
 const sharedCards = require('../models/sharedCards.js')
 const user_account_log = require('../models/user_account_log.js')
+const Subscription = require('../models/subscription.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -3313,6 +3314,203 @@ exports.sendFeedbackReply = async (req, res) => {
     })
   } catch (error) {
     handleError(res, error);
+  }
+}
+
+
+exports.getSubscriptionRevenueChartData = async (req, res) => {
+  try {
+    const { plan_tier_type } = req.query
+    console.log("plan_tier_type : ", plan_tier_type)
+    const data = await Subscription.aggregate(
+      [
+        {
+          $lookup: {
+            from: "plans",
+            let: { id: "$plan_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_id"]
+                  }
+                }
+              }
+            ],
+            as: "plan_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$plan_data",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $lookup: {
+            from: "plans",
+            let: { id: "$plan_tier.tier_id" },
+            pipeline: [
+              {
+                $unwind: {
+                  path: "$plan_tiers",
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_tiers._id"]
+                  }
+                }
+              },
+              {
+                $addFields: {
+                  single_plan_data: {
+                    $cond: {
+                      if: {
+                        $ne: [
+                          "$plan_tiers.tier_type",
+                          null
+                        ]
+                      },
+                      then: "$plan_tiers",
+                      else: null
+                    }
+                  }
+                }
+              },
+              {
+                $project: {
+                  single_plan_data: 1
+                }
+              }
+            ],
+            as: "plan_tier_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$plan_tier_data",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+
+        {
+          $addFields: {
+            bt_revenue: {
+              $cond: {
+                if: {
+                  $and: [
+                    {
+                      $ne: [
+                        "$plan_data.plan_tiers",
+                        null
+                      ]
+                    },
+                    {
+                      $gt: [
+                        {
+                          $size: "$plan_data.plan_tiers"
+                        },
+                        0
+                      ]
+                    },
+                    {
+                      $eq: [
+                        "$plan_data.plan_type",
+                        "company"
+                      ]
+                    }
+                  ]
+                },
+                then: "$plan_tier.amount",
+                else:
+                  // $divide: [
+                  //   "$plan_data.item.amount",
+                  //   100
+                  // ]
+                  0
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            individual_revenue: {
+              $cond: {
+                if: {
+                  $and: [
+                    // {
+                    //   $ne: [
+                    //     "$plan_data.plan_tiers",
+                    //     null
+                    //   ]
+                    // },
+                    // {
+                    //   $gt: [
+                    //     {
+                    //       $size: "$plan_data.plan_tiers"
+                    //     },
+                    //     0
+                    //   ]
+                    // },
+                    {
+                      $eq: [
+                        "$plan_data.plan_type",
+                        "individual"
+                      ]
+                    }
+                  ]
+                },
+                then: {
+                  $divide: [
+                    "$plan_data.item.amount",
+                    100
+                  ]
+                },
+                else:
+                  // $divide: [
+                  //   "$plan_data.item.amount",
+                  //   100
+                  // ]
+                  0
+              }
+            }
+          }
+        },
+        {
+          $match: {
+            "plan_tier_data.single_plan_data.tier_type":
+              plan_tier_type
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total_bt_revenue: {
+              $sum: { $ifNull: ["$bt_revenue", 0] }
+            },
+            total_individual_revenue: {
+              $sum: {
+                $ifNull: ["$individual_revenue", 0]
+              }
+            }
+          }
+        },
+
+        {
+          $project: {
+            _id: 0,
+            total_bt_revenue: 1,
+            total_individual_revenue: 1
+          }
+        }
+      ]
+    )
+    console.log("data : ", data[0])
+  } catch (error) {
+    handleError(res, error)
   }
 }
 

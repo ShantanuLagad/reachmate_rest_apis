@@ -429,4 +429,11 @@ router.post(
 )
 
 
+router.get(
+  "/getSubscriptionRevenueChartData",
+  trimRequest.all,
+  requireAuth,
+  controller.getSubscriptionRevenueChartData
+)
+
 module.exports = router
