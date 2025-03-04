@@ -25,6 +25,17 @@ const UserAccountLogSchema = new mongoose.Schema(
         date_and_time: {
             type: Date,
             default: Date.now()
+        },
+        start_at: {
+            type: Date
+        },
+        end_at: {
+            type: Date
+        },
+        session_status: {
+            type: String,
+            enum: ['created', 'active', 'completed'],
+            default: 'created'
         }
     },
     {

@@ -2933,6 +2933,18 @@ exports.addFCMDevice = async (req, res) => {
       await item.save()
     }
 
+    const newsession = await user_account_log.create({
+      user_id,
+      action: 'Account Session',
+      previous_status: 'session created',
+      // new_status: 'session deleted',
+      start_at: new Date(),
+      date_and_time: new Date(),
+      performed_by: 'user',
+      session_status: 'active'
+    })
+    console.log("newsession : ", newsession)
+
     res.json({
       message: "Token added successfully",
       code: 200,
@@ -2953,6 +2965,21 @@ exports.deleteFCMDevice = async (req, res) => {
     if (!fcmToken) return utils.handleError(res, { message: "Token not found", code: 404 });
 
     await FCMDevice.deleteOne({ user_id: user_id, token: token })
+
+    const newsession = await user_account_log.findOneAndUpdate(
+      {
+        user_id: new mongoose.Types.ObjectId(user_id),
+        session_status: 'active'
+      },
+      {
+        $set: {
+          new_status: 'session deleted',
+          end_at: new Date(),
+          session_status: 'completed'
+        }
+      }, { new: true }
+    )
+    console.log("newsession : ", newsession)
 
     res.json({
       message: "Token deleted successfully",
