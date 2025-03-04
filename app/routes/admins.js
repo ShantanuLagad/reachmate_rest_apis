@@ -447,4 +447,10 @@ router.get(
   controller.subscriptionDashboardData
 )
 
+router.get(
+  "/getplanSubscriptionfilterData",
+  trimRequest.all,
+  controller.planSubscriptionfilterData
+)
+
 module.exports = router

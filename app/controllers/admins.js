@@ -3904,7 +3904,7 @@ exports.subscriptionDashboardData = async (req, res) => {
       ]
     )
 
-    res.json({
+    return res.json({
       message: "Subscription dashboard data fetched successfully",
       totalSubscription,
       upcomingRenewal,
@@ -3918,6 +3918,286 @@ exports.subscriptionDashboardData = async (req, res) => {
   }
 }
 
+
+// exports.planSubscriptionfilterData = async (req, res) => {
+//   try {
+//     const { selectedPeriod } = req.query;
+//     let currentDate = new Date();
+//     let startOfPeriod, endOfPeriod;
+
+//     if (selectedPeriod === 'daily') {
+//       startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+//       endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+//     } else if (selectedPeriod === 'monthly') {
+//       const today = new Date();
+//       endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+//       startOfPeriod = new Date(today.setMonth(today.getMonth() - 1))
+//     } else if (selectedPeriod === 'yearly') {
+//       const year = currentDate.getFullYear();
+//       const month = currentDate.getMonth()
+//       const date = currentDate.getDate()
+//       startOfPeriod = new Date(year - 1, month, date);
+//       // endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+//       endOfPeriod = new Date(year, month, date);
+//     }
+
+//     console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
+//     let filter = {};
+//     let data = [];
+//     if (selectedPeriod) {
+//       filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+//     }
+
+//     console.log("filter:", filter);
+//     return res.json({
+//       message: "chart data fetched successfully",
+//       startOfPeriod,
+//       endOfPeriod,
+//       filter,
+//       code: 200
+//     });
+
+//   } catch (error) {
+//     handleError(res, error)
+//   }
+// }
+
+
+exports.planSubscriptionfilterData = async (req, res) => {
+  try {
+    const { selectedPeriod } = req.query;
+    let currentDate = new Date();
+    let startOfPeriod, endOfPeriod;
+
+    if (selectedPeriod === 'daily') {
+      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    } else if (selectedPeriod === 'yearly') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const date = currentDate.getDate();
+      startOfPeriod = new Date(year - 1, month, date);
+      endOfPeriod = new Date(year, month, date);
+    }
+
+    console.log("start date:", startOfPeriod.toISOString(), "end date:", endOfPeriod.toISOString());
+
+    let filter = {};
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+    }
+    console.log("filter : ", filter)
+
+    const aggregationPipeline = [
+      {
+        $match: filter
+      },
+      {
+        $lookup: {
+          from: "plans",
+          let: { id: "$plan_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$$id", "$plan_id"]
+                }
+              }
+            }
+          ],
+          as: "plan_data"
+        }
+      },
+      {
+        $unwind: {
+          path: "$plan_data"
+        }
+      },
+      {
+        $addFields: {
+          amount: {
+            $cond: {
+              if: {
+                $ne: [
+                  { $size: "$plan_data.plan_tiers" },
+                  0
+                ]
+              },
+              then: "$plan_tier.amount",
+              else: {
+                $divide: [
+                  "$plan_data.item.amount",
+                  100
+                ]
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    let data = []
+
+    if (selectedPeriod === "daily") {
+      const dailyData = await Subscription.aggregate([
+        ...aggregationPipeline,
+        {
+          $project: {
+            hour: { $hour: "$createdAt" },
+            plan_data: 1,
+            amount: 1
+          }
+        },
+        {
+          $group: {
+            _id: {
+              plan_type: "$plan_data.plan_type",
+              hour: "$hour"
+            },
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { "_id.hour": 1 }
+        }
+      ]);
+
+      console.log("Daily data:", dailyData);
+
+      data = Array.from({ length: 24 }, () => ({
+        individual: 0,
+        company: 0,
+        enterprise: 0
+      }));
+
+      dailyData.forEach(item => {
+        const hourIndex = item._id.hour;
+        const planType = item._id.plan_type;
+
+        if (!data[hourIndex][planType]) {
+          data[hourIndex][planType] = 0;
+        }
+
+        data[hourIndex][planType] += item.totalAmount;
+      });
+    } else if (selectedPeriod === "monthly") {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+
+      const monthlyData = await Subscription.aggregate([
+        ...aggregationPipeline,
+        {
+          $project: {
+            day: { $dayOfMonth: "$createdAt" },
+            plan_data: 1,
+            amount: 1
+          }
+        },
+        {
+          $group: {
+            _id: {
+              plan_type: "$plan_data.plan_type",
+              day: "$day"
+            },
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { "_id.day": 1 }
+        }
+      ]);
+
+      console.log("Monthly data:", monthlyData);
+
+      data = Array.from({ length: daysInMonth }, () => ({
+        individual: 0,
+        company: 0,
+        enterprise: 0
+      }));
+
+      monthlyData.forEach(item => {
+        const dayIndex = item._id.day - 1;
+        const planType = item._id.plan_type;
+
+        if (!data[dayIndex][planType]) {
+          data[dayIndex][planType] = 0;
+        }
+
+        data[dayIndex][planType] += item.totalAmount;
+      });
+    } else if (selectedPeriod === "yearly") {
+      const yearlyData = await Subscription.aggregate(
+        [
+          ...aggregationPipeline,
+          {
+            $project: {
+              month: { $month: "$createdAt" },
+              plan_data: 1,
+              user_id: 1,
+              plan_id: 1,
+              subscription_id: 1,
+              start_at: 1,
+              end: 1,
+              amount: 1,
+              createdAt: 1
+            }
+          },
+          {
+            $group: {
+              _id: {
+                plan_type: "$plan_data.plan_type",
+                month: "$month"
+              },
+              totalAmount: { $sum: "$amount" },
+              count: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.month": 1 }
+          }
+        ]);
+
+      console.log("yearly data:", yearlyData);
+      data = Array.from({ length: 12 }, () => ({
+        individual: 0,
+        company: 0,
+        enterprise: 0
+      }));
+
+      yearlyData.forEach(item => {
+        const monthIndex = item._id.month - 1;
+        const planType = item._id.plan_type;
+
+        if (!data[monthIndex][planType]) {
+          data[monthIndex][planType] = 0;
+        }
+
+        data[monthIndex][planType] += item.totalAmount;
+      });
+    }
+
+    return res.json({
+      message: "Chart data fetched successfully",
+      data: data,
+      startOfPeriod,
+      endOfPeriod,
+      code: 200
+    });
+  } catch (error) {
+    handleError(res, error)
+  }
+};
 
 
 
