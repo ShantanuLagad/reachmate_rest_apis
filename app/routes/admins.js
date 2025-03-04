@@ -436,4 +436,11 @@ router.get(
   controller.getSubscriptionRevenueChartData
 )
 
+router.get(
+  "/getUserAnalysisChartData",
+  trimRequest.all,
+  requireAuth,
+  controller.userAnalysisChartData
+)
+
 module.exports = router
