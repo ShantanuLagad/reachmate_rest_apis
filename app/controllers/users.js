@@ -58,8 +58,6 @@ const commaNumber = require('comma-number')
 const crypto = require('crypto');
 const FormData = require('form-data');
 
-
-
 const {
 
   getItemThroughId,
@@ -73,6 +71,7 @@ const TeamMember = require('../models/teamMember');
 const UserAccess = require('../models/userAccess');
 const { generateToken } = require('./corporate');
 const user_account_log = require('../models/user_account_log');
+const forge = require("node-forge");
 /*********************
  * Private functions *
  *********************/
@@ -5155,7 +5154,33 @@ exports.setDefaultPaymentMethod = async (req, res) => {
       code: 200
     })
   } catch (error) {
-    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.generateSignatureForIOS = async (req, res) => {
+  try {
+    try {
+      const manifest = req.body;
+      const path = process.env.STORAGE_PATH_FOR_EXCEL
+      const privateKeyPem = fs.readFileSync(`${path}/signature/private_key.pem`, "utf8");
+      const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+
+      const manifestString = JSON.stringify(manifest);
+
+      const md = forge.md.sha1.create();
+      md.update(manifestString, "utf8");
+
+      const signature = privateKey.sign(md);
+
+      const signatureBase64 = forge.util.encode64(signature);
+
+      return res.json({ message: "signature generated successfully", signature: signatureBase64, code: 200 });
+    } catch (error) {
+      utils.handleError(res, error)
+    }
+  } catch (error) {
     utils.handleError(res, error)
   }
 }

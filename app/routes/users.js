@@ -527,4 +527,11 @@ router.put(
   controller.setDefaultPaymentMethod
 )
 
+router.post(
+  "/generateSignatureForIOS",
+  trimRequest.all,
+  requireAuth,
+  controller.generateSignatureForIOS
+)
+
 module.exports = router
