@@ -4200,6 +4200,68 @@ exports.planSubscriptionfilterData = async (req, res) => {
 };
 
 
+exports.userActivityData = async (req, res) => {
+  try {
+    const mostActiveUsers = await user_account_log.aggregate([
+      {
+        $match: {
+          date_and_time: { $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      },
+      {
+        $group: {
+          _id: "$user_id",
+          actionCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { actionCount: -1 },
+      }
+    ]);
+
+    console.log("mostActiveUsers : ", mostActiveUsers)
+
+    const activelyUsingUsers = await user_account_log.distinct("user_id", {
+      date_and_time: { $gte: new Date(new Date() - 7 * 24 * 60 * 60 * 1000) },
+    });
+
+    console.log("activelyUsingUsers : ", activelyUsingUsers)
+
+    const lastLoginUsers = await user_account_log.aggregate([
+      {
+        $group: {
+          _id: "$user_id",
+          lastLogin: { $max: "$date_and_time" },
+          new_status: { $first: '$new_status' }
+        },
+      },
+      {
+        $match: {
+          lastLogin: { $lt: new Date(new Date() - 7 * 24 * 60 * 60 * 1000) },
+          new_status: 'Login'
+        },
+      },
+    ]);
+    console.log("lastLoginUsers : ", lastLoginUsers)
+
+    const totalUsers = await User.countDocuments();
+    console.log("totalusers : ", totalUsers)
+    const mostActiveUsersPercentage = (mostActiveUsers.length / totalUsers) * 100;
+    const activelyUsingUsersPercentage = (activelyUsingUsers.length / totalUsers) * 100;
+    const lastLoginUsersPercentage = (lastLoginUsers.length / totalUsers) * 100;
+
+    return res.status(200).json({
+      message: "chart data fetched successfully",
+      mostActiveUsersPercentage: mostActiveUsersPercentage.toFixed(2),
+      activelyUsingUsersPercentage: activelyUsingUsersPercentage.toFixed(2),
+      lastLoginUsersPercentage: lastLoginUsersPercentage.toFixed(2),
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error)
+  }
+}
+
 
 
 
