@@ -432,15 +432,19 @@ router.post(
 router.get(
   "/getSubscriptionRevenueChartData",
   trimRequest.all,
-  requireAuth,
   controller.getSubscriptionRevenueChartData
 )
 
 router.get(
   "/getUserAnalysisChartData",
   trimRequest.all,
-  requireAuth,
   controller.userAnalysisChartData
+)
+
+router.get(
+  "/getSubscriptionDashboardData",
+  trimRequest.all,
+  controller.subscriptionDashboardData
 )
 
 module.exports = router

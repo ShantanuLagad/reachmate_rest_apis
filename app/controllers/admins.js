@@ -7,7 +7,6 @@ const APIKey = require('../models/api_keys')
 var generator = require('generate-password');
 const Transaction = require("../models/transaction");
 const { Country, State, City } = require('country-state-city');
-const Plan = require("../models/plan")
 const Registration = require("../models/registration")
 const ContactUs = require("../models/contactUs")
 const moment = require("moment")
@@ -68,6 +67,7 @@ const cardDetials = require('../models/cardDetials')
 const sharedCards = require('../models/sharedCards.js')
 const user_account_log = require('../models/user_account_log.js')
 const Subscription = require('../models/subscription.js')
+const Plan = require('../models/plan.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -3679,12 +3679,7 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error: ", error);
-    return res.status(500).json({
-      message: "An error occurred while fetching data.",
-      error: error.message,
-      code: 500
-    });
+    handleError(res, error)
   }
 };
 
@@ -3802,6 +3797,126 @@ exports.userAnalysisChartData = async (req, res) => {
   }
 }
 
+exports.subscriptionDashboardData = async (req, res) => {
+  try {
+    const today = new Date();
+    const oneMonthsAgo = new Date(today);
+    oneMonthsAgo.setMonth(today.getMonth() + 2);
+    console.log("oneMonthsAgo : ", oneMonthsAgo, " today : ", today)
+
+    const totalSubscription = await Subscription.countDocuments({});
+
+    const upcomingRenewal = await Subscription.countDocuments({
+      status: 'active',
+      end_at: {
+        $gte: today,
+        $lt: oneMonthsAgo,
+      }
+    });
+
+    const overduePayment = await Subscription.aggregate(
+      [
+        {
+          $match: {
+            status: "active",
+            end_at: {
+              $gte: today,
+              $lt: oneMonthsAgo,
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "plans",
+            let: { id: "$plan_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_id"]
+                  }
+                }
+              }
+            ],
+            as: "plan_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$plan_data"
+          }
+        },
+        {
+          $addFields: {
+            amount: {
+              $cond: {
+                if: {
+                  $ne: [
+                    { $size: "$plan_data.plan_tiers" },
+                    0
+                  ]
+                },
+                then: "$plan_tier.amount",
+                else: {
+                  $divide: [
+                    "$plan_data.item.amount",
+                    100
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totaloverdue: { $sum: "$amount" }
+          }
+        }
+      ]
+    );
+
+    const plangraphdata = await Plan.aggregate(
+      [
+        {
+          $group: {
+            _id: "$plan_type",
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalCount: { $sum: "$count" },
+            data: { $push: { plan_type: "$_id", count: "$count" } }
+          }
+        },
+        {
+          $unwind: "$data"
+        },
+        {
+          $project: {
+            _id: "$data.plan_type",
+            percentage: { $multiply: [{ $divide: ["$data.count", "$totalCount"] }, 100] },
+            count: "$data.count"
+          }
+        }
+      ]
+    )
+
+    res.json({
+      message: "Subscription dashboard data fetched successfully",
+      totalSubscription,
+      upcomingRenewal,
+      overduePayment: overduePayment[0]?.totaloverdue ? overduePayment[0]?.totaloverdue : 0,
+      plangraphdata,
+      code: 200
+    });
+
+  } catch (error) {
+    handleError(res, error)
+  }
+}
 
 
 
