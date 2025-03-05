@@ -5196,17 +5196,24 @@ exports.generateSignatureForIOS = async (req, res) => {
     const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
 
     // Paths to the required files
-    const appleWWDRCAPath = path.join(storagePath, "signature/WWWDRCAG3.pem");
+    const appleWWDRCAPath = path.join(storagePath, "signature/applecode.pem");
     const certificatePath = path.join(storagePath, "signature/certificate.pem");
     const privateKeyPath = path.join(storagePath, "signature/private.key");
 
+    // Verify that the files exist
+    if (!fs.existsSync(appleWWDRCAPath)) {
+      throw new Error(`File not found: ${appleWWDRCAPath}`);
+    }
+    if (!fs.existsSync(certificatePath)) {
+      throw new Error(`File not found: ${certificatePath}`);
+    }
+    if (!fs.existsSync(privateKeyPath)) {
+      throw new Error(`File not found: ${privateKeyPath}`);
+    }
+
+    console.log("appleWWDRCAPath : ", appleWWDRCAPath, " certificatePath : ", certificatePath, " privateKeyPath : ", privateKeyPath)
     // Convert the manifest to a JSON string
     const manifestString = JSON.stringify(manifest);
-
-    // Create a readable stream from the manifest string
-    const manifestStream = new Readable();
-    manifestStream.push(manifestString);
-    manifestStream.push(null); // Signal end of stream
 
     // Construct the openssl command
     const opensslCommand = `openssl smime -binary -sign \
@@ -5216,15 +5223,15 @@ exports.generateSignatureForIOS = async (req, res) => {
       -outform DER`;
 
     // Execute the openssl command
-    const opensslProcess = exec(opensslCommand, (error, stdout, stderr) => {
+    exec(opensslCommand, { input: manifestString }, (error, stdout, stderr) => {
       if (error) {
         console.error(`Error executing openssl command: ${error.message}`);
-        return utils.handleError(res, error);
-      }
-
-      if (stderr) {
         console.error(`openssl stderr: ${stderr}`);
-        return utils.handleError(res, new Error(stderr));
+        return res.status(500).json({
+          message: "Failed to generate signature",
+          error: error.message,
+          stderr: stderr,
+        });
       }
 
       // stdout contains the DER-encoded signature
@@ -5237,11 +5244,11 @@ exports.generateSignatureForIOS = async (req, res) => {
         code: 200,
       });
     });
-
-    // Pipe the manifest stream to the openssl process
-    manifestStream.pipe(opensslProcess.stdin);
   } catch (error) {
     console.error("Error in generateSignatureForIOS:", error);
-    utils.handleError(res, error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
