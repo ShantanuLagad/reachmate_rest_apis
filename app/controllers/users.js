@@ -72,6 +72,10 @@ const UserAccess = require('../models/userAccess');
 const { generateToken } = require('./corporate');
 const user_account_log = require('../models/user_account_log');
 const forge = require("node-forge");
+const { exec } = require("child_process");
+const { Readable } = require("stream");
+
+
 /*********************
  * Private functions *
  *********************/
@@ -5159,28 +5163,85 @@ exports.setDefaultPaymentMethod = async (req, res) => {
 }
 
 
+// exports.generateSignatureForIOS = async (req, res) => {
+//   try {
+//     try {
+//       const manifest = req.body;
+//       const path = process.env.STORAGE_PATH_FOR_EXCEL
+//       const privateKeyPem = fs.readFileSync(`${path}/signature/private_key.pem`, "utf8");
+//       const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+
+//       const manifestString = JSON.stringify(manifest);
+
+//       const md = forge.md.sha1.create();
+//       md.update(manifestString, "utf8");
+
+//       const signature = privateKey.sign(md);
+
+//       const signatureBase64 = forge.util.encode64(signature);
+
+//       return res.json({ message: "signature generated successfully", signature: signatureBase64, code: 200 });
+//     } catch (error) {
+//       utils.handleError(res, error)
+//     }
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// }
+
+
 exports.generateSignatureForIOS = async (req, res) => {
   try {
-    try {
-      const manifest = req.body;
-      const path = process.env.STORAGE_PATH_FOR_EXCEL
-      const privateKeyPem = fs.readFileSync(`${path}/signature/private_key.pem`, "utf8");
-      const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+    const manifest = req.body;
+    const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
 
-      const manifestString = JSON.stringify(manifest);
+    // Paths to the required files
+    const appleWWDRCAPath = path.join(storagePath, "signature/WWWDRCAG3.pem");
+    const certificatePath = path.join(storagePath, "signature/certificate.pem");
+    const privateKeyPath = path.join(storagePath, "signature/private.key");
 
-      const md = forge.md.sha1.create();
-      md.update(manifestString, "utf8");
+    // Convert the manifest to a JSON string
+    const manifestString = JSON.stringify(manifest);
 
-      const signature = privateKey.sign(md);
+    // Create a readable stream from the manifest string
+    const manifestStream = new Readable();
+    manifestStream.push(manifestString);
+    manifestStream.push(null); // Signal end of stream
 
-      const signatureBase64 = forge.util.encode64(signature);
+    // Construct the openssl command
+    const opensslCommand = `openssl smime -binary -sign \
+      -certfile ${appleWWDRCAPath} \
+      -signer ${certificatePath} \
+      -inkey ${privateKeyPath} \
+      -outform DER`;
 
-      return res.json({ message: "signature generated successfully", signature: signatureBase64, code: 200 });
-    } catch (error) {
-      utils.handleError(res, error)
-    }
+    // Execute the openssl command
+    const opensslProcess = exec(opensslCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error executing openssl command: ${error.message}`);
+        return utils.handleError(res, error);
+      }
+
+      if (stderr) {
+        console.error(`openssl stderr: ${stderr}`);
+        return utils.handleError(res, new Error(stderr));
+      }
+
+      // stdout contains the DER-encoded signature
+      const signatureBase64 = Buffer.from(stdout, "binary").toString("base64");
+
+      // Return the signature in the response
+      return res.json({
+        message: "signature generated successfully",
+        signature: signatureBase64,
+        code: 200,
+      });
+    });
+
+    // Pipe the manifest stream to the openssl process
+    manifestStream.pipe(opensslProcess.stdin);
   } catch (error) {
-    utils.handleError(res, error)
+    console.error("Error in generateSignatureForIOS:", error);
+    utils.handleError(res, error);
   }
-}
+};
