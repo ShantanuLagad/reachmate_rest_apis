@@ -4370,7 +4370,7 @@ exports.getActiverUserChartData = async (req, res) => {
       );
 
       console.log("weekly data:", weeklyData);
-      data = Array(weeklyData.length).fill(0);
+      data = Array(4).fill(0);
       weeklyData.forEach(item => {
         const dayOfWeek = item._id.dayOfWeek - 1;
         data[dayOfWeek] = item.actionCount;
