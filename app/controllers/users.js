@@ -5278,7 +5278,7 @@ exports.generateSignatureForIOS = async (req, res) => {
     const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
     const appleWWDRCAPath = path.join(storagePath, "signature/applecode.pem");
     const certificatePath = path.join(storagePath, "signature/certificate.pem");
-    const privateKeyPath = path.join(storagePath, "signature/private.key");
+    const privateKeyPath = path.join(storagePath, "signature/private_key.pem");
     const manifestPath = path.join(storagePath, "signature/manifest.json");
     const outPath = path.join(storagePath, "signature/signed_manifest.der");
     console.log("Paths:", {
