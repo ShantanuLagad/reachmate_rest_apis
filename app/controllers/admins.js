@@ -4265,6 +4265,152 @@ exports.userActivityData = async (req, res) => {
 
 
 
+exports.getActiverUserChartData = async (req, res) => {
+  try {
+    const [
+      activeusers
+    ] = await Promise.all([
+      user_account_log.aggregate([
+        {
+          $match: {
+            date_and_time: { $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        },
+        {
+          $group: {
+            _id: "$user_id",
+            actionCount: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { actionCount: -1 },
+        }
+      ])
+    ]);
 
+    // User chart data
+    const { selectedPeriod } = req.query;
+    let currentDate = new Date();
+    let startOfPeriod, endOfPeriod;
+
+    if (selectedPeriod === 'daily') {
+      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    } else if (selectedPeriod === 'weekly') {
+      const startOfWeek = new Date();
+      startOfWeek.setDate(currentDate.getDate() - 6);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      startOfPeriod = startOfWeek;
+      endOfPeriod = endOfWeek;
+    } else if (selectedPeriod === 'yearly') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth()
+      const date = currentDate.getDate()
+      startOfPeriod = new Date(year - 1, month, date);
+      // endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+      endOfPeriod = new Date(year, month, date);
+    }
+
+    console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
+    let filter = {};
+    let data = [];
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+    }
+
+    console.log("filter:", filter);
+
+    if (selectedPeriod === 'daily') {
+      const dailyData = await User.aggregate([
+        { $match: filter },
+        { $project: { dayOfWeek: { $dayOfWeek: "$createdAt" } } },
+        { $group: { _id: "$dayOfWeek", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("daily data:", dailyData);
+
+      data = Array(7).fill(0);
+      dailyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+
+    } else if (selectedPeriod === 'weekly') {
+      const month = currentDate.getMonth();
+      const year = currentDate.getFullYear();
+
+      const startOfMonth = new Date(year, month, 1);
+      const endOfMonth = new Date(year, month + 1, 0);
+      console.log("startOfMonth : ", startOfMonth)
+      console.log("endOfMonth : ", endOfMonth)
+      // console.log("endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
+
+      const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+      console.log("weeksInMonth : ", weeksInMonth)
+
+      const weeklyData = await User.aggregate([
+        { $match: filter },
+        {
+          $project: {
+            weekOfMonth: {
+              $ceil: {
+                $divide: [
+                  { $subtract: ["$createdAt", startOfMonth] },
+                  1000 * 60 * 60 * 24 * 7
+                ]
+              }
+            }
+          }
+        },
+        { $group: { _id: "$weekOfMonth", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("weekly data:", weeklyData);
+
+      data = Array(weeksInMonth).fill(0);
+      weeklyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+
+    } else if (selectedPeriod === 'yearly') {
+      const yearlyData = await User.aggregate([
+        { $match: filter },
+        { $project: { month: { $month: "$createdAt" } } },
+        { $group: { _id: "$month", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("yearly data:", yearlyData);
+      data = Array(12).fill(0);
+      yearlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    return res.json({
+      message: "User overview fetched successfully",
+      data: {
+        totalUser,
+        totalActiveUser,
+        totalInactiveUser,
+        totalBusinessCard,
+        totalSharedCard,
+        totalSavedAndReceivedCard: totalSavedAndReceivedCard[0]?.totalCards,
+        graphData: data
+      },
+      code: 200
+    });
+
+  } catch (error) {
+    handleError(res, error);
+  }
+};
 
 

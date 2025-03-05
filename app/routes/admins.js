@@ -459,4 +459,10 @@ router.get(
   controller.userActivityData
 )
 
+router.get(
+  "/getActiverUserChartData",
+  trimRequest.all,
+  controller.getActiverUserChartData
+)
+
 module.exports = router
