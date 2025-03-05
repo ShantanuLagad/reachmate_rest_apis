@@ -5195,12 +5195,10 @@ exports.generateSignatureForIOS = async (req, res) => {
     const manifest = req.body;
     const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
 
-    // Paths to the required files
     const appleWWDRCAPath = path.join(storagePath, "signature/applecode.pem");
     const certificatePath = path.join(storagePath, "signature/certificate.pem");
     const privateKeyPath = path.join(storagePath, "signature/private.key");
 
-    // Verify that the files exist
     if (!fs.existsSync(appleWWDRCAPath)) {
       throw new Error(`File not found: ${appleWWDRCAPath}`);
     }
@@ -5212,17 +5210,14 @@ exports.generateSignatureForIOS = async (req, res) => {
     }
 
     console.log("appleWWDRCAPath : ", appleWWDRCAPath, " certificatePath : ", certificatePath, " privateKeyPath : ", privateKeyPath)
-    // Convert the manifest to a JSON string
     const manifestString = JSON.stringify(manifest);
 
-    // Construct the openssl command
     const opensslCommand = `openssl smime -binary -sign \
       -certfile ${appleWWDRCAPath} \
       -signer ${certificatePath} \
       -inkey ${privateKeyPath} \
       -outform DER`;
 
-    // Execute the openssl command
     exec(opensslCommand, { input: manifestString }, (error, stdout, stderr) => {
       if (error) {
         console.error(`Error executing openssl command: ${error.message}`);
@@ -5234,10 +5229,8 @@ exports.generateSignatureForIOS = async (req, res) => {
         });
       }
 
-      // stdout contains the DER-encoded signature
       const signatureBase64 = Buffer.from(stdout, "binary").toString("base64");
 
-      // Return the signature in the response
       return res.json({
         message: "signature generated successfully",
         signature: signatureBase64,
@@ -5245,10 +5238,6 @@ exports.generateSignatureForIOS = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error("Error in generateSignatureForIOS:", error);
-    res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
+    utils.handleError(res, error)
   }
 };
