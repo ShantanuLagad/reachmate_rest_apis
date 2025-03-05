@@ -5190,54 +5190,139 @@ exports.setDefaultPaymentMethod = async (req, res) => {
 // }
 
 
+// exports.generateSignatureForIOS = async (req, res) => {
+//   try {
+//     const manifest = req.body;
+
+//     console.log("manifest" , manifest)
+//     const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
+
+//     const appleWWDRCAPath = path.join(storagePath, "signature/applecode.pem");
+//     const certificatePath = path.join(storagePath, "signature/certificate.pem");
+//     const privateKeyPath = path.join(storagePath, "signature/private.key");
+//     const outPath = path.join(storagePath, "signature/signed_manifest.der");
+
+//     console.log("appleWWDRCAPath : ", appleWWDRCAPath, " certificatePath : ", certificatePath, " privateKeyPath : ", privateKeyPath)
+//     if (!fs.existsSync(appleWWDRCAPath)) {
+//       throw new Error(`File not found: ${appleWWDRCAPath}`);
+//     }
+//     if (!fs.existsSync(certificatePath)) {
+//       throw new Error(`File not found: ${certificatePath}`);
+//     }
+//     if (!fs.existsSync(privateKeyPath)) {
+//       throw new Error(`File not found: ${privateKeyPath}`);
+//     }
+
+//     const manifestString = JSON.stringify(manifest);
+
+//     const command = `openssl smime -binary -sign \
+//                 -certfile "${appleWWDRCAPath}" \
+//                 -signer "${certificatePath}" \
+//                 -inkey "${privateKeyPath}" \
+//                 -in "${manifestString}" \
+//                 -out "${outPath}" \
+//                 -outform DER`;
+
+
+//     exec(command, (error, stdout, stderr) => {
+//       if (error) {
+//         console.error(`Error: ${error.message}`);
+//         return;
+//       }
+//       console.log("stdout", stdout)
+//       if (stderr) {
+//         console.error(`stderr: ${stderr}`);
+//         return;
+//       }
+//       console.log(`Signature generated successfully.`);
+//     });
+
+
+//     // const opensslCommand = `openssl smime -binary -sign \
+//     //   -certfile ${appleWWDRCAPath} \
+//     //   -signer ${certificatePath} \
+//     //   -inkey ${privateKeyPath} \
+//     //   -outform DER`;
+
+//     // exec(opensslCommand, { input: manifestString }, (error, stdout, stderr) => {
+//     //   if (error) {
+//     //     console.error(`Error executing openssl command: ${error.message}`);
+//     //     console.error(`openssl stderr: ${stderr}`);
+//     //     return res.status(500).json({
+//     //       message: "Failed to generate signature",
+//     //       error: error.message,
+//     //       stderr: stderr,
+//     //     });
+//     //   }
+
+//     //   const signatureBase64 = Buffer.from(stdout, "binary").toString("base64");
+
+//     //   return res.json({
+//     //     message: "signature generated successfully",
+//     //     signature: signatureBase64,
+//     //     code: 200,
+//     //   });
+//     // });
+
+//     res.json({ status: "ok" })
+//   } catch (error) {
+//     utils.handleError(res, error)
+//   }
+// };
+
+
 exports.generateSignatureForIOS = async (req, res) => {
   try {
     const manifest = req.body;
+    console.log("Manifest received:", manifest);
     const storagePath = process.env.STORAGE_PATH_FOR_EXCEL;
-
     const appleWWDRCAPath = path.join(storagePath, "signature/applecode.pem");
     const certificatePath = path.join(storagePath, "signature/certificate.pem");
     const privateKeyPath = path.join(storagePath, "signature/private.key");
-
-    if (!fs.existsSync(appleWWDRCAPath)) {
-      throw new Error(`File not found: ${appleWWDRCAPath}`);
-    }
-    if (!fs.existsSync(certificatePath)) {
-      throw new Error(`File not found: ${certificatePath}`);
-    }
-    if (!fs.existsSync(privateKeyPath)) {
-      throw new Error(`File not found: ${privateKeyPath}`);
-    }
-
-    console.log("appleWWDRCAPath : ", appleWWDRCAPath, " certificatePath : ", certificatePath, " privateKeyPath : ", privateKeyPath)
-    const manifestString = JSON.stringify(manifest);
-
-    const opensslCommand = `openssl smime -binary -sign \
-      -certfile ${appleWWDRCAPath} \
-      -signer ${certificatePath} \
-      -inkey ${privateKeyPath} \
+    const manifestPath = path.join(storagePath, "signature/manifest.json");
+    const outPath = path.join(storagePath, "signature/signed_manifest.der");
+    console.log("Paths:", {
+      appleWWDRCAPath,
+      certificatePath,
+      privateKeyPath,
+      manifestPath,
+    });
+    // Check if required files exist
+    if (!fs.existsSync(appleWWDRCAPath)) throw new Error(`File not found: ${appleWWDRCAPath}`);
+    if (!fs.existsSync(certificatePath)) throw new Error(`File not found: ${certificatePath}`);
+    if (!fs.existsSync(privateKeyPath)) throw new Error(`File not found: ${privateKeyPath}`);
+    // Save manifest as a file
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    // OpenSSL command to sign the manifest file
+    const command = `openssl smime -binary -sign \
+      -certfile "${appleWWDRCAPath}" \
+      -signer "${certificatePath}" \
+      -inkey "${privateKeyPath}" \
+      -in "${manifestPath}" \
+      -out "${outPath}" \
       -outform DER`;
-
-    exec(opensslCommand, { input: manifestString }, (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Error executing openssl command: ${error.message}`);
-        console.error(`openssl stderr: ${stderr}`);
-        return res.status(500).json({
-          message: "Failed to generate signature",
-          error: error.message,
-          stderr: stderr,
-        });
+        console.error(`OpenSSL Error: ${error.message}`);
+        return res.status(500).json({ message: "Failed to generate signature", error: error.message });
       }
-
-      const signatureBase64 = Buffer.from(stdout, "binary").toString("base64");
-
+      if (stderr) {
+        console.error(`OpenSSL stderr: ${stderr}`);
+        return res.status(500).json({ message: "OpenSSL encountered an issue", stderr });
+      }
+      console.log("Signature generated successfully:", outPath);
+      // Convert the signed file to Base64 and send it as a response
+      const signatureBase64 = fs.readFileSync(outPath).toString("base64");
       return res.json({
-        message: "signature generated successfully",
+        message: "Signature generated successfully",
         signature: signatureBase64,
+        filePath: outPath,
         code: 200,
       });
     });
+    
   } catch (error) {
-    utils.handleError(res, error)
+    console.error("Error:", error);
+    return res.status(500).json({ message: "An error occurred", error: error.message });
   }
 };
