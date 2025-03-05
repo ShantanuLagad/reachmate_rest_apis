@@ -4267,28 +4267,6 @@ exports.userActivityData = async (req, res) => {
 
 exports.getActiverUserChartData = async (req, res) => {
   try {
-    const [
-      activeusers
-    ] = await Promise.all([
-      user_account_log.aggregate([
-        {
-          $match: {
-            date_and_time: { $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) },
-          },
-        },
-        {
-          $group: {
-            _id: "$user_id",
-            actionCount: { $sum: 1 },
-          },
-        },
-        {
-          $sort: { actionCount: -1 },
-        }
-      ])
-    ]);
-
-    // User chart data
     const { selectedPeriod } = req.query;
     let currentDate = new Date();
     let startOfPeriod, endOfPeriod;
@@ -4321,24 +4299,40 @@ exports.getActiverUserChartData = async (req, res) => {
     let filter = {};
     let data = [];
     if (selectedPeriod) {
-      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+      filter.date_and_time = { $gte: startOfPeriod, $lte: endOfPeriod };
     }
 
     console.log("filter:", filter);
 
     if (selectedPeriod === 'daily') {
-      const dailyData = await User.aggregate([
-        { $match: filter },
-        { $project: { dayOfWeek: { $dayOfWeek: "$createdAt" } } },
-        { $group: { _id: "$dayOfWeek", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } }
-      ]);
+      const dailyData = await user_account_log.aggregate(
+        [
+          {
+            $match: filter
+          },
+          {
+            $group: {
+              _id: {
+                hour: {
+                  $hour: "$date_and_time"
+                }
+              },
+              actionCount: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.hour": 1 }
+          }
+        ]
+      );
 
       console.log("daily data:", dailyData);
 
-      data = Array(7).fill(0);
+      data = Array(24).fill(0);
+
       dailyData.forEach(item => {
-        data[item._id - 1] = item.count;
+        const hour = item._id.hour;
+        data[hour] = item.actionCount;
       });
 
     } else if (selectedPeriod === 'weekly') {
@@ -4351,60 +4345,70 @@ exports.getActiverUserChartData = async (req, res) => {
       console.log("endOfMonth : ", endOfMonth)
       // console.log("endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
 
-      const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
-      console.log("weeksInMonth : ", weeksInMonth)
+      // const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+      // console.log("weeksInMonth : ", weeksInMonth)
 
-      const weeklyData = await User.aggregate([
-        { $match: filter },
-        {
-          $project: {
-            weekOfMonth: {
-              $ceil: {
-                $divide: [
-                  { $subtract: ["$createdAt", startOfMonth] },
-                  1000 * 60 * 60 * 24 * 7
-                ]
-              }
+      const weeklyData = await user_account_log.aggregate(
+        [
+          {
+            $match: filter
+          },
+          {
+            $group: {
+              _id: {
+                dayOfWeek: {
+                  $dayOfWeek: "$date_and_time"
+                }
+              },
+              actionCount: { $sum: 1 }
             }
+          },
+          {
+            $sort: { "_id.dayOfWeek": 1 }
           }
-        },
-        { $group: { _id: "$weekOfMonth", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } }
-      ]);
+        ]
+      );
 
       console.log("weekly data:", weeklyData);
-
-      data = Array(weeksInMonth).fill(0);
+      data = Array(weeklyData.length).fill(0);
       weeklyData.forEach(item => {
-        data[item._id - 1] = item.count;
+        const dayOfWeek = item._id.dayOfWeek - 1;
+        data[dayOfWeek] = item.actionCount;
       });
 
     } else if (selectedPeriod === 'yearly') {
-      const yearlyData = await User.aggregate([
-        { $match: filter },
-        { $project: { month: { $month: "$createdAt" } } },
-        { $group: { _id: "$month", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } }
-      ]);
+      const yearlyData = await user_account_log.aggregate(
+        [
+          {
+            $match: filter
+          },
+          {
+            $group: {
+              _id: {
+                month: {
+                  $month: "$date_and_time"
+                }
+              },
+              actionCount: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.month": 1 }
+          }
+        ]
+      );
 
       console.log("yearly data:", yearlyData);
       data = Array(12).fill(0);
       yearlyData.forEach(item => {
-        data[item._id - 1] = item.count;
+        const month = item._id.month - 1;
+        data[month] = item.actionCount;
       });
     }
 
     return res.json({
-      message: "User overview fetched successfully",
-      data: {
-        totalUser,
-        totalActiveUser,
-        totalInactiveUser,
-        totalBusinessCard,
-        totalSharedCard,
-        totalSavedAndReceivedCard: totalSavedAndReceivedCard[0]?.totalCards,
-        graphData: data
-      },
+      message: "Active users chart data fetched successfully",
+      data,
       code: 200
     });
 
