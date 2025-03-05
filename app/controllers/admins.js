@@ -4343,10 +4343,10 @@ exports.getActiverUserChartData = async (req, res) => {
       const endOfMonth = new Date(year, month + 1, 0);
       console.log("startOfMonth : ", startOfMonth)
       console.log("endOfMonth : ", endOfMonth)
-      // console.log("endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
+      console.log("endOfMonth.getDate() : ", endOfMonth.getDate(), " startOfMonth.getDay() : ", startOfMonth.getDay(), " endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
 
-      // const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
-      // console.log("weeksInMonth : ", weeksInMonth)
+      const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+      console.log("weeksInMonth : ", weeksInMonth)
 
       const weeklyData = await user_account_log.aggregate(
         [
@@ -4370,7 +4370,7 @@ exports.getActiverUserChartData = async (req, res) => {
       );
 
       console.log("weekly data:", weeklyData);
-      data = Array(4).fill(0);
+      data = Array(weeksInMonth).fill(0);
       weeklyData.forEach(item => {
         const dayOfWeek = item._id.dayOfWeek - 1;
         data[dayOfWeek] = item.actionCount;
