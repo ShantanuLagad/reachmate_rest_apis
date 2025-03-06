@@ -4252,9 +4252,11 @@ exports.userActivityData = async (req, res) => {
 
     return res.status(200).json({
       message: "chart data fetched successfully",
-      mostActiveUsersPercentage: mostActiveUsersPercentage.toFixed(2),
-      activelyUsingUsersPercentage: activelyUsingUsersPercentage.toFixed(2),
-      lastLoginUsersPercentage: lastLoginUsersPercentage.toFixed(2),
+      data: {
+        mostActiveUsersPercentage: mostActiveUsersPercentage.toFixed(2),
+        activelyUsingUsersPercentage: activelyUsingUsersPercentage.toFixed(2),
+        lastLoginUsersPercentage: lastLoginUsersPercentage.toFixed(2),
+      },
       code: 200
     })
   } catch (error) {
