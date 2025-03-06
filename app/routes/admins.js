@@ -465,4 +465,10 @@ router.get(
   controller.getActiverUserChartData
 )
 
+router.get(
+  "/getRevenueGrowthTrendData",
+  trimRequest.all,
+  controller.getRevenueGrowthTrendData
+)
+
 module.exports = router
