@@ -460,7 +460,7 @@ router.get(
 )
 
 router.get(
-  "/getActiverUserChartData",
+  "/getActiveUserChartData",
   trimRequest.all,
   controller.getActiverUserChartData
 )
