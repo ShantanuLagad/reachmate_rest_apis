@@ -4418,3 +4418,124 @@ exports.getActiverUserChartData = async (req, res) => {
 };
 
 
+exports.getRevenueGrowthTrendData = async (req, res) => {
+  try {
+    const data = req.query
+    console.log("data : ", data)
+
+    const today = new Date()
+    const sixmonth = new Date(new Date().setMonth(today.getMonth() - 6))
+    const oneYear = new Date(new Date().setMonth(today.getMonth() - 12))
+    console.log("today : ", today, " sixmonth : ", sixmonth, "oneYear : ", oneYear)
+    let monthfilter = {
+      createdAt: { $gte: sixmonth, $lte: today },
+      status: 'active'
+    }
+    console.log("monthfilter : ", monthfilter)
+
+    let previousFilter = {
+      createdAt: { $lt: sixmonth },
+    };
+    let previousUsers = await User.countDocuments(previousFilter);
+    let totalUsers = await User.countDocuments()
+    let churnRate = 0
+    let growthRate = 0
+
+    console.log("previousUsers:", previousUsers);
+
+    //churn rate
+    const lostUser = await User.countDocuments({ updatedAt: { $not: { $gte: sixmonth, $lte: today } } })
+    console.log("lost user : ", lostUser)
+
+    if (previousUsers > 0) {
+      churnRate = (lostUser / previousUsers) * 100
+      console.log("churn rate : ", churnRate)
+    }
+
+    if (previousUsers > 0) {
+      growthRate = ((totalUsers - previousUsers) / previousUsers) * 100
+      console.log("growth rate : ", growthRate)
+    }
+
+    console.log("growthRate : ", growthRate, " churnRate : ", churnRate)
+    let result = Array.from({ length: 6 }, () => ({
+      MRR: 0,
+      ARR: 0,
+      CLTV: 0,
+      FR: 0
+    }));
+    console.log("result : ", result)
+    const subscriptions = await Subscription.aggregate(
+      [
+        {
+          $match: monthfilter
+        },
+        {
+          $lookup: {
+            from: "plans",
+            let: { id: "$plan_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_id"]
+                  }
+                }
+              }
+            ],
+            as: "plan_data"
+          }
+        },
+        {
+          $unwind: {
+            path: "$plan_data"
+          }
+        },
+        {
+          $addFields: {
+            amount: {
+              $cond: {
+                if: {
+                  $ne: [
+                    { $size: "$plan_data.plan_tiers" },
+                    0
+                  ]
+                },
+                then: "$plan_tier.amount",
+                else: {
+                  $divide: [
+                    "$plan_data.item.amount",
+                    100
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            totalAmount: { $sum: "$amount" }
+          }
+        }
+      ]
+    )
+    console.log("subscriptions : ", subscriptions)
+    subscriptions.forEach(item => {
+      const month = item._id - 1;
+      result[month].MRR = item.totalAmount;
+      result[month].ARR = item.totalAmount * 12
+      result[month].CLTV = churnRate > 0 ? (item.totalAmount / subscriptions.length) / churnRate : 0
+      result[month].FR = (item.totalAmount * (1 + growthRate)) * 12;
+    });
+    console.log("result : ", result)
+    return res.status(200).json({
+      message: "Revenue growth trend data fetched successfully",
+      data: result,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
