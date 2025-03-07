@@ -2928,7 +2928,12 @@ exports.userOverview = async (req, res) => {
 
       startOfPeriod = startOfWeek;
       endOfPeriod = endOfWeek;
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    }
+    else if (selectedPeriod === 'yearly') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth()
       const date = currentDate.getDate()
@@ -3000,7 +3005,30 @@ exports.userOverview = async (req, res) => {
         data[item._id - 1] = item.count;
       });
 
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === "monthly") {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+
+      const monthlyData = await User.aggregate([
+        { $match: filter },
+        { $project: { day: { $dayOfMonth: "$createdAt" } } },
+        { $group: { _id: "$day", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("Monthly data:", monthlyData);
+
+      data = Array(daysInMonth).fill(0);
+      monthlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    else if (selectedPeriod === 'yearly') {
       const yearlyData = await User.aggregate([
         { $match: filter },
         { $project: { month: { $month: "$createdAt" } } },
@@ -4289,7 +4317,12 @@ exports.getActiverUserChartData = async (req, res) => {
 
       startOfPeriod = startOfWeek;
       endOfPeriod = endOfWeek;
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    }
+    else if (selectedPeriod === 'yearly') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth()
       const date = currentDate.getDate()
@@ -4380,7 +4413,42 @@ exports.getActiverUserChartData = async (req, res) => {
         data[dayOfWeek] = item.actionCount;
       });
 
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+      const monthlyData = await user_account_log.aggregate(
+        [
+          {
+            $match: filter
+          },
+          {
+            $group: {
+              _id: {
+                day: {
+                  $dayOfMonth: "$date_and_time"
+                }
+              },
+              actionCount: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.day": 1 }
+          }
+        ]
+      );
+
+      console.log("monthly data:", monthlyData);
+      data = Array(daysInMonth).fill(0);
+      monthlyData.forEach(item => {
+        const day = item._id.day;
+        data[day] = item.actionCount;
+      });
+    }
+    else if (selectedPeriod === 'yearly') {
       const yearlyData = await user_account_log.aggregate(
         [
           {
