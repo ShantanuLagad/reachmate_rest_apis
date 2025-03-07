@@ -5347,6 +5347,14 @@ exports.addOCRCard = async (req, res) => {
       console.log("plandata : ", plandata, " plandata.plan_variety : ", plandata.plan_variety)
       if (plandata.plan_variety === "freemium") {
         console.log("user?.ocr_cards?.length : ", user?.ocr_cards?.length)
+        const SharedCardCounts = await SharedCards.countDocuments({ user_id: owner_id })
+        console.log("SharedCardCounts : ", SharedCardCounts)
+        if (SharedCardCounts >= 10) {
+          return res.status(403).json({
+            message: "Exceed the limit of sharing cards",
+            code: 403
+          })
+        }
         if (user?.ocr_cards?.length >= 5) {
           return res.status(403).json({
             message: "You have reached the maximum limit of freemium plan",
