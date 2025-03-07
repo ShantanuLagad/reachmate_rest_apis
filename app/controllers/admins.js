@@ -4247,7 +4247,7 @@ exports.userActivityData = async (req, res) => {
     console.log("lastLoginUsers : ", lastLoginUsers)
 
     const totalUsers = await User.countDocuments();
-    console.log("totalusers : ", totalUsers, " mostActiveUsers.length : ", mostActiveUsers.length)
+    console.log("totalusers : ", totalUsers, " mostActiveUsers.length : ", mostActiveUsers.length, " activelyUsingUsers.length : ", activelyUsingUsers.length, " lastLoginUsers.length : ", lastLoginUsers.length)
     const mostActiveUsersPercentage = (mostActiveUsers.length / totalUsers) * 100;
     const activelyUsingUsersPercentage = (activelyUsingUsers.length / totalUsers) * 100;
     const lastLoginUsersPercentage = (lastLoginUsers.length / totalUsers) * 100;
