@@ -4202,22 +4202,24 @@ exports.planSubscriptionfilterData = async (req, res) => {
 
 exports.userActivityData = async (req, res) => {
   try {
-    const mostActiveUsers = await user_account_log.aggregate([
-      {
-        $match: {
-          date_and_time: { $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) },
+    const mostActiveUsers = await user_account_log.aggregate(
+      [
+        {
+          $match: {
+            date_and_time: { $gte: new Date(new Date() - 7 * 24 * 60 * 60 * 1000) },
+          },
         },
-      },
-      {
-        $group: {
-          _id: "$user_id",
-          actionCount: { $sum: 1 },
+        {
+          $group: {
+            _id: "$user_id",
+            actionCount: { $sum: 1 },
+          },
         },
-      },
-      {
-        $sort: { actionCount: -1 },
-      }
-    ]);
+        {
+          $sort: { actionCount: -1 },
+        }
+      ]
+    );
 
     console.log("mostActiveUsers : ", mostActiveUsers)
 
@@ -4245,7 +4247,7 @@ exports.userActivityData = async (req, res) => {
     console.log("lastLoginUsers : ", lastLoginUsers)
 
     const totalUsers = await User.countDocuments();
-    console.log("totalusers : ", totalUsers, " mostActiveUsers.length : ",mostActiveUsers.length)
+    console.log("totalusers : ", totalUsers, " mostActiveUsers.length : ", mostActiveUsers.length)
     const mostActiveUsersPercentage = (mostActiveUsers.length / totalUsers) * 100;
     const activelyUsingUsersPercentage = (activelyUsingUsers.length / totalUsers) * 100;
     const lastLoginUsersPercentage = (lastLoginUsers.length / totalUsers) * 100;
