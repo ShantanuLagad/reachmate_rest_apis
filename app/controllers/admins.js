@@ -4530,13 +4530,19 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
     }
 
     console.log("growthRate : ", growthRate, " churnRate : ", churnRate)
-    let result = Array.from({ length: 6 }, () => ({
-      MRR: 0,
-      ARR: 0,
-      CLTV: 0,
-      FR: 0
-    }));
-    console.log("result : ", result)
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let result = Array.from({ length: 6 }, (_, index) => {
+      const monthIndex = (today.getMonth() - 5 + index + 12) % 12;
+      return {
+        month: monthNames[monthIndex],
+        monthIndex: monthIndex,
+        MRR: 0,
+        ARR: 0,
+        CLTV: 0,
+        FR: 0
+      };
+    });
+    console.log("result : ", result);
     const subscriptions = await Subscription.aggregate(
       [
         {
@@ -4594,13 +4600,16 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
     )
     console.log("subscriptions : ", subscriptions)
     subscriptions.forEach(item => {
-      const month = item._id - 1;
-      result[month].MRR = item.totalAmount;
-      result[month].ARR = item.totalAmount * 12
-      result[month].CLTV = churnRate > 0 ? (item.totalAmount / subscriptions.length) / churnRate : 0
-      result[month].FR = (item.totalAmount * (1 + growthRate)) * 12;
+      const monthIndex = item._id - 1;
+      const resultIndex = result.findIndex(r => r.monthIndex === monthIndex);
+      if (resultIndex !== -1) {
+        result[resultIndex].MRR = item.totalAmount;
+        result[resultIndex].ARR = item.totalAmount * 12;
+        result[resultIndex].CLTV = churnRate > 0 ? (item.totalAmount / subscriptions.length) / churnRate : 0;
+        result[resultIndex].FR = (item.totalAmount * (1 + growthRate)) * 12;
+      }
     });
-    console.log("result : ", result)
+
     return res.status(200).json({
       message: "Revenue growth trend data fetched successfully",
       data: result,
