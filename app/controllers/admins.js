@@ -2928,7 +2928,12 @@ exports.userOverview = async (req, res) => {
 
       startOfPeriod = startOfWeek;
       endOfPeriod = endOfWeek;
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    }
+    else if (selectedPeriod === 'yearly') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth()
       const date = currentDate.getDate()
@@ -3000,7 +3005,30 @@ exports.userOverview = async (req, res) => {
         data[item._id - 1] = item.count;
       });
 
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === "monthly") {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+
+      const monthlyData = await User.aggregate([
+        { $match: filter },
+        { $project: { day: { $dayOfMonth: "$createdAt" } } },
+        { $group: { _id: "$day", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("Monthly data:", monthlyData);
+
+      data = Array(daysInMonth).fill(0);
+      monthlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    else if (selectedPeriod === 'yearly') {
       const yearlyData = await User.aggregate([
         { $match: filter },
         { $project: { month: { $month: "$createdAt" } } },
@@ -4289,7 +4317,12 @@ exports.getActiverUserChartData = async (req, res) => {
 
       startOfPeriod = startOfWeek;
       endOfPeriod = endOfWeek;
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    }
+    else if (selectedPeriod === 'yearly') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth()
       const date = currentDate.getDate()
@@ -4380,7 +4413,42 @@ exports.getActiverUserChartData = async (req, res) => {
         data[dayOfWeek] = item.actionCount;
       });
 
-    } else if (selectedPeriod === 'yearly') {
+    } else if (selectedPeriod === 'monthly') {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+      const monthlyData = await user_account_log.aggregate(
+        [
+          {
+            $match: filter
+          },
+          {
+            $group: {
+              _id: {
+                day: {
+                  $dayOfMonth: "$date_and_time"
+                }
+              },
+              actionCount: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.day": 1 }
+          }
+        ]
+      );
+
+      console.log("monthly data:", monthlyData);
+      data = Array(daysInMonth).fill(0);
+      monthlyData.forEach(item => {
+        const day = item._id.day;
+        data[day] = item.actionCount;
+      });
+    }
+    else if (selectedPeriod === 'yearly') {
       const yearlyData = await user_account_log.aggregate(
         [
           {
@@ -4462,13 +4530,19 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
     }
 
     console.log("growthRate : ", growthRate, " churnRate : ", churnRate)
-    let result = Array.from({ length: 6 }, () => ({
-      MRR: 0,
-      ARR: 0,
-      CLTV: 0,
-      FR: 0
-    }));
-    console.log("result : ", result)
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let result = Array.from({ length: 6 }, (_, index) => {
+      const monthIndex = (today.getMonth() - 5 + index + 12) % 12;
+      return {
+        month: monthNames[monthIndex],
+        monthIndex: monthIndex,
+        MRR: 0,
+        ARR: 0,
+        CLTV: 0,
+        FR: 0
+      };
+    });
+    console.log("result : ", result);
     const subscriptions = await Subscription.aggregate(
       [
         {
@@ -4526,13 +4600,16 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
     )
     console.log("subscriptions : ", subscriptions)
     subscriptions.forEach(item => {
-      const month = item._id - 1;
-      result[month].MRR = item.totalAmount;
-      result[month].ARR = item.totalAmount * 12
-      result[month].CLTV = churnRate > 0 ? (item.totalAmount / subscriptions.length) / churnRate : 0
-      result[month].FR = (item.totalAmount * (1 + growthRate)) * 12;
+      const monthIndex = item._id - 1;
+      const resultIndex = result.findIndex(r => r.monthIndex === monthIndex);
+      if (resultIndex !== -1) {
+        result[resultIndex].MRR = item.totalAmount;
+        result[resultIndex].ARR = item.totalAmount * 12;
+        result[resultIndex].CLTV = churnRate > 0 ? (item.totalAmount / subscriptions.length) / churnRate : 0;
+        result[resultIndex].FR = (item.totalAmount * (1 + growthRate)) * 12;
+      }
     });
-    console.log("result : ", result)
+
     return res.status(200).json({
       message: "Revenue growth trend data fetched successfully",
       data: result,
