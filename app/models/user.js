@@ -84,9 +84,15 @@ const UserSchema = new mongoose.Schema(
         ref: 'CardDetails',
       },
     ],
+    ocr_cards: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CardDetails',
+      },
+    ],
     user_type: {
       type: String,
-      enum: ["personal", "corporate"]
+      enum: ["personal", "corporate", "ocr"]
     },
     notification: {
       type: Boolean,

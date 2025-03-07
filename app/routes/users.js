@@ -534,4 +534,18 @@ router.post(
   controller.generateSignatureForIOS
 )
 
+router.post(
+  '/addOCRCard',
+  requireAuth,
+  trimRequest.all,
+  controller.addOCRCard
+)
+
+router.get(
+  '/getOCRCards',
+  requireAuth,
+  trimRequest.all,
+  controller.getOCRCards
+)
+
 module.exports = router
