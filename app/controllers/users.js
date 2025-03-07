@@ -1649,7 +1649,7 @@ exports.addPersonalCard = async (req, res) => {
       }
     }
 
-    const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0;
+    const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0 && user.ocr_cards.length === 0;
     console.log('cardd is first card', isFirstCard)
 
     const data = req.body;
@@ -5320,9 +5320,149 @@ exports.generateSignatureForIOS = async (req, res) => {
         code: 200,
       });
     });
-    
+
   } catch (error) {
     console.error("Error:", error);
     return res.status(500).json({ message: "An error occurred", error: error.message });
+  }
+};
+
+
+exports.addOCRCard = async (req, res) => {
+  try {
+    const user = req.user
+    console.log('User : ', user)
+    const owner_id = req.user._id;
+
+    let activeSubscription = await Subscription.findOne({ user_id: owner_id, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
+      console.log("activeSubscription : ", activeSubscription)
+    }
+
+    if (activeSubscription) {
+      const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
+      console.log("plandata : ", plandata, " plandata.plan_variety : ", plandata.plan_variety)
+      if (plandata.plan_variety === "freemium") {
+        console.log("user?.ocr_cards?.length : ", user?.ocr_cards?.length)
+        if (user?.ocr_cards?.length >= 5) {
+          return res.status(403).json({
+            message: "You have reached the maximum limit of freemium plan",
+            code: 403
+          })
+        }
+      }
+    }
+
+    // const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0 && user.ocr_cards.length === 0;
+    // console.log('cardd is first card', isFirstCard)
+
+    const data = req.body;
+    const card = {
+      owner_id,
+      card_type: 'ocr',
+      business_logo: data.business_logo,
+      qr_logo: data.qr_logo,
+      card_color: data.card_color,
+      text_color: data.text_color,
+      business_and_logo_status: data.business_and_logo_status,
+      bio: {
+        first_name: data.bio.first_name,
+        last_name: data.bio.last_name,
+        full_name: `${data.bio.first_name}${data.bio.last_name ? ` ${data.bio.last_name}` : ""}`,
+        business_name: data.bio.business_name,
+        designation: data.bio.designation,
+      },
+      contact_details: {
+        country_code: data.contact_details.country_code,
+        mobile_number: data.contact_details.mobile_number,
+        office_landline: data.contact_details.office_landline,
+        email: data.contact_details.email,
+        website: data.contact_details.website,
+      },
+      address: {
+        country: data.address.country,
+        state: data.address.state,
+        city: data.address.city,
+        address_line_1: data.address.address_line_1,
+        address_line_2: data.address.address_line_2,
+        pin_code: data.address.pin_code,
+      },
+      social_links: {
+        linkedin: data.social_links.linkedin,
+        x: data.social_links.x,
+        instagram: data.social_links.instagram,
+        youtube: data.social_links.youtube,
+      },
+      // primary_card: isFirstCard,
+    }
+    const cardData = new CardDetials(card)
+    await cardData.save()
+
+    console.log('new added card : ', cardData)
+
+    //--------------------------------------
+    await User.findByIdAndUpdate(owner_id, {
+      $push: { ocr_cards: cardData._id },
+    });
+
+    await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "ocr", text_color: data.text_color })
+
+    // await giveTrialIfNotGive(owner_id)
+    const sharedCard = new SharedCards({
+      card_id: cardData._id,
+      user_id: owner_id,
+      card_owner_id: owner_id,
+    });
+
+    await sharedCard.save();
+
+    await SavedCard.deleteOne({ owner_id: owner_id })
+
+    const accountlog = await user_account_log.create({
+      user_id: owner_id,
+      action: 'OCR Card Added',
+      previous_status: 'OCR Card Added',
+      new_status: 'OCR Card Added',
+      performed_by: 'user',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
+
+    return res.json({
+      code: 200, message: "OCR Card Saved successfully",
+      cardData: cardData
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.getOCRCards = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("User ID : ", userId);
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(422).json({ code: 422, message: "ID_MALFORMED" });
+    }
+
+    const OCRCards = await CardDetials.find({
+      owner_id: userId,
+      card_type: "ocr",
+    });
+
+    if (!OCRCards || OCRCards.length === 0) {
+      return res.status(204).json({ errors: { msg: "No OCR cards found for this user." } });
+    }
+
+    res.status(200).json({ data: OCRCards });
+  } catch (error) {
+    res.status(500).json({ errors: { msg: error } });
   }
 };

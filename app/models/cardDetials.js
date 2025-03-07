@@ -16,7 +16,7 @@ const CardDetials = new mongoose.Schema(
         },
         card_type: {
             type: String,
-            enum: ["personal", "corporate"]
+            enum: ["personal", "corporate", "ocr"]
         },
         primary_card: {
             type: Boolean,
