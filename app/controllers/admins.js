@@ -2950,14 +2950,14 @@ exports.userOverview = async (req, res) => {
     if (selectedPeriod === 'daily') {
       const dailyData = await User.aggregate([
         { $match: filter },
-        { $project: { dayOfWeek: { $dayOfWeek: "$createdAt" } } },
-        { $group: { _id: "$dayOfWeek", count: { $sum: 1 } } },
+        { $project: { hour: { $hour: "$createdAt" } } },
+        { $group: { _id: "$hour", count: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]);
 
       console.log("daily data:", dailyData);
 
-      data = Array(7).fill(0);
+      data = Array(24).fill(0);
       dailyData.forEach(item => {
         data[item._id - 1] = item.count;
       });
