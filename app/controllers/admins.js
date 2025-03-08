@@ -3069,7 +3069,7 @@ exports.userOverview = async (req, res) => {
 
 exports.getUser = async (req, res) => {
   try {
-    const { offset = 0, limit = 10, search, user_type } = req.query
+    const { offset = 0, limit = 10, search, user_type, status } = req.query
     let filter = {}
     if (search) {
       filter['$or'] = [
@@ -3087,6 +3087,9 @@ exports.getUser = async (req, res) => {
 
     if (user_type) {
       filter.user_type = user_type
+    }
+    if (status) {
+      filter.status = status
     }
     const user_data = await User.aggregate([
       {
