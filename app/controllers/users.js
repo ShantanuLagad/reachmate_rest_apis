@@ -2655,11 +2655,11 @@ exports.getCard = async (req, res) => {
   try {
     console.log("req.user : ", req.user)
     // const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
-    const isSubscriptionActive = await checkActiveSubscription(req.user)
-    console.log("isSubscriptionActive : ", isSubscriptionActive)
-    if (isSubscriptionActive === false) {
-      return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
-    }
+    // const isSubscriptionActive = await checkActiveSubscription(req.user)
+    // console.log("isSubscriptionActive : ", isSubscriptionActive)
+    // if (isSubscriptionActive === false) {
+    //   return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
+    // }
 
     const user_id = req.user._id;
     console.log('user id : ', user_id);
