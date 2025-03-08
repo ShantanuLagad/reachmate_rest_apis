@@ -5469,8 +5469,59 @@ exports.getOCRCards = async (req, res) => {
       return res.status(204).json({ errors: { msg: "No OCR cards found for this user." } });
     }
 
-    res.status(200).json({ data: OCRCards });
+    return res.status(200).json({ data: OCRCards });
   } catch (error) {
-    res.status(500).json({ errors: { msg: error } });
+    return res.status(500).json({ errors: { msg: error } });
   }
 };
+
+
+exports.checkIsTrialSubscriptionExisted = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("User ID : ", userId);
+    const trialSubscription = await Trial.findOne({ user_id: userId, status: "active" });
+    console.log("trialSubscription : ", trialSubscription)
+    if (trialSubscription) {
+      return res.json({ message: "Trial Subscription Existed", data: trialSubscription, is_subscriber: true, code: 200 });
+    }
+    const activeSubscription = await Subscription.findOne({ user_id: userId, status: "active" })
+    console.log("activeSubscription : ", activeSubscription)
+    if (activeSubscription) {
+      return res.json({ message: "Active Subscription Existed", data: activeSubscription, is_subscriber: true, code: 200 })
+    }
+    return res.json({ message: "No Subscription Existed", is_subscriber: false, code: 200 })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+exports.giveFreeTrialToFirstUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("User ID : ", userId);
+    const plansdata = await Plan.find({ individual_selected: true, period: "monthly", plan_variety: "premium" })
+    console.log("plansdata : ", plansdata)
+    const today = new Date();
+    const endedat = new Date(today);
+    endedat.setMonth(today.getMonth() + 6);
+    console.log("startedat : ", today, " endedat : ", endedat)
+    const firstTrial = await Trial.create({
+      user_id: userId,
+      plan_id: plansdata[0].plan_id,
+      status: "active",
+      start_at: today,
+      end_at: endedat
+    })
+    console.log("firstTrial : ", firstTrial)
+    return res.status(200).json({
+      message: "Free Trial assigned to first user successfully",
+      data: firstTrial,
+      code: 200
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
