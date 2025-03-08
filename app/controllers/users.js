@@ -196,43 +196,45 @@ const createItem = async req => {
 // });
 
 // cron.schedule("*/20 * * * * *", async () => {
-cron.schedule("* * * * * * ", async () => {
+cron.schedule("30 3 * * * ", async () => {
 
   try {
 
     //to same day
     const same_day = moment().endOf("day").toDate();
     console.log("same_day : ", same_day)
-    const todayEndingTrail = await Trial.aggregate([
-      {
-        $match: { end_at: same_day, status: "active" }
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "user_id",
-          foreignField: "_id",
-          as: "users",
+    const todayEndingTrail = await Trial.aggregate(
+      [
+        {
+          $match: { end_at: same_day, status: "active" }
         },
-      },
-      {
-        $unwind: "$users",
-      },
-      {
-        $lookup: {
-          from: "subscriptions",
-          localField: "user_id",
-          foreignField: "_id",
-          as: "subscription",
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "users",
+          },
         },
-      },
-      {
-        $unwind: {
-          path: "$subscription",
-          preserveNullAndEmptyArrays: true,
+        {
+          $unwind: "$users",
         },
-      }
-    ])
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "subscription",
+          },
+        },
+        {
+          $unwind: {
+            path: "$subscription",
+            preserveNullAndEmptyArrays: true,
+          },
+        }
+      ]
+    )
 
     for (let index = 0; index < todayEndingTrail.length; index++) {
 
@@ -715,13 +717,6 @@ cron.schedule("* * * * * * ", async () => {
   }
 
 });
-
-cron.schedule("* * * * * *", () => {
-  console.log("Cron job running at:", new Date().toISOString());
-});
-
-console.log("Cron job started. Waiting for execution...");
-
 
 function extractDomainFromEmail(email) {
   // Split the email address at the "@" symbol
