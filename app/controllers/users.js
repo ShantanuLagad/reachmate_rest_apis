@@ -1642,6 +1642,12 @@ exports.addPersonalCard = async (req, res) => {
     if (!activeSubscription) {
       activeSubscription = await Trial.findOne({ user_id: owner_id, status: "active" })
       console.log("activeSubscription : ", activeSubscription)
+      if (activeSubscription && req.body.qr_logo) {
+        return res.status(403).json({
+          message: "Customized QR code is not allowed for trial users.",
+          code: 403
+        })
+      }
     }
 
     if (activeSubscription) {
