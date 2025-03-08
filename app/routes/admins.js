@@ -483,4 +483,10 @@ router.get(
   controller.ageDemographicDistribution
 )
 
+router.get(
+  "/getNewBusinessTeamRegistration",
+  trimRequest.all,
+  controller.getNewBusinessTeamRegistration
+)
+
 module.exports = router
