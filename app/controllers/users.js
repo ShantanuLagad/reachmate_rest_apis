@@ -196,7 +196,7 @@ const createItem = async req => {
 // });
 
 // cron.schedule("*/20 * * * * *", async () => {
-cron.schedule("30 3 * * *", async () => {
+cron.schedule("* * * * *", async () => {
 
   try {
 
