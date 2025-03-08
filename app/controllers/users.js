@@ -3588,11 +3588,11 @@ exports.createSubscription = async (req, res) => {
     const { plan_id } = req.body;
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
-    const checkIsTrialExits = await Trial.findOne({ user_id });
+    const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      const result = await Trial.findOneAndDelete({ user_id })
+      const result = await Trial.findOneAndDelete({ _id: checkIsTrialExits._id, user_id })
       console.log("result : ", result)
     }
 
@@ -4243,7 +4243,7 @@ exports.updateSubscription = async (req, res) => {
     // let expireBy = Math.floor(Date.UTC(endOfPeriod.getUTCFullYear(), endOfPeriod.getUTCMonth(), endOfPeriod.getUTCDate()) / 1000);
     console.log("startOfPeriod : ", startOfPeriod, " endOfPeriod : ", endOfPeriod, "expireBy ", expireBy)
 
-    const checkIsTrialExits = await Trial.findOne({ user_id });
+    const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
     //{ $nin: ["expired", "created", "cancelled"] }
@@ -4259,7 +4259,7 @@ exports.updateSubscription = async (req, res) => {
       }
 
       if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-        const result = await Trial.deleteOne({ user_id })
+        const result = await Trial.deleteOne({ _id: checkIsTrialExits._id, user_id })
         console.log("result : ", result)
       }
 
