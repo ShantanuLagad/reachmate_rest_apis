@@ -3565,7 +3565,7 @@ async function isTrailNeedToBeGiven(user_id) {
 
 function getTotalCount(interval) {
   if (interval === 12) {
-    return 10
+    return 1
   } else if (interval === 6) {
     return 20
   } else if (interval === 3) {
