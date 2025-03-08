@@ -4629,7 +4629,7 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
 
 
 
-exports.chartRateAnalysisDashboard = async (req, res) => {
+exports.churnRateAnalysisDashboard = async (req, res) => {
   try {
     const { selectedPeriod } = req.query;
     let currentDate = new Date();
@@ -4661,40 +4661,52 @@ exports.chartRateAnalysisDashboard = async (req, res) => {
     console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
 
     let filter = {};
-    let data = [];
     if (selectedPeriod) {
       filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
     }
 
     console.log("filter:", filter);
     let totalUsers = 0
-    let newUsers = 0
     let previousUsers = 0
-    let churnRate = 0
+    let individiualchurnRate = 0
+    let btchurnRate = 0
+    let enterprisechurnRate = 0
 
     if (selectedPeriod) {
-      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
-      console.log("filter : ", filter)
       totalUsers = await User.countDocuments({});
-      newUsers = await User.countDocuments(filter);
       let previousFilter = {
         createdAt: { $lt: startOfPeriod },
         // updatedAt: { $gte: startOfPeriod, $lte: endOfPeriod }
       };
       previousUsers = await User.countDocuments(previousFilter);
 
-      console.log("totalUsers:", totalUsers, "newUsers:", newUsers, "previousUsers:", previousUsers);
+      console.log("totalUsers:", totalUsers, "previousUsers:", previousUsers);
 
       //churn rate
+      const lostindividualUser = await User.countDocuments({ updatedAt: { $not: { $gte: startOfPeriod, $lte: endOfPeriod } }, user_type: "personal" })
+      const lostcorporateUser = await User.countDocuments({ updatedAt: { $not: { $gte: startOfPeriod, $lte: endOfPeriod } }, user_type: "corporate" })
+      const lostenterpriseUser = await User.countDocuments({ updatedAt: { $not: { $gte: startOfPeriod, $lte: endOfPeriod } }, user_type: "enterprise" })
+      console.log("lostindividualUser:", lostindividualUser, " lostcorporateUser : ", lostcorporateUser, " lostenterpriseUser : ", lostenterpriseUser)
       const lostUser = await User.countDocuments({ updatedAt: { $not: { $gte: startOfPeriod, $lte: endOfPeriod } } })
       console.log("lost user : ", lostUser)
 
       if (previousUsers > 0) {
-        churnRate = (lostUser / previousUsers) * 100
-        console.log("churn rate : ", churnRate)
+        individiualchurnRate = Math.round((lostindividualUser / previousUsers) * 100)
+        console.log("individiualchurnRate : ", individiualchurnRate)
+        btchurnRate = Math.round((lostcorporateUser / previousUsers) * 100)
+        console.log("btchurnRate : ", btchurnRate)
+        enterprisechurnRate = Math.round((lostenterpriseUser / previousUsers) * 100)
+        console.log("enterprisechurnRate : ", enterprisechurnRate)
       }
     }
-    return res.status(200).json({ churnRate });
+    return res.status(200).json({
+      message: "churn rate data fetched successfully", data: {
+        previousUsers,
+        individiualchurnRate,
+        btchurnRate,
+        enterprisechurnRate
+      }, code: 200
+    });
   } catch (error) {
     handleError(res, error)
   }
