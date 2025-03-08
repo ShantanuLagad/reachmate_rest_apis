@@ -471,4 +471,10 @@ router.get(
   controller.getRevenueGrowthTrendData
 )
 
+router.get(
+  "/getchurnRateAnalysisDashboard",
+  trimRequest.all,
+  controller.churnRateAnalysisDashboard
+)
+
 module.exports = router

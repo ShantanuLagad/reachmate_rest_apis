@@ -5342,6 +5342,13 @@ exports.addOCRCard = async (req, res) => {
       console.log("activeSubscription : ", activeSubscription)
     }
 
+    if (!activeSubscription) {
+      return res.status(401).json({
+        message: "You do not have a valid subscription"
+      }
+      )
+    }
+
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata, " plandata.plan_variety : ", plandata.plan_variety)
