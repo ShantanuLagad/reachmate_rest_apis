@@ -4436,9 +4436,9 @@ exports.updateSubscription = async (req, res) => {
 
         if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
 
-        if (subcription.has_scheduled_changes === true) {
-          await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
-        }
+        // if (subcription.has_scheduled_changes === true) {
+        //   await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+        // }
       }
 
       const accountlog = await user_account_log.create({
