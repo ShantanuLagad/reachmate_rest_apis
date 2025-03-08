@@ -548,4 +548,18 @@ router.get(
   controller.getOCRCards
 )
 
+router.get(
+  '/checkIsTrialSubscriptionExisted',
+  requireAuth,
+  trimRequest.all,
+  controller.checkIsTrialSubscriptionExisted
+)
+
+router.post(
+  '/giveFreeTrialToFirstUser',
+  requireAuth,
+  trimRequest.all,
+  controller.giveFreeTrialToFirstUser
+)
+
 module.exports = router

@@ -22,7 +22,7 @@ const trialSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["active", "completed"],
+            enum: ["active", "completed", "terminated"],
             default: "active"
         }
     },
