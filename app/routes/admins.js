@@ -477,4 +477,10 @@ router.get(
   controller.churnRateAnalysisDashboard
 )
 
+router.get(
+  "/getageDemographicDistribution",
+  trimRequest.all,
+  controller.ageDemographicDistribution
+)
+
 module.exports = router

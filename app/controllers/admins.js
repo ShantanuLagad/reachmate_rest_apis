@@ -4711,3 +4711,124 @@ exports.churnRateAnalysisDashboard = async (req, res) => {
     handleError(res, error)
   }
 }
+
+
+exports.ageDemographicDistribution = async (req, res) => {
+  try {
+    const data = await User.aggregate(
+      [
+        // Step 1: Calculate age
+        {
+          $addFields: {
+            age: {
+              $floor: {
+                $divide: [
+                  {
+                    $subtract: [
+                      new Date(),
+                      {
+                        $dateFromString: {
+                          dateString: {
+                            $concat: [
+                              { $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 0, 2] }, // Extract day (e.g., "01")
+                              "-",
+                              {
+                                $switch: {
+                                  branches: [
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Jan"] }, then: "01" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Feb"] }, then: "02" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Mar"] }, then: "03" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Apr"] }, then: "04" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "May"] }, then: "05" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Jun"] }, then: "06" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Jul"] }, then: "07" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Aug"] }, then: "08" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Sep"] }, then: "09" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Oct"] }, then: "10" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Nov"] }, then: "11" },
+                                    { case: { $eq: [{ $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 3, 3] }, "Dec"] }, then: "12" }
+                                  ],
+                                  default: "01" // Default to January if no match
+                                }
+                              },
+                              "-",
+                              { $substr: [{ $ifNull: ["$dateOfBirth", "01 Jan 1970"] }, 7, 4] } // Extract year (e.g., "2009")
+                            ]
+                          },
+                          format: "%d-%m-%Y" // Specify the format of the new date string
+                        }
+                      }
+                    ]
+                  },
+                  31557600000 // Number of milliseconds in a year (1000 * 60 * 60 * 24 * 365.25)
+                ]
+              }
+            }
+          }
+        },
+
+        // Step 2: Group users by age ranges
+        {
+          $bucket: {
+            groupBy: "$age",
+            boundaries: [16, 31, 51], // Age ranges: 16-30, 31-50, 51+
+            default: "Other", // Fallback for ages outside the specified ranges
+            output: {
+              count: { $sum: 1 }
+            }
+          }
+        },
+
+        // Step 3: Add labels for each age range
+        {
+          $addFields: {
+            label: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$_id", 16] }, then: "16-30: Young Adult" },
+                  { case: { $eq: ["$_id", 31] }, then: "31-50: Mid-Age" },
+                  { case: { $eq: ["$_id", 51] }, then: "51+: Senior Adult" }
+                ],
+                default: "51+: Senior Adult"
+              }
+            }
+          }
+        },
+
+        // Step 4: Calculate total number of users
+        {
+          $group: {
+            _id: null,
+            totalUsers: { $sum: "$count" },
+            ageGroups: { $push: { range: "$label", count: "$count" } }
+          }
+        },
+
+        // Step 5: Calculate percentage for each age group
+        {
+          $unwind: "$ageGroups"
+        },
+        {
+          $project: {
+            _id: 0,
+            range: "$ageGroups.range",
+            count: "$ageGroups.count",
+            percentage: {
+              $multiply: [
+                { $divide: ["$ageGroups.count", "$totalUsers"] },
+                100
+              ]
+            }
+          }
+        }
+      ]
+    )
+    return res.status(200).json({
+      message: "Age demographic distribution data fetched successfully",
+      data,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error)
+  }
+}
