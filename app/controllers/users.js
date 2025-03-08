@@ -4419,6 +4419,28 @@ exports.updateSubscription = async (req, res) => {
       })
       console.log("newTrial : ", trial)
 
+      if (activeSubscription) {
+        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+        console.log("subcription : ", subcription)
+        const status = subcription.status;
+        const paymentMode = subcription.payment_method;
+        console.log("paymentMode : ", paymentMode)
+        if (status === "created") {
+          return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
+        }
+        if (status !== "created") {
+          await Subscription.findByIdAndDelete(activeSubscription._id);
+          await instance.subscriptions.cancel(activeSubscription.subscription_id)
+        }
+        // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
+
+        if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
+
+        if (subcription.has_scheduled_changes === true) {
+          await instance.subscriptions.cancelScheduledChanges(activeSubscription.subscription_id);
+        }
+      }
+
       const accountlog = await user_account_log.create({
         user_id: user_id,
         action: 'Subscription converted to Freemium',
