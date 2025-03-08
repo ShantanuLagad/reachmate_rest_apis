@@ -196,7 +196,7 @@ const createItem = async req => {
 // });
 
 // cron.schedule("*/20 * * * * *", async () => {
-cron.schedule("* * * * * *", async () => {
+cron.schedule("30 3 * * * ", async () => {
 
   try {
 
@@ -707,6 +707,12 @@ cron.schedule("* * * * * *", async () => {
   }
 
 });
+
+cron.schedule("* * * * * *", () => {
+  console.log("Cron job running at:", new Date().toISOString());
+});
+
+console.log("Cron job started. Waiting for execution...");
 
 
 function extractDomainFromEmail(email) {
