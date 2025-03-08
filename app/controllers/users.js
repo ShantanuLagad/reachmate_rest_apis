@@ -4262,7 +4262,7 @@ exports.updateSubscription = async (req, res) => {
     console.log("checkIsTrialExits", checkIsTrialExits)
 
     //{ $nin: ["expired", "created", "cancelled"] }
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created", "cancelled"] } }).sort({ createdAt: -1 })
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
     console.log("activeSubscription : ", activeSubscription)
 
     if (plan.plan_variety === "premium") {
