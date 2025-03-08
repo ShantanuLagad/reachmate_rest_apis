@@ -196,12 +196,13 @@ const createItem = async req => {
 // });
 
 // cron.schedule("*/20 * * * * *", async () => {
-cron.schedule("30 3 * * * ", async () => {
+cron.schedule("* * * * * * ", async () => {
 
   try {
 
     //to same day
     const same_day = moment().endOf("day").toDate();
+    console.log("same_day : ", same_day)
     const todayEndingTrail = await Trial.aggregate([
       {
         $match: { end_at: same_day, status: "active" }
@@ -255,6 +256,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     //cencelled
     const same_day_start = moment().startOf("day").toDate();
+    console.log("same_day_start : ", same_day_start)
     const todayEndingCanceledSubscription = await Subscription.aggregate([
       {
         $match: { end_at: { $gte: same_day_start, $lte: same_day }, status: "cancelled" }
@@ -328,6 +330,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     //to send reminder 1 day before
     const one_day = moment().add(1, "days").endOf("day").toDate();
+    console.log("one_day : ", one_day)
     const trailEndingInOneDays = await Trial.aggregate([
       {
         $match: { end_at: one_day, status: "active" }
@@ -383,6 +386,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     //cencelled
     const one_day_start = moment().add(1, "day").startOf("day").toDate();
+    console.log("one_day_start : ", one_day_start)
     const subscriptionEndingInOneDays = await Subscription.aggregate([
       {
         $match: { end_at: { $gte: one_day_start, $lte: one_day }, status: "cancelled" }
@@ -458,6 +462,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     // //to send reminder 7 days before
     const seven_day = moment().add(6, "days").endOf("day").toDate();
+    console.log("seven_day", seven_day)
     const trailEndingInSevenDays = await Trial.aggregate([
       {
         $match: { end_at: seven_day, status: "active" }
@@ -513,6 +518,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     //cencelled
     const seven_day_start = moment().add(6, "days").startOf("day").toDate();
+    console.log("seven_day_start : ", seven_day_start)
     const subscriptionEndingInSevenDays = await Subscription.aggregate([
       {
         $match: { end_at: { $gte: seven_day_start, $lte: seven_day }, status: "cancelled" }
@@ -583,6 +589,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     // //to send reminder 15 days before
     const fifteen_day = moment().add(14, "days").endOf("day").toDate();
+    console.log("fifteen_day : ", fifteen_day)
     const trailEndingInFifteenDays = await Trial.aggregate([
       {
         $match: { end_at: fifteen_day, status: "active" }
@@ -635,6 +642,7 @@ cron.schedule("30 3 * * * ", async () => {
 
     //cencelled
     const fifteen_day_start = moment().add(14, "days").startOf("day").toDate();
+    console.log("fifteen_day_start : ", fifteen_day_start)
     const subscriptionEndingInifteenDays = await Subscription.aggregate([
       {
         $match: { end_at: { $gte: fifteen_day_start, $lte: fifteen_day }, status: "cancelled" }
