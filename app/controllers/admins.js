@@ -3680,6 +3680,12 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
       }
     ]);
 
+    data = data.map((entry) => ({
+      ...entry,
+      total_bt_revenue: Math.round(entry.total_bt_revenue * 100) / 100,
+      total_individual_revenue: Math.round(entry.total_individual_revenue * 100) / 100,
+    }));
+
     const allMonths = Array.from({ length: 6 }, (_, i) => {
       const month = (today.getMonth() - i + 12) % 12;
       const year = today.getFullYear() - (month > today.getMonth() ? 1 : 0);
@@ -4620,3 +4626,76 @@ exports.getRevenueGrowthTrendData = async (req, res) => {
   }
 }
 
+
+
+
+exports.chartRateAnalysisDashboard = async (req, res) => {
+  try {
+    const { selectedPeriod } = req.query;
+    let currentDate = new Date();
+    let startOfPeriod, endOfPeriod;
+
+    if (selectedPeriod === 'daily') {
+      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    } else if (selectedPeriod === 'weekly') {
+      const startOfWeek = new Date();
+      startOfWeek.setDate(currentDate.getDate() - 6);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      startOfPeriod = startOfWeek;
+      endOfPeriod = endOfWeek;
+    } else if (selectedPeriod === 'yearly') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth()
+      const date = currentDate.getDate()
+      startOfPeriod = new Date(year - 1, month, date);
+      // endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+      endOfPeriod = new Date(year, month, date);
+    }
+
+    console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
+    let filter = {};
+    let data = [];
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+    }
+
+    console.log("filter:", filter);
+    let totalUsers = 0
+    let newUsers = 0
+    let previousUsers = 0
+    let churnRate = 0
+
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+      console.log("filter : ", filter)
+      totalUsers = await User.countDocuments({});
+      newUsers = await User.countDocuments(filter);
+      let previousFilter = {
+        createdAt: { $lt: startOfPeriod },
+        // updatedAt: { $gte: startOfPeriod, $lte: endOfPeriod }
+      };
+      previousUsers = await User.countDocuments(previousFilter);
+
+      console.log("totalUsers:", totalUsers, "newUsers:", newUsers, "previousUsers:", previousUsers);
+
+      //churn rate
+      const lostUser = await User.countDocuments({ updatedAt: { $not: { $gte: startOfPeriod, $lte: endOfPeriod } } })
+      console.log("lost user : ", lostUser)
+
+      if (previousUsers > 0) {
+        churnRate = (lostUser / previousUsers) * 100
+        console.log("churn rate : ", churnRate)
+      }
+    }
+    return res.status(200).json({ churnRate });
+  } catch (error) {
+    handleError(res, error)
+  }
+}
