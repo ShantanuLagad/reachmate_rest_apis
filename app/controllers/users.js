@@ -77,6 +77,7 @@ const { Readable } = require("stream");
 const admin = require('../models/admin');
 const fcm_devices = require('../models/fcm_devices');
 const admin_notification = require('../models/admin_notification');
+const notification = require('../models/notification');
 
 
 /*********************
@@ -3720,6 +3721,47 @@ exports.createSubscription = async (req, res) => {
         status: 'active'
       })
       console.log("newTrial : ", newTrial)
+
+      // admin notification
+      const admins = await admin.findOne({ role: 'admin' });
+      console.log("admins : ", admins)
+
+      if (admins) {
+        const notificationMessage = {
+          title: 'New Trial created',
+          description: `${userdata.full_name} has created a new Trial . Plan ID : ${newTrial.plan_id}`,
+          trial_id: newTrial._id
+        };
+
+        const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
+        console.log("adminFcmDevices : ", adminFcmDevices)
+
+        if (adminFcmDevices && adminFcmDevices.length > 0) {
+          // let tokens = adminFcmDevices.map(i => i.token)
+          // console.log("tokens : ", tokens)
+          // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+          adminFcmDevices.forEach(async i => {
+            const token = i.token
+            console.log("token : ", token)
+            await utils.sendNotification(token, notificationMessage);
+          })
+          const adminNotificationData = {
+            title: notificationMessage.title,
+            body: notificationMessage.description,
+            // description: notificationMessage.description,
+            type: "new_trial",
+            receiver_id: admins._id,
+            related_to: newTrial._id,
+            related_to_type: "trial",
+          };
+          const newAdminNotification = new admin_notification(adminNotificationData);
+          console.log("newAdminNotification : ", newAdminNotification)
+          await newAdminNotification.save();
+        } else {
+          console.log(`No active FCM tokens found for admin ${admin._id}.`);
+        }
+      }
+
       return res.json({ message: "Freemium plan activated successfully", data: newTrial, code: 200 })
     } else {
       console.log('Creating subscription with:', {
@@ -4403,6 +4445,47 @@ exports.updateSubscription = async (req, res) => {
         })
         console.log("accountlog : ", accountlog)
 
+
+        // admin notification
+        const admins = await admin.findOne({ role: 'admin' });
+        console.log("admins : ", admins)
+
+        if (admins) {
+          const notificationMessage = {
+            title: 'subscription upgraded',
+            description: `${userdata.full_name} has upgrade a subscription . ID : ${result.subscription_id}`,
+            subscription_id: result.subscription_id
+          };
+
+          const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
+          console.log("adminFcmDevices : ", adminFcmDevices)
+
+          if (adminFcmDevices && adminFcmDevices.length > 0) {
+            // let tokens = adminFcmDevices.map(i => i.token)
+            // console.log("tokens : ", tokens)
+            // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+            adminFcmDevices.forEach(async i => {
+              const token = i.token
+              console.log("token : ", token)
+              await utils.sendNotification(token, notificationMessage);
+            })
+            const adminNotificationData = {
+              title: notificationMessage.title,
+              body: notificationMessage.description,
+              // description: notificationMessage.description,
+              type: "subscription_upgrade",
+              receiver_id: admins._id,
+              related_to: result._id,
+              related_to_type: "subscription",
+            };
+            const newAdminNotification = new admin_notification(adminNotificationData);
+            console.log("newAdminNotification : ", newAdminNotification)
+            await newAdminNotification.save();
+          } else {
+            console.log(`No active FCM tokens found for admin ${admin._id}.`);
+          }
+        }
+
         return res.json({ message: "Subscription updated successfully", data: result, code: 200 })
       } else {
         console.log('Creating subscription with:', {
@@ -4495,6 +4578,47 @@ exports.updateSubscription = async (req, res) => {
         date_and_time: new Date()
       })
       console.log("accountlog : ", accountlog)
+
+
+      // admin notification
+      const admins = await admin.findOne({ role: 'admin' });
+      console.log("admins : ", admins)
+
+      if (admins) {
+        const notificationMessage = {
+          title: 'subscription downgraded',
+          description: `${userdata.full_name} has downgrade a subscription to freemium. Plan ID : ${trial.plan_id}`,
+          trial_id: trial._id
+        };
+
+        const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
+        console.log("adminFcmDevices : ", adminFcmDevices)
+
+        if (adminFcmDevices && adminFcmDevices.length > 0) {
+          // let tokens = adminFcmDevices.map(i => i.token)
+          // console.log("tokens : ", tokens)
+          // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+          adminFcmDevices.forEach(async i => {
+            const token = i.token
+            console.log("token : ", token)
+            await utils.sendNotification(token, notificationMessage);
+          })
+          const adminNotificationData = {
+            title: notificationMessage.title,
+            body: notificationMessage.description,
+            // description: notificationMessage.description,
+            type: "subscription_downgrade",
+            receiver_id: admins._id,
+            related_to: trial._id,
+            related_to_type: "trial",
+          };
+          const newAdminNotification = new admin_notification(adminNotificationData);
+          console.log("newAdminNotification : ", newAdminNotification)
+          await newAdminNotification.save();
+        } else {
+          console.log(`No active FCM tokens found for admin ${admin._id}.`);
+        }
+      }
 
       return res.json({ message: "Plan converted to Freemium", data: trial, code: 200 })
     }
@@ -5590,6 +5714,8 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
   try {
     const userId = req.user._id;
     console.log("User ID : ", userId);
+    const userdata = await User.findOne({ _id: userId });
+    console.log("userdata : ", userdata);
     const plansdata = await Plan.find({ individual_selected: true, period: "monthly", plan_variety: "premium" })
     console.log("plansdata : ", plansdata)
     const today = new Date();
@@ -5604,6 +5730,92 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
       end_at: endedat
     })
     console.log("firstTrial : ", firstTrial)
+
+
+    // admin notification
+    const admins = await admin.findOne({ role: 'admin' });
+    console.log("admins : ", admins)
+
+    if (admins) {
+      const notificationMessage = {
+        title: 'Free Trial to New User',
+        description: `Free Trial granted to new User with name ${userdata.full_name} . Plan ID : ${firstTrial.plan_id}`,
+        trial_id: firstTrial._id
+      };
+
+      const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
+      console.log("adminFcmDevices : ", adminFcmDevices)
+
+      if (adminFcmDevices && adminFcmDevices.length > 0) {
+        // let tokens = adminFcmDevices.map(i => i.token)
+        // console.log("tokens : ", tokens)
+        // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+        adminFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const adminNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "free_trial_to_new_user",
+          receiver_id: admins._id,
+          related_to: firstTrial._id,
+          related_to_type: "trial",
+        };
+        const newAdminNotification = new admin_notification(adminNotificationData);
+        console.log("newAdminNotification : ", newAdminNotification)
+        await newAdminNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for admin ${admin._id}.`);
+      }
+    }
+
+    //user notification
+    const userFcmDevices = await fcm_devices.find({ user_id: userdata._id });
+    console.log("userFcmDevices : ", userFcmDevices)
+    const notificationMessage = {
+      title: 'Free Trial to New User',
+      description: `Congratulations! you got free trial for six month. Plan ID : ${firstTrial.plan_id}`,
+      trial_id: firstTrial._id
+    };
+    if (userFcmDevices && userFcmDevices.length > 0) {
+      // let tokens = adminFcmDevices.map(i => i.token)
+      // console.log("tokens : ", tokens)
+      // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+      userFcmDevices.forEach(async i => {
+        const token = i.token
+        console.log("token : ", token)
+        await utils.sendNotification(token, notificationMessage);
+      })
+      const userNotificationData = {
+        title: notificationMessage.title,
+        body: notificationMessage.description,
+        // description: notificationMessage.description,
+        type: "free_trial_to_new_user",
+        receiver_id: admins._id,
+        related_to: firstTrial._id,
+        related_to_type: "trial",
+      };
+      const newuserNotification = new notification(userNotificationData);
+      console.log("newuserNotification : ", newuserNotification)
+      await newuserNotification.save();
+    } else {
+      console.log(`No active FCM tokens found for user ${userdata._id}.`);
+    }
+
+
+    const accountlog = await user_account_log.create({
+      user_id: userId,
+      action: 'Free Trial to New User',
+      previous_status: 'Free Trial to New User',
+      new_status: 'Free Trial to New User',
+      performed_by: 'reachmate',
+      date_and_time: new Date()
+    })
+    console.log("accountlog : ", accountlog)
+
     return res.status(200).json({
       message: "Free Trial assigned to first user successfully",
       data: firstTrial,
