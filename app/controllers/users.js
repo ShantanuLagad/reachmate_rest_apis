@@ -3777,13 +3777,15 @@ exports.createSubscription = async (req, res) => {
           subscription_id: newSubscription.subscription_id
         };
 
-        const adminFcmDevices = await fcm_devices.findOne({ user_id: admins._id });
+        const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
         console.log("adminFcmDevices : ", adminFcmDevices)
 
-        if (adminFcmDevices) {
-          const tokens = adminFcmDevices.token
-          console.log("device token : ", tokens)
-          await utils.sendPushNotification(tokens, notificationMessage);
+        if (adminFcmDevices && adminFcmDevices.length > 0) {
+          adminFcmDevices.forEach(async i => {
+            const tokens = i.token
+            console.log("device token : ", tokens)
+            await utils.sendPushNotification(tokens, notificationMessage);
+          })
           const adminNotificationData = {
             title: notificationMessage.title,
             description: notificationMessage.description,
