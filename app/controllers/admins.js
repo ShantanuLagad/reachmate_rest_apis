@@ -965,6 +965,9 @@ exports.dashBoardCard = async (req, res) => {
     const totalIndividualUserCount = await User.countDocuments({ user_type: "personal" })
     console.log("totalIndividualUserCount : ", totalIndividualUserCount)
 
+    const pendingRenewal = await Subscription.countDocuments({ status: "expired", end_at: { $gt: new Date() } })
+    console.log("pendingRenewal : ", pendingRenewal)
+
     const pieChartData = demographicChart.map(item => {
       const percentage = ((item.count / totalUsersCount) * 100).toFixed(2);
       return {
@@ -980,7 +983,7 @@ exports.dashBoardCard = async (req, res) => {
       });
     }
 
-    res.json({ data: { users: totalUser.length, individualUsers: totalIndividualUserCount, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
+    res.json({ data: { users: totalUser.length, individualUsers: totalIndividualUserCount, pendingRenewal, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
   } catch (error) {
     console.log(error)
     handleError(res, error)
