@@ -25,7 +25,8 @@ const NotificationSchema = new mongoose.Schema(
                 "subscription_downgrade",
                 "subscription_cancelled",
                 "new_trial",
-                "free_trial_to_new_user"
+                "free_trial_to_new_user",
+                "trial_expired",
             ],
             required: true,
         },

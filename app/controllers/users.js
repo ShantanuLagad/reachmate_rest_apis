@@ -288,7 +288,6 @@ cron.schedule("30 3 * * * ", async () => {
         console.log(`No active FCM tokens found for user ${trail.user_id}.`);
       }
 
-
     }
 
     //cencelled
@@ -359,6 +358,37 @@ cron.schedule("30 3 * * * ", async () => {
         "cancelSubscriptionExpiry"
       )
 
+
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending Today',
+        description: `Your Trial period is ending today. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
+
     }
 
 
@@ -418,6 +448,36 @@ cron.schedule("30 3 * * * ", async () => {
 
       }
 
+
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending Tomorrow',
+        description: `Your Trial period is ending tomorrow. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
 
     }
 
@@ -489,6 +549,37 @@ cron.schedule("30 3 * * * ", async () => {
         "cancelSubscriptionExpiry"
       )
 
+
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending Tomorrow',
+        description: `Your Trial period is ending tomorrow. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
+
     }
 
 
@@ -550,7 +641,35 @@ cron.schedule("30 3 * * * ", async () => {
 
       }
 
-
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending within 7 days',
+        description: `Your Trial period is ending within 7 days. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
     }
 
     //cencelled
@@ -621,6 +740,37 @@ cron.schedule("30 3 * * * ", async () => {
         "cancelSubscriptionExpiry"
       )
 
+
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending within 7 days',
+        description: `Your Trial period is ending within 7 days. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
+
     }
 
 
@@ -674,7 +824,35 @@ cron.schedule("30 3 * * * ", async () => {
           "subscriptionExpiry"
         )
       }
-
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending within 15 days',
+        description: `Your Trial period is ending within 15 days. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
     }
 
     //cencelled
@@ -744,6 +922,36 @@ cron.schedule("30 3 * * * ", async () => {
       },
         "cancelSubscriptionExpiry"
       )
+
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending within 15 days',
+        description: `Your Trial period is ending within 15 days. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
 
     }
 
