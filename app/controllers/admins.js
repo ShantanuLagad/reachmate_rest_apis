@@ -70,6 +70,7 @@ const Subscription = require('../models/subscription.js')
 const Plan = require('../models/plan.js')
 const teamMember = require('../models/teamMember.js')
 const fcm_devices = require('../models/fcm_devices.js')
+const admin_notification = require('../models/admin_notification.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -1549,9 +1550,7 @@ exports.getNotification = async (req, res) => {
   try {
     const { limit = Number.MAX_SAFE_INTEGER, offset = 0, search = "" } = req.query;
 
-    const condition = {
-      is_admin: true,
-    }
+    const condition = {}
 
     if (search) {
       condition["$or"] = [
@@ -1561,37 +1560,37 @@ exports.getNotification = async (req, res) => {
     }
 
 
-    const count = await Notification.countDocuments(condition);
+    const count = await admin_notification.countDocuments(condition);
 
     console.log("condition", condition)
 
-    const notification = await Notification.aggregate([
+    const notification = await admin_notification.aggregate([
       {
         $match: condition
       },
-      {
-        $lookup: {
-          from: "users",
-          let: { user_id: "$sender_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ["$_id", "$$user_id"] },
-              },
-            },
-            {
-              $project: {
-                password: 0,
-                confirm_password: 0
-              },
-            },
-          ],
-          as: "sender_details",
-        },
-      },
-      {
-        $unwind: { path: "$sender_details", preserveNullAndEmptyArrays: true },
-      },
+      // {
+      //   $lookup: {
+      //     from: "users",
+      //     let: { user_id: "$sender_id" },
+      //     pipeline: [
+      //       {
+      //         $match: {
+      //           $expr: { $eq: ["$_id", "$$user_id"] },
+      //         },
+      //       },
+      //       {
+      //         $project: {
+      //           password: 0,
+      //           confirm_password: 0
+      //         },
+      //       },
+      //     ],
+      //     as: "sender_details",
+      //   },
+      // },
+      // {
+      //   $unwind: { path: "$sender_details", preserveNullAndEmptyArrays: true },
+      // },
       {
         $sort: {
           createdAt: -1,
@@ -5265,3 +5264,5 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     handleError(res, error);
   }
 }
+
+
