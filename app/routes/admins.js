@@ -489,4 +489,18 @@ router.get(
   controller.getNewBusinessTeamRegistration
 )
 
+router.post(
+  "/addAdminFCMDevice",
+  requireAuth,
+  trimRequest.all,
+  controller.addFCMDevice
+)
+
+router.post(
+  "/deleteAdminFCMDevice",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteFCMDevice
+)
+
 module.exports = router
