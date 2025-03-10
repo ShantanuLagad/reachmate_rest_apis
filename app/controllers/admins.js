@@ -968,6 +968,9 @@ exports.dashBoardCard = async (req, res) => {
     const pendingRenewal = await Subscription.countDocuments({ status: "expired", end_at: { $gt: new Date() } })
     console.log("pendingRenewal : ", pendingRenewal)
 
+    const deletedAccounts = await User.countDocuments({ is_deleted: true })
+    console.log("deletedAccounts : ", deletedAccounts)
+
     const pieChartData = demographicChart.map(item => {
       const percentage = ((item.count / totalUsersCount) * 100).toFixed(2);
       return {
@@ -983,7 +986,7 @@ exports.dashBoardCard = async (req, res) => {
       });
     }
 
-    res.json({ data: { users: totalUser.length, individualUsers: totalIndividualUserCount, pendingRenewal, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
+    res.json({ data: { users: totalUser.length, deletedAccounts, individualUsers: totalIndividualUserCount, pendingRenewal, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
   } catch (error) {
     console.log(error)
     handleError(res, error)
@@ -3204,11 +3207,17 @@ exports.deleteSignleUser = async (req, res) => {
       })
     }
 
-    const result = await User.findOneAndDelete(
+    const result = await User.findOneAndUpdate(
       {
         _id: new mongoose.Types.ObjectId(id)
-      }
+      },
+      {
+        $set: {
+          is_deleted: true
+        }
+      }, { new: true }
     )
+    console.log("result : ", result)
     return res.status(200).json({
       message: "user deleted successfully",
       data: result,
