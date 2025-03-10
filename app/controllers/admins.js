@@ -5127,15 +5127,13 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     if (user_type) {
       filter.user_type = user_type
     }
-    if (status !== "trial") {
-      filter['$or'] = [
-        {
-          "subscription.status": status
-        },
-        {
-          "trial.status": status
-        }
-      ]
+    if (status && status !== "trial") {
+      filter['$or'].push({
+        "subscription.status": status
+      },
+      {
+        "trial.status": status
+      })
     }
     if (status === "trial") {
       filter.trial = { $exists: true }
