@@ -5,6 +5,7 @@ const { POST } = require('./axios')
 const jwt = require('jsonwebtoken')
 const auth = require('../middleware/auth')
 const { admin } = require("./../../config/firebase");
+const fcm_devices = require('../models/fcm_devices')
 /**
  * Removes extension from file
  * @param {string} file - filename
@@ -258,6 +259,31 @@ exports.titleToolBoxAuth = async (req, res, next) => {
  * Notification
  */
 
+exports.sendNotification = async (token, notificationData) => {
+  try {
+    // Ensure that the token is valid and not empty
+    if (!token) {
+      console.error("Invalid token provided.");
+      return;
+    }
+    console.log('notificationData', notificationData)
+    const message = {
+      notification: {
+        title: notificationData.title,
+        body: notificationData.description,  // Corrected description field name to "body"
+      },
+      token: token  // This should be the user's FCM token
+    };
+
+    // Send the notification using Firebase Admin SDK
+    await admin.messaging().send(message);
+    console.log("Notification sent successfully to the user.");
+
+  } catch (error) {
+    console.error("Error sending notification:", error);
+  }
+};
+
 exports.sendPushNotification = async (
   tokens,
   notification
@@ -339,6 +365,10 @@ exports.sendNotificationsInBatches = async (token, notificationMessage) => {
         console.log('Response:', response);
       } catch (error) {
         console.error('Error sending notification to token:', token, error);
+        if (error.errorInfo && error.errorInfo.code === 'messaging/registration-token-not-registered') {
+          console.log(`Removing invalid token: ${token}`);
+          await fcm_devices.deleteOne({ token: token });
+        }
       }
     });
 
