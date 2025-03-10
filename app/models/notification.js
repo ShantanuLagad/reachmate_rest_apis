@@ -10,35 +10,42 @@ const NotificationSchema = new mongoose.Schema(
         receiver_id: {
             type: mongoose.Schema.Types.ObjectId,
         },
-        type:{
+        type: {
             type: String,
-            enum : [
+            enum: [
                 "user",
                 "company",
                 "card_shared",
                 "by_admin",
                 "removed_from_paid",
-                "need_subscription_upgrade"
+                "need_subscription_upgrade",
+
+                "new_subscription",
+                "subscription_upgrade",
+                "subscription_downgrade",
+                "subscription_cancelled",
+                "new_trial",
+                "free_trial_to_new_user"
             ],
             required: true,
         },
-        related_to : {
-            type : mongoose.Schema.Types.ObjectId,
+        related_to: {
+            type: mongoose.Schema.Types.ObjectId,
         },
-        title:{
-            type:String,
-            required : true
+        title: {
+            type: String,
+            required: true
         },
-        body:{
-            type:String,
+        body: {
+            type: String,
         },
-        is_seen :{
+        is_seen: {
             type: Boolean,
-            default:false
+            default: false
         },
-        is_admin:{
+        is_admin: {
             type: Boolean,
-            default:false
+            default: false
         },
     },
     {

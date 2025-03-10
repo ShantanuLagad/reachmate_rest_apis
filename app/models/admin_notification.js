@@ -13,6 +13,7 @@ const AdminNotificationSchema = new mongoose.Schema(
                 "new_subscription",
                 "subscription_upgrade",
                 "subscription_downgrade",
+                "subscription_cancelled",
                 "new_trial",
                 "free_trial_to_new_user"
             ],
