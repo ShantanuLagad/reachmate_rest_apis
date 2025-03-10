@@ -503,4 +503,16 @@ router.post(
   controller.deleteFCMDevice
 )
 
+router.get(
+  "/getAllSubscriptionStatuschart",
+  trimRequest.all,
+  controller.allSubscriptionStatuschart
+)
+
+router.get(
+  "/getSubscriptionBasedUserList",
+  trimRequest.all,
+  controller.getSubscriptionBasedUserList
+)
+
 module.exports = router

@@ -5049,3 +5049,219 @@ exports.deleteFCMDevice = async (req, res) => {
     utils.handleError(res, error);
   }
 };
+
+
+exports.allSubscriptionStatuschart = async (req, res) => {
+  try {
+    const data = await Subscription.aggregate(
+      [
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$count" },
+            statuses: {
+              $push: { status: "$_id", count: "$count" }
+            }
+          }
+        },
+        {
+          $unwind: "$statuses"
+        },
+        {
+          $project: {
+            _id: 0,
+            status: "$statuses.status",
+            count: "$statuses.count",
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: ["$statuses.count", "$total"]
+                    },
+                    100
+                  ]
+                }, 2
+              ]
+            }
+          }
+        }
+      ]
+    )
+    console.log("data : ", data)
+    return res.status(200).json({
+      message: "subscription status chart data fetched successfully",
+      data,
+      code: 200
+    })
+  } catch (error) {
+    console.log(error);
+    utils.handleError(res, error);
+  }
+}
+
+
+exports.getSubscriptionBasedUserList = async (req, res) => {
+  try {
+    const { offset = 0, limit = 10, search, user_type, status } = req.query
+    let filter = {}
+    if (search) {
+      filter['$or'] = [
+        {
+          first_name: { $regex: search, $options: 'i' }
+        },
+        {
+          last_name: { $regex: search, $options: 'i' }
+        },
+        {
+          email: { $regex: search, $options: 'i' }
+        }
+      ]
+    }
+
+    if (user_type) {
+      filter.user_type = user_type
+    }
+    if (status !== "trial") {
+      filter['$or'] = [
+        {
+          "subscription.status": status
+        },
+        {
+          "trial.status": status
+        }
+      ]
+    }
+    if (status === "trial") {
+      filter.trial = { $exists: true }
+      filter.subscription = { $exists: false }
+    }
+    console.log("filter : ", filter)
+    const user_data = await User.aggregate(
+      [
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              }
+            ],
+            as: "subscription"
+          }
+        },
+        {
+          $lookup: {
+            from: "trails",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              }
+            ],
+            as: "trial"
+          }
+        },
+        {
+          $addFields: {
+            subscription: {
+              $arrayElemAt: ["$subscription", 0]
+            },
+            trial: { $arrayElemAt: ["$trial", 0] }
+          }
+        },
+        {
+          $match: filter
+        },
+        {
+          $project: {
+            password: 0,
+            confirm_password: 0
+          }
+        },
+        {
+          $sort: {
+            createdAt: -1
+          }
+        },
+        {
+          $skip: parseInt(offset)
+        },
+        {
+          $limit: parseInt(limit)
+        }
+      ]
+    )
+
+    const count = await User.countDocuments(
+      [
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              }
+            ],
+            as: "subscription"
+          }
+        },
+        {
+          $lookup: {
+            from: "trails",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              }
+            ],
+            as: "trial"
+          }
+        },
+        {
+          $addFields: {
+            subscription: {
+              $arrayElemAt: ["$subscription", 0]
+            },
+            trial: { $arrayElemAt: ["$trial", 0] }
+          }
+        },
+        {
+          $match: filter
+        },
+        {
+          $project: {
+            password: 0,
+            confirm_password: 0
+          }
+        },
+        {
+          $sort: {
+            createdAt: -1
+          }
+        }
+      ]
+    )
+
+    return res.status(200).json({
+      message: "user data fetched successfully",
+      data: user_data,
+      count,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
