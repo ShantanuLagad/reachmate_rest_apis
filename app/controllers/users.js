@@ -258,6 +258,37 @@ cron.schedule("30 3 * * * ", async () => {
         )
       }
 
+      //user notification
+      const userFcmDevices = await fcm_devices.find({ user_id: trail.user_id });
+      console.log("userFcmDevices : ", userFcmDevices)
+      const notificationMessage = {
+        title: 'Trial Period Ending Today',
+        description: `Your Trial period is ending today. Please upgrade to premium subscription. Plan ID : ${trail.plan_id}`,
+        trial_id: trail._id
+      };
+      if (userFcmDevices && userFcmDevices.length > 0) {
+        userFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const userNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "trial_expired",
+          receiver_id: trail.user_id,
+          related_to: trail._id,
+          related_to_type: "trial",
+        };
+        const newuserNotification = new notification(userNotificationData);
+        console.log("newuserNotification : ", newuserNotification)
+        await newuserNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for user ${trail.user_id}.`);
+      }
+
+
     }
 
     //cencelled
@@ -4363,7 +4394,7 @@ exports.cancelSubscription = async (req, res) => {
         body: notificationMessage.description,
         // description: notificationMessage.description,
         type: "subscription_cancelled",
-        receiver_id: admins._id,
+        receiver_id: userdata._id,
         related_to: isSubcriptionExist._id,
         related_to_type: "subscription",
       };
@@ -5870,7 +5901,7 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
         body: notificationMessage.description,
         // description: notificationMessage.description,
         type: "free_trial_to_new_user",
-        receiver_id: admins._id,
+        receiver_id: userdata._id,
         related_to: firstTrial._id,
         related_to_type: "trial",
       };
