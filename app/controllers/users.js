@@ -4271,6 +4271,9 @@ exports.cancelSubscription = async (req, res) => {
   try {
     const user_id = req.user._id;
 
+    const userdata = await User.findOne({ _id: user_id })
+    console.log("userdata : ", userdata)
+
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id, status: "active" })
     console.log("isSubcriptionExist : ", isSubcriptionExist)
 
@@ -4297,6 +4300,79 @@ exports.cancelSubscription = async (req, res) => {
     }
 
     const subresult = await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false)
+
+    // admin notification
+    const admins = await admin.findOne({ role: 'admin' });
+    console.log("admins : ", admins)
+
+    if (admins) {
+      const notificationMessage = {
+        title: 'Subscription cancelled',
+        description: `${userdata.full_name} has cancelled a subscription . ID : ${isSubcriptionExist.subscription_id}`,
+        subscription_id: isSubcriptionExist._id
+      };
+
+      const adminFcmDevices = await fcm_devices.find({ user_id: admins._id });
+      console.log("adminFcmDevices : ", adminFcmDevices)
+
+      if (adminFcmDevices && adminFcmDevices.length > 0) {
+        // let tokens = adminFcmDevices.map(i => i.token)
+        // console.log("tokens : ", tokens)
+        // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+        adminFcmDevices.forEach(async i => {
+          const token = i.token
+          console.log("token : ", token)
+          await utils.sendNotification(token, notificationMessage);
+        })
+        const adminNotificationData = {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+          // description: notificationMessage.description,
+          type: "subscription_cancelled",
+          receiver_id: admins._id,
+          related_to: isSubcriptionExist._id,
+          related_to_type: "subscription",
+        };
+        const newAdminNotification = new admin_notification(adminNotificationData);
+        console.log("newAdminNotification : ", newAdminNotification)
+        await newAdminNotification.save();
+      } else {
+        console.log(`No active FCM tokens found for admin ${admin._id}.`);
+      }
+    }
+
+    //user notification
+    const userFcmDevices = await fcm_devices.find({ user_id: userdata._id });
+    console.log("userFcmDevices : ", userFcmDevices)
+    const notificationMessage = {
+      title: 'Subscription cancelled',
+      description: `Your subscription has been cancelled. ID : ${isSubcriptionExist.subscription_id}`,
+      subscription_id: isSubcriptionExist._id
+    };
+    if (userFcmDevices && userFcmDevices.length > 0) {
+      // let tokens = adminFcmDevices.map(i => i.token)
+      // console.log("tokens : ", tokens)
+      // await utils.sendNotificationsInBatches(tokens, notificationMessage);
+      userFcmDevices.forEach(async i => {
+        const token = i.token
+        console.log("token : ", token)
+        await utils.sendNotification(token, notificationMessage);
+      })
+      const userNotificationData = {
+        title: notificationMessage.title,
+        body: notificationMessage.description,
+        // description: notificationMessage.description,
+        type: "subscription_cancelled",
+        receiver_id: admins._id,
+        related_to: isSubcriptionExist._id,
+        related_to_type: "subscription",
+      };
+      const newuserNotification = new notification(userNotificationData);
+      console.log("newuserNotification : ", newuserNotification)
+      await newuserNotification.save();
+    } else {
+      console.log(`No active FCM tokens found for user ${userdata._id}.`);
+    }
 
     const accountlog = await user_account_log.create({
       user_id: user_id,
