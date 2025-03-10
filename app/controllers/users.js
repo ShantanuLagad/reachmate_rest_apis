@@ -3612,7 +3612,7 @@ exports.createSubscription = async (req, res) => {
     console.log("checkIsTrialExits", checkIsTrialExits)
 
     if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      const result = await Trial.findOneAndDelete({ _id: checkIsTrialExits._id, user_id })
+      const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
       console.log("result : ", result)
     }
 
@@ -4313,7 +4313,7 @@ exports.updateSubscription = async (req, res) => {
       }
 
       if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-        const result = await Trial.deleteOne({ _id: checkIsTrialExits._id, user_id })
+        const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
         console.log("result : ", result)
       }
 
