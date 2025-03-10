@@ -3781,11 +3781,9 @@ exports.createSubscription = async (req, res) => {
         console.log("adminFcmDevices : ", adminFcmDevices)
 
         if (adminFcmDevices && adminFcmDevices.length > 0) {
-          adminFcmDevices.forEach(async i => {
-            const tokens = i.token
-            console.log("device token : ", tokens)
-            await utils.sendPushNotification(tokens, notificationMessage);
-          })
+          let tokens = adminFcmDevices.map(async i => i.token)
+          console.log("tokens : ", tokens)
+          await utils.sendNotificationsInBatches(tokens, notificationMessage);
           const adminNotificationData = {
             title: notificationMessage.title,
             description: notificationMessage.description,
