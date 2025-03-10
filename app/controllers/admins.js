@@ -5111,15 +5111,19 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     const { offset = 0, limit = 10, search, user_type, status } = req.query
     let filter = {}
     if (search) {
-      filter['$or'] = [
+      filter['$and'] = [
         {
-          first_name: { $regex: search, $options: 'i' }
-        },
-        {
-          last_name: { $regex: search, $options: 'i' }
-        },
-        {
-          email: { $regex: search, $options: 'i' }
+          $or: [
+            {
+              first_name: { $regex: search, $options: 'i' }
+            },
+            {
+              last_name: { $regex: search, $options: 'i' }
+            },
+            {
+              email: { $regex: search, $options: 'i' }
+            }
+          ]
         }
       ]
     }
@@ -5128,12 +5132,18 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       filter.user_type = user_type
     }
     if (status && status !== "trial") {
-      filter['$or'].push({
-        "subscription.status": status
-      },
-      {
-        "trial.status": status
-      })
+      if (!filter['$and']) {
+        filter['$and'] = [];
+      }
+      filter['$and'].push(
+        {
+          $or:
+            [
+              { "subscription.status": status },
+              { "trial.status": status }
+            ]
+        }
+      );
     }
     if (status === "trial") {
       filter.trial = { $exists: true }
