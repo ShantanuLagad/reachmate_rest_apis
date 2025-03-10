@@ -1687,24 +1687,22 @@ exports.plansList = async (req, res) => {
     }
 
     const plans = await Plan.find({ plan_type: "company" })
-    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired"] } }).sort({ createdAt: -1 })
+    let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
 
     let updatedPlan = null;
     if (activeSubscription) {
-      if (activeSubscription?.status === "created" || (activeSubscription?.status === "cancelled" && activeSubscription.end_at < new Date())) {
-        activeSubscription = null
-      } else {
-        const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
-        if (subcription.has_scheduled_changes === true) {
-          const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
-          const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
 
-          updatedPlan = {
-            update,
-            planfromDatabase
-          }
+      const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
+      if (subcription.has_scheduled_changes === true) {
+        const update = await instance.subscriptions.pendingUpdate(activeSubscription.subscription_id);
+        const planfromDatabase = await Plan.findOne({ plan_id: update.plan_id });
+
+        updatedPlan = {
+          update,
+          planfromDatabase
         }
       }
+
     }
 
     res.json({ data: plans, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan, code: 200 });
