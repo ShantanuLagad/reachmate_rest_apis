@@ -308,6 +308,13 @@ exports.sendPushNotification = async (
   }
 };
 
+const chunkArray = (array, size) => {
+  const result = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
+};
 
 exports.sendNotificationsInBatches = async (token, notificationMessage) => {
   const batchSize = 500;
