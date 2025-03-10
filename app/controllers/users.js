@@ -3768,6 +3768,7 @@ exports.createSubscription = async (req, res) => {
 
       // admin notification
       const admins = await admin.findOne({ role: 'admin' });
+      console.log("admins : ", admins)
 
       if (admins) {
         const notificationMessage = {
@@ -5562,12 +5563,12 @@ exports.checkIsTrialSubscriptionExisted = async (req, res) => {
   try {
     const userId = req.user._id;
     console.log("User ID : ", userId);
-    const trialSubscription = await Trial.findOne({ user_id: userId});
+    const trialSubscription = await Trial.findOne({ user_id: userId });
     console.log("trialSubscription : ", trialSubscription)
     if (trialSubscription) {
       return res.json({ message: "Trial Subscription Existed", data: trialSubscription, is_subscriber: true, code: 200 });
     }
-    const activeSubscription = await Subscription.findOne({ user_id: userId})
+    const activeSubscription = await Subscription.findOne({ user_id: userId })
     console.log("activeSubscription : ", activeSubscription)
     if (activeSubscription) {
       return res.json({ message: "Active Subscription Existed", data: activeSubscription, is_subscriber: true, code: 200 })
