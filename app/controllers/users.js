@@ -3791,7 +3791,8 @@ exports.createSubscription = async (req, res) => {
           })
           const adminNotificationData = {
             title: notificationMessage.title,
-            description: notificationMessage.description,
+            body: notificationMessage.description,
+            // description: notificationMessage.description,
             type: "new_subscription",
             receiver_id: admins._id,
             related_to: newSubscription._id,
