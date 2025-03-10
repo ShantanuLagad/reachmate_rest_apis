@@ -12,7 +12,9 @@ const AdminNotificationSchema = new mongoose.Schema(
             enum: [
                 "new_subscription",
                 "subscription_upgrade",
-                ""
+                "subscription_downgrade",
+                "new_trial",
+                "free_trial_to_new_user"
             ],
             required: true,
         },
