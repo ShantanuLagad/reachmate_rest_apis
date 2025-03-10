@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const requestIp = require('request-ip')
 const { validationResult } = require('express-validator')
-const { POST } = require('./axios') 
+const { POST } = require('./axios')
 const jwt = require('jsonwebtoken')
 const auth = require('../middleware/auth')
 const { admin } = require("./../../config/firebase");
@@ -48,12 +48,12 @@ exports.handleError = (res, err) => {
   }
   // Sends error to user
 
-  if('statusCode' in err  && "error" in err){
-    err.code =  err?.statusCode;
+  if ('statusCode' in err && "error" in err) {
+    err.code = err?.statusCode;
     err.message = err?.error?.description
   }
 
-  console.log("erorr" , err)
+  console.log("erorr", err)
   res.status(err?.code ?? 500).json({
     errors: {
       msg: err.message
@@ -146,40 +146,40 @@ exports.itemAlreadyExists = (err, item, reject, message) => {
   }
 }
 
-function titleBoxLogin(self){
+function titleBoxLogin(self) {
 
-    return new Promise(async (resolve, reject) => {
-        try{
+  return new Promise(async (resolve, reject) => {
+    try {
 
-            const body = {
-                "TbUser":{
-                 "username":process.env.TITLE_TOOL_BOX_USERNAME,
-                 "password":process.env.TITLE_TOOL_BOX_PASSWORD
-               }
-            }    
-            const headers = {
-                "User-Agent": process.env.TITLE_TOOL_BOX_USER_AGENT,
-                "Partner-Key": process.env.TITLE_TOOL_BOX_PARTNER_KEY
-            }    
-            // url, body, headers = {}
-            const URL = `${process.env.TITLE_TOOL_BOX_URL}login.json`
-            var result = await POST(
-                URL,
-                body,
-                headers
-            );
-
-            if(result.response.status == "OK"){
-                resolve(result.response)
-            }else{
-                reject(self.buildErrObject(422, result.response.data.toString()))  
-            }           
-            
-        }catch(err){
-            reject(self.buildErrObject(500, 'Internal Server Error'))
-            console.log(err)
+      const body = {
+        "TbUser": {
+          "username": process.env.TITLE_TOOL_BOX_USERNAME,
+          "password": process.env.TITLE_TOOL_BOX_PASSWORD
         }
-    })
+      }
+      const headers = {
+        "User-Agent": process.env.TITLE_TOOL_BOX_USER_AGENT,
+        "Partner-Key": process.env.TITLE_TOOL_BOX_PARTNER_KEY
+      }
+      // url, body, headers = {}
+      const URL = `${process.env.TITLE_TOOL_BOX_URL}login.json`
+      var result = await POST(
+        URL,
+        body,
+        headers
+      );
+
+      if (result.response.status == "OK") {
+        resolve(result.response)
+      } else {
+        reject(self.buildErrObject(422, result.response.data.toString()))
+      }
+
+    } catch (err) {
+      reject(self.buildErrObject(500, 'Internal Server Error'))
+      console.log(err)
+    }
+  })
 }
 
 /**
@@ -202,7 +202,7 @@ exports.verifyToken = async token => {
  * Generates a token
  * @param {Object} user - user object
  */
-const generateToken = (ttbsid, mins=240) => {
+const generateToken = (ttbsid, mins = 240) => {
   // Gets expiration time
   const expiration =
     Math.floor(Date.now() / 1000) + 60 * mins
@@ -233,7 +233,7 @@ exports.titleToolBoxAuth = async (req, res, next) => {
   try {
 
 
-    if(req.headers && req.headers['oss-auth']){
+    if (req.headers && req.headers['oss-auth']) {
       const ttbsid = await this.verifyToken(req.headers['oss-auth']);
       req.TTBSID = ttbsid
     } else {
@@ -244,11 +244,11 @@ exports.titleToolBoxAuth = async (req, res, next) => {
       res.set('Access-Control-Expose-Headers', 'oss-auth');
       // res.headers.TTBSID = res.TTBSID
       // res.cookie('oss-auth',result.data.TTBSID, { maxAge: 14400, httpOnly: false });
-    }    
+    }
     return next()
   } catch (err) {
     // console.log(err)
-    return this.handleError(res, this.buildErrObject(err.code ? err.code: 422, err.message))
+    return this.handleError(res, this.buildErrObject(err.code ? err.code : 422, err.message))
   }
 }
 
@@ -301,9 +301,40 @@ exports.sendPushNotification = async (
       .catch((error) => {
         console.log("Error sending message:", error);
       });
-    
+
   } catch (err) {
     console.log(err);
     return false;
+  }
+};
+
+
+exports.sendNotificationsInBatches = async (token, notificationMessage) => {
+  const batchSize = 500;
+  const tokenChunks = chunkArray(token, batchSize);
+
+  for (let chunk of tokenChunks) {
+    const validTokens = chunk.filter(token => token && typeof token === 'string');
+    if (validTokens.length === 0) continue;
+
+    const sendPromises = validTokens.map(async (token) => {
+      const message = {
+        notification: {
+          title: notificationMessage.title,
+          body: notificationMessage.description,
+        },
+        token: token,
+      };
+
+      try {
+        const response = await admin.messaging().send(message);
+        console.log('Successfully sent to token:', token);
+        console.log('Response:', response);
+      } catch (error) {
+        console.error('Error sending notification to token:', token, error);
+      }
+    });
+
+    await Promise.all(sendPromises);
   }
 };
