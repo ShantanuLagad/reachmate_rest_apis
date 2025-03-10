@@ -274,7 +274,7 @@ exports.sendNotification = async (token, notificationData) => {
       },
       token: token  // This should be the user's FCM token
     };
-
+    console.log("message : ", message)
     // Send the notification using Firebase Admin SDK
     await admin.messaging().send(message);
     console.log("Notification sent successfully to the user.");
