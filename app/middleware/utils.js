@@ -260,18 +260,17 @@ exports.titleToolBoxAuth = async (req, res, next) => {
 
 exports.sendPushNotification = async (
   tokens,
-  title,
-  body,
+  notification
 ) => {
   try {
 
-    const notification = {
-      title: title,
-      body: body,
-      // image: notificationData.icon
-      //   ? notificationData.icon
-      //   : `${process.env.NOTIFICATION_ICONS_PATH}/default.ico`,
-    };
+    // const notification = {
+    //   title: title,
+    //   body: body,
+    //   // image: notificationData.icon
+    //   //   ? notificationData.icon
+    //   //   : `${process.env.NOTIFICATION_ICONS_PATH}/default.ico`,
+    // };
 
     var message = {
       notification: notification,

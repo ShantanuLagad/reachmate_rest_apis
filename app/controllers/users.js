@@ -74,6 +74,9 @@ const user_account_log = require('../models/user_account_log');
 const forge = require("node-forge");
 const { exec } = require("child_process");
 const { Readable } = require("stream");
+const admin = require('../models/admin');
+const fcm_devices = require('../models/fcm_devices');
+const admin_notification = require('../models/admin_notification');
 
 
 /*********************
@@ -3593,6 +3596,8 @@ exports.createSubscription = async (req, res) => {
     // }
 
     const user_id = req.user._id;
+    const userdata = await User.findOne({ _id: user_id });
+    console.log("userdata : ", userdata);
 
     // function checkValue(value) {
     //   return !value;
@@ -3760,6 +3765,39 @@ exports.createSubscription = async (req, res) => {
         date_and_time: new Date()
       })
       console.log("accountlog : ", accountlog)
+
+      // admin notification
+      const admins = await admin.findOne({ role: 'admin' });
+
+      if (admins) {
+        const notificationMessage = {
+          title: 'New Subscription created',
+          description: `${userdata.full_name} has created a new subscription . ID : ${newSubscription.subscription_id}`,
+          subscription_id: newSubscription.subscription_id
+        };
+
+        const adminFcmDevices = await fcm_devices.findOne({ user_id: admins._id });
+        console.log("adminFcmDevices : ", adminFcmDevices)
+
+        if (adminFcmDevices) {
+          const tokens = adminFcmDevices.token
+          console.log("device token : ", tokens)
+          await utils.sendPushNotification(tokens, notificationMessage);
+          const adminNotificationData = {
+            title: notificationMessage.title,
+            description: notificationMessage.description,
+            type: "new_subscription",
+            receiver_id: admins._id,
+            related_to: newSubscription._id,
+            related_to_type: "subscription",
+          };
+          const newAdminNotification = new admin_notification(adminNotificationData);
+          console.log("newAdminNotification : ", newAdminNotification)
+          await newAdminNotification.save();
+        } else {
+          console.log(`No active FCM tokens found for admin ${admin._id}.`);
+        }
+      }
 
       res.json({ message: "subscription activated successfully", data: newSubscription, code: 200 })
     }
