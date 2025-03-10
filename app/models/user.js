@@ -69,6 +69,10 @@ const UserSchema = new mongoose.Schema(
       enum: ["google", "apple", null],
       default: null,
     },
+    is_deleted: {
+      type: Boolean,
+      default: false
+    },
     is_card_created: {
       type: Boolean,
       default: false
