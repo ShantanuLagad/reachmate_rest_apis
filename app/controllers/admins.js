@@ -5572,7 +5572,7 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             sex: 1,
             email_domain: 1,
             is_btmember: 1,
-            user_type : 1
+            user_type: 1
           }
         },
         {
@@ -6092,7 +6092,8 @@ exports.changeSubscriptionTrail = async (req, res) => {
           end_at: end_at
         }
         if (req.body.user_count) {
-          data.plan_tier.user_count = req.body.user_count
+          data.plan_tier = subtrialdata.plan_tier
+          data.plan_tier["user_count"] = req.body.user_count
         }
         const result = await Subscription.findOneAndUpdate(
           {
