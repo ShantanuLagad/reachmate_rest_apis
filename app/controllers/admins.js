@@ -5242,7 +5242,190 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     }
     console.log("filter : ", filter)
     const user_data = await User.aggregate(
+      // [
+      //   {
+      //     $addFields: {
+      //       email_domain: {
+      //         $arrayElemAt: [
+      //           { $split: ["$email", "@"] },
+      //           1
+      //         ]
+      //       }
+      //     }
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "teammembers",
+      //       let: {
+      //         id: "$email_domain",
+      //         email: "$email"
+      //       },
+      //       pipeline: [
+      //         {
+      //           $match: {
+      //             $expr: {
+      //               $and: [
+      //                 {
+      //                   $eq: [
+      //                     "$$id",
+      //                     "$company_details.email_domain"
+      //                   ]
+      //                 },
+      //                 {
+      //                   $eq: ["$$email", "$work_email"]
+      //                 }
+      //               ]
+      //             }
+      //           }
+      //         }
+      //       ],
+      //       as: "btmember"
+      //     }
+      //   },
+      //   {
+      //     $unwind: {
+      //       path: "$btmember"
+      //     }
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "subscriptions",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata"
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata"
+      //           }
+      //         }
+      //       ],
+      //       as: "subscription"
+      //     }
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "trails",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata"
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata"
+      //           }
+      //         }
+      //       ],
+      //       as: "trial"
+      //     }
+      //   },
+      //   {
+      //     $addFields: {
+      //       subscription: {
+      //         $arrayElemAt: ["$subscription", 0]
+      //       },
+      //       trial: { $arrayElemAt: ["$trial", 0] }
+      //     }
+      //   },
+      //   {
+      //     $match: filter
+      //   },
+      //   {
+      //     $project: {
+      //       // password: 0,
+      //       // confirm_password: 0
+      //       full_name: 1,
+      //       email: 1,
+      //       personal_cards: 1,
+      //       companyAccessCardDetails: 1,
+      //       status: 1,
+      //       trial: 1,
+      //       subscription: 1,
+      //       is_deleted: 1,
+      //       profile_image: 1,
+      //       sex: 1,
+      //       email_domain: 1,
+      //       btmember: 1
+      //     }
+      //   },
+      //   {
+      //     $sort: {
+      //       createdAt: -1
+      //     }
+      //   },
+      //   {
+      //     $skip: parseInt(offset)
+      //   },
+      //   {
+      //     $limit: parseInt(limit)
+      //   }
+      // ]
       [
+        {
+          $addFields: {
+            email_domain: {
+              $arrayElemAt: [
+                { $split: ["$email", "@"] },
+                1
+              ]
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "teammembers",
+            let: {
+              id: "$email_domain",
+              email: "$email"
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          "$$id",
+                          "$company_details.email_domain"
+                        ]
+                      },
+                      {
+                        $eq: ["$$email", "$work_email"]
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "btmember"
+          }
+        },
+        {
+          $unwind: {
+            path: "$btmember",
+            preserveNullAndEmptyArrays: true
+          }
+        },
         {
           $lookup: {
             from: "subscriptions",
@@ -5304,6 +5487,44 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
           }
         },
         {
+          $match: filter
+        },
+        {
+          $project: {
+            // password: 0,
+            // confirm_password: 0
+            full_name: 1,
+            email: 1,
+            personal_cards: 1,
+            companyAccessCardDetails: 1,
+            status: 1,
+            trial: 1,
+            subscription: 1,
+            is_deleted: 1,
+            profile_image: 1,
+            sex: 1,
+            email_domain: 1,
+            btmember: 1,
+            is_btmember: 1
+          }
+        },
+        {
+          $sort: {
+            createdAt: -1
+          }
+        },
+        {
+          $skip: parseInt(offset)
+        },
+        {
+          $limit: parseInt(limit)
+        }
+      ]
+    )
+
+    const count = await User.countDocuments(
+      [
+        {
           $addFields: {
             email_domain: {
               $arrayElemAt: [
@@ -5344,170 +5565,10 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
         },
         {
           $unwind: {
-            path: "$btmember"
+            path: "$btmember",
+            preserveNullAndEmptyArrays: true
           }
         },
-        {
-          $match: filter
-        },
-        {
-          $project: {
-            // password: 0,
-            // confirm_password: 0
-            full_name: 1,
-            email: 1,
-            personal_cards: 1,
-            companyAccessCardDetails: 1,
-            status: 1,
-            trial: 1,
-            subscription: 1,
-            is_deleted: 1,
-            profile_image: 1,
-            sex: 1,
-            email_domain: 1,
-            btmember: 1
-          }
-        },
-        {
-          $sort: {
-            createdAt: -1
-          }
-        },
-        {
-          $skip: parseInt(offset)
-        },
-        {
-          $limit: parseInt(limit)
-        }
-      ]
-
-      // [
-      //   {
-      //     $lookup: {
-      //       from: "subscriptions",
-      //       localField: "_id",
-      //       foreignField: "user_id",
-      //       pipeline: [
-      //         {
-      //           $sort: { createdAt: -1 }
-      //         },
-      //         {
-      //           $lookup: {
-      //             from: "plans",
-      //             localField: "plan_id",
-      //             foreignField: "plan_id",
-      //             as: "plandata",
-      //             pipeline: [
-      //               {
-      //                 $unwind: {
-      //                   path: "$plan_tiers",
-      //                   preserveNullAndEmptyArrays: true
-      //                 }
-      //               },
-      //               {
-      //                 $match: {
-      //                   $expr: {
-      //                     $cond: {
-      //                       if: {
-      //                         $ne: ["$plan_tier", null]
-      //                       },
-      //                       then: {
-      //                         $eq: [
-      //                           "$plan_tiers._id",
-      //                           "$$tierId"
-      //                         ]
-      //                       },
-      //                       else: true
-      //                     }
-      //                   }
-      //                 }
-      //               }
-      //             ],
-      //             let: { tierId: "$plan_tier.tier_id" }
-      //           }
-      //         },
-      //         {
-      //           $unwind: {
-      //             path: "$plandata",
-      //             preserveNullAndEmptyArrays: true
-      //           }
-      //         }
-      //       ],
-      //       as: "subscription"
-      //     }
-      //   },
-      //   {
-      //     $lookup: {
-      //       from: "trails",
-      //       localField: "_id",
-      //       foreignField: "user_id",
-      //       pipeline: [
-      //         {
-      //           $sort: { createdAt: -1 }
-      //         },
-      //         {
-      //           $lookup: {
-      //             from: "plans",
-      //             localField: "plan_id",
-      //             foreignField: "plan_id",
-      //             as: "plandata"
-      //           }
-      //         },
-      //         {
-      //           $unwind: {
-      //             path: "$plandata",
-      //             preserveNullAndEmptyArrays: true
-      //           }
-      //         }
-      //       ],
-      //       as: "trial"
-      //     }
-      //   },
-      //   {
-      //     $addFields: {
-      //       subscription: {
-      //         $arrayElemAt: ["$subscription", 0]
-      //       },
-      //       trial: {
-      //         $arrayElemAt: ["$trial", 0]
-      //       }
-      //     }
-      //   },
-      //   {
-      //     $match: filter
-      //   },
-      //   {
-      //     $project: {
-      //       // password: 0,
-      //       // confirm_password: 0
-      //       full_name: 1,
-      //       email: 1,
-      //       personal_cards: 1,
-      //       companyAccessCardDetails: 1,
-      //       status: 1,
-      //       trial: 1,
-      //       subscription: 1,
-      //       is_deleted: 1,
-      //       profile_image: 1,
-      //       sex: 1
-      //     }
-      //   },
-      //   {
-      //     $sort: {
-      //       createdAt: -1
-      //     }
-      //   },
-      //   {
-      //     $skip: parseInt(offset)
-      //   },
-      //   {
-      //     $limit: parseInt(limit)
-      //   }
-      // ]
-    )
-
-    const count = await User.countDocuments(
-      [
         {
           $lookup: {
             from: "subscriptions",
