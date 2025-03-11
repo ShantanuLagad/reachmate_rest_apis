@@ -3174,7 +3174,8 @@ exports.getUser = async (req, res) => {
       },
       {
         $unwind: {
-          path: "$btmember"
+          path: "$btmember",
+          preserveNullAndEmptyArrays: true
         }
       },
       {

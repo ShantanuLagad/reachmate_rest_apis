@@ -78,6 +78,7 @@ const admin = require('../models/admin');
 const fcm_devices = require('../models/fcm_devices');
 const admin_notification = require('../models/admin_notification');
 const notification = require('../models/notification');
+const account_session = require('../models/account_session');
 
 
 /*********************
@@ -3195,7 +3196,10 @@ exports.addFCMDevice = async (req, res) => {
       await item.save()
     }
 
-    const newsession = await user_account_log.create({
+    const sessionid = crypto.randomUUID()
+
+    const newsession = await account_session.create({
+      session_id: sessionid,
       user_id,
       action: 'Account Session',
       previous_status: 'session created',
@@ -3228,7 +3232,7 @@ exports.deleteFCMDevice = async (req, res) => {
 
     await FCMDevice.deleteOne({ user_id: user_id, token: token })
 
-    const newsession = await user_account_log.findOneAndUpdate(
+    const newsession = await account_session.findOneAndUpdate(
       {
         user_id: new mongoose.Types.ObjectId(user_id),
         session_status: 'active'
