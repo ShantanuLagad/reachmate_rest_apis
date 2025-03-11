@@ -562,4 +562,11 @@ router.post(
   controller.giveFreeTrialToFirstUser
 )
 
+router.post(
+  "/createSessionActivity",
+  requireAuth,
+  trimRequest.all,
+  controller.createSessionActivity
+)
+
 module.exports = router
