@@ -79,6 +79,7 @@ const fcm_devices = require('../models/fcm_devices');
 const admin_notification = require('../models/admin_notification');
 const notification = require('../models/notification');
 const account_session = require('../models/account_session');
+const session_activity = require('../models/session_activity');
 
 
 /*********************
@@ -3213,6 +3214,7 @@ exports.addFCMDevice = async (req, res) => {
 
     res.json({
       message: "Token added successfully",
+      session_id: sessionid,
       code: 200,
     });
   } catch (error) {
@@ -6139,6 +6141,48 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
     return res.status(200).json({
       message: "Free Trial assigned to first user successfully",
       data: firstTrial,
+      code: 200
+    })
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error)
+  }
+}
+
+
+exports.createSessionActivity = async (req, res) => {
+  try {
+    const { session_id, user_id, action, route } = req.body
+    console.log("body : ", req.body)
+    const session = await account_session.findOne({ session_id, user_id })
+    console.log("session : ", session)
+    if (!session) {
+      return res.status(204).json({ message: "Invalid session id", code: 403 });
+    }
+
+    const previousactivity = await session_activity.findOne({ session_id, user_id }).sort({ session_count: -1 });
+    console.log("previousactivity : ", previousactivity)
+
+    let sessioncount = 1
+    if (previousactivity) {
+      sessioncount = previousactivity.session_count + 1
+    }
+    const newactivity = await session_activity.create({
+      session_id: session._id,
+      session_unique_id: session_id,
+      user_id: user_id,
+      action,
+      route,
+      date_and_time: new Date(),
+      performed_by: 'user',
+      status: 'completed',
+      session_count: sessioncount
+    })
+
+    console.log("newactivity : ", newactivity)
+    return res.status(200).json({
+      message: "Session activity created successfully",
+      data: newactivity,
       code: 200
     })
   } catch (error) {

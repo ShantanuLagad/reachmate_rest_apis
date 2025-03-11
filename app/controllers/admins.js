@@ -3124,15 +3124,12 @@ exports.getUser = async (req, res) => {
       filter.btmember = { $exists: true }
     }
     if (user_type && user_type !== "btmember") {
-      filter.btmember = { $exists: true }
+      filter.user_type = user_type
     }
     if (status) {
       filter.status = status
     }
     const user_data = await User.aggregate([
-      {
-        $match: filter
-      },
       {
         $addFields: {
           email_domain: {
@@ -3177,6 +3174,9 @@ exports.getUser = async (req, res) => {
           path: "$btmember",
           preserveNullAndEmptyArrays: true
         }
+      },
+      {
+        $match: filter
       },
       {
         $project: {
