@@ -1991,10 +1991,10 @@ exports.createSubscription = async (req, res) => {
       }
       if (req.body.isTrial) {
         console.log("req.body.isTrial : ", req.body.isTrial)
-        dataForDatabase.trial_period = {
-          start: startOfPeriod,
-          end: endOfPeriod
-        }
+        // dataForDatabase.trial_period = {
+        //   start: startOfPeriod,
+        //   end: endOfPeriod
+        // }
         const newTrial = await Trial.create({
           user_id,
           plan_id: planId,
@@ -2004,6 +2004,7 @@ exports.createSubscription = async (req, res) => {
           plan_tier: tierPlanData
         })
         console.log("newTrial : ", newTrial)
+        return res.json({ message: "Trial created succsessfully", data: newTrial, code: 200 })
       }
       console.log("dataForDatabase : ", dataForDatabase)
 
@@ -2066,7 +2067,7 @@ exports.createSubscription = async (req, res) => {
       console.log("saveToDB : ", saveToDB)
       await saveToDB.save()
     }
-    res.json({ data: subcription, code: 200 })
+    return res.json({ message: "Subscription created succsessfully", data: subcription, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
