@@ -5945,7 +5945,7 @@ exports.addOCRCard = async (req, res) => {
       $push: { ocr_cards: cardData._id },
     });
 
-    await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "ocr", text_color: data.text_color })
+    await User.findByIdAndUpdate(owner_id, { is_card_created: true, text_color: data.text_color })
 
     // await giveTrialIfNotGive(owner_id)
     const sharedCard = new SharedCards({

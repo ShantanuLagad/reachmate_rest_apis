@@ -5166,6 +5166,89 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     }
     console.log("filter : ", filter)
     const user_data = await User.aggregate(
+      // [
+      //   {
+      //     $lookup: {
+      //       from: "subscriptions",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata"
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata"
+      //           }
+      //         }
+      //       ],
+      //       as: "subscription"
+      //     }
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "trails",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata"
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata"
+      //           }
+      //         }
+      //       ],
+      //       as: "trial"
+      //     }
+      //   },
+      //   {
+      //     $addFields: {
+      //       subscription: {
+      //         $arrayElemAt: ["$subscription", 0]
+      //       },
+      //       trial: { $arrayElemAt: ["$trial", 0] }
+      //     }
+      //   },
+      //   {
+      //     $match: filter
+      //   },
+      //   {
+      //     $project: {
+      //       password: 0,
+      //       confirm_password: 0
+      //     }
+      //   },
+      //   {
+      //     $sort: {
+      //       createdAt: -1
+      //     }
+      //   },
+      //   {
+      //     $skip: parseInt(offset)
+      //   },
+      //   {
+      //     $limit: parseInt(limit)
+      //   }
+      // ]
+
       [
         {
           $lookup: {
@@ -5175,6 +5258,47 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             pipeline: [
               {
                 $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata",
+                  pipeline: [
+                    {
+                      $unwind: {
+                        path: "$plan_tiers",
+                        preserveNullAndEmptyArrays: true
+                      }
+                    },
+                    {
+                      $match: {
+                        $expr: {
+                          $cond: {
+                            if: {
+                              $ne: ["$plan_tier", null]
+                            },
+                            then: {
+                              $eq: [
+                                "$plan_tiers._id",
+                                "$$tierId"
+                              ]
+                            },
+                            else: true
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  let: { tierId: "$plan_tier.tier_id" }
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata",
+                  preserveNullAndEmptyArrays: true
+                }
               }
             ],
             as: "subscription"
@@ -5188,6 +5312,20 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             pipeline: [
               {
                 $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata",
+                  preserveNullAndEmptyArrays: true
+                }
               }
             ],
             as: "trial"
@@ -5198,7 +5336,9 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             subscription: {
               $arrayElemAt: ["$subscription", 0]
             },
-            trial: { $arrayElemAt: ["$trial", 0] }
+            trial: {
+              $arrayElemAt: ["$trial", 0]
+            }
           }
         },
         {

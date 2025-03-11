@@ -96,7 +96,7 @@ const UserSchema = new mongoose.Schema(
     ],
     user_type: {
       type: String,
-      enum: ["personal", "corporate", "ocr"]
+      enum: ["personal", "corporate"]
     },
     notification: {
       type: Boolean,
