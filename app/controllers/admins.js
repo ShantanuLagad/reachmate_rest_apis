@@ -5571,7 +5571,8 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             profile_image: 1,
             sex: 1,
             email_domain: 1,
-            is_btmember: 1
+            is_btmember: 1,
+            user_type : 1
           }
         },
         {
@@ -5669,20 +5670,6 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             trial: { $arrayElemAt: ["$trial", 0] }
           }
         },
-        {
-          $match: filter
-        },
-        {
-          $project: {
-            password: 0,
-            confirm_password: 0
-          }
-        },
-        {
-          $sort: {
-            createdAt: -1
-          }
-        }
       ]
     )
 
@@ -5993,7 +5980,7 @@ exports.changeSubscriptionTrail = async (req, res) => {
       });
     }
 
-    if (user_type === "individual") {
+    if (user_type === "user") {
       if (is_trial === true || is_trial === "true") {
         const result = await Trial.findOneAndUpdate(
           {
