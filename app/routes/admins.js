@@ -515,6 +515,12 @@ router.get(
   controller.getSubscriptionBasedUserList
 )
 
+router.get(
+  "/getSubscriptionBasedCompanyList",
+  trimRequest.all,
+  controller.getSubscriptionBasedCompanyList
+)
+
 router.patch(
   "/changeSubscriptionTrail",
   requireAuth,

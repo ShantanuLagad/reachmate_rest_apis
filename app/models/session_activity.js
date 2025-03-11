@@ -44,7 +44,13 @@ const SessionActivitySchema = new mongoose.Schema(
         session_count: {
             type: Number,
             required: true
-        }
+        },
+        start_at: {
+            type: Date
+        },
+        end_at: {
+            type: Date
+        },
     },
     {
         versionKey: false,

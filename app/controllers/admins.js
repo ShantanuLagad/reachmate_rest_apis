@@ -72,6 +72,8 @@ const Plan = require('../models/plan.js')
 const teamMember = require('../models/teamMember.js')
 const fcm_devices = require('../models/fcm_devices.js')
 const admin_notification = require('../models/admin_notification.js')
+const account_session = require('../models/account_session.js')
+const session_activity = require('../models/session_activity.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -3217,6 +3219,47 @@ exports.getSingleUser = async (req, res) => {
     console.log("id : ", id)
     const userdata = await User.findOne({ _id: id }).select('-password -confirm_password');
     console.log("userdata : ", userdata)
+
+    const account_session_data = await account_session.find({ user_id: id })
+    console.log("account_session : ", account_session_data)
+
+    const session_activity_data = await session_activity.find({ user_id: id })
+    console.log("session_activity : ", session_activity_data)
+
+    let totalTimeMs = 0;
+    let totalTimeHours = 0
+    if (account_session_data && account_session_data.length !== 0) {
+      account_session_data.forEach(session => {
+        if (session.start_at && session.end_at) {
+          const start = new Date(session.start_at);
+          const end = new Date(session.end_at);
+          totalTimeMs += (end - start);
+        }
+      });
+      totalTimeHours = totalTimeMs / (1000 * 60 * 60);
+      console.log("Total time (hours): ", totalTimeHours);
+    }
+
+
+    let totalSessionActivityTimeMs = 0;
+    if (session_activity_data && session_activity_data.length !== 0) {
+      session_activity_data.forEach(activity => {
+        if (activity.start_at && activity.end_at) {
+          const start = new Date(activity.start_at);
+          const end = new Date(activity.end_at);
+          totalSessionActivityTimeMs += (end - start);
+        }
+      });
+    }
+    const totalSessionActivityTimeHours = totalSessionActivityTimeMs / (1000 * 60 * 60);
+    console.log("Total session activity time (hours): ", totalSessionActivityTimeHours);
+
+    let avgTimeSpent = 0;
+    if (totalTimeHours > 0) {
+      avgTimeSpent = (totalSessionActivityTimeHours / totalTimeHours);
+    }
+    console.log("Average time spent on activities (%): ", avgTimeSpent);
+
     if (!userdata) {
       return res.status(404).json({
         message: 'User not found',
@@ -3225,7 +3268,10 @@ exports.getSingleUser = async (req, res) => {
     }
     return res.status(200).json({
       message: 'User data fetched successfully',
-      data: userdata,
+      data: {
+        ...userdata.toObject(),
+        avg_time_spent: avgTimeSpent
+      },
       code: 200
     })
   } catch (error) {
@@ -5285,7 +5331,8 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       //   },
       //   {
       //     $unwind: {
-      //       path: "$btmember"
+      //       path: "$btmember",
+      //       preserveNullAndEmptyArrays: true
       //     }
       //   },
       //   {
@@ -5366,7 +5413,8 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       //       profile_image: 1,
       //       sex: 1,
       //       email_domain: 1,
-      //       btmember: 1
+      //       btmember: 1,
+      //       is_btmember: 1
       //     }
       //   },
       //   {
@@ -5416,6 +5464,11 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
                     ]
                   }
                 }
+              },
+              {
+                $addFields: {
+                  is_exist: true
+                }
               }
             ],
             as: "btmember"
@@ -5425,6 +5478,19 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
           $unwind: {
             path: "$btmember",
             preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $addFields: {
+            is_btmember: {
+              $cond: {
+                if: {
+                  $ne: ["$btmember.is_exist", true]
+                },
+                then: false,
+                else: true
+              }
+            }
           }
         },
         {
@@ -5505,7 +5571,6 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             profile_image: 1,
             sex: 1,
             email_domain: 1,
-            btmember: 1,
             is_btmember: 1
           }
         },
@@ -5621,15 +5686,254 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       ]
     )
 
-    user_data.forEach(i => {
-      if (i?.subscription?.plan_tier && i?.subscription?.plandata?.plan_tiers?.length > 0) {
-        i.subscription.plandata.plan_tiers = i.subscription.plandata.plan_tiers.filter((m) => m._id.toString() === i.subscription.plan_tier.tier_id.toString())
-      }
-    })
+    // user_data.forEach(i => {
+    //   if (i?.subscription?.plan_tier && i?.subscription?.plandata?.plan_tiers?.length > 0) {
+    //     i.subscription.plandata.plan_tiers = i.subscription.plandata.plan_tiers.filter((m) => m._id.toString() === i.subscription.plan_tier.tier_id.toString())
+    //   }
+    // })
 
     return res.status(200).json({
       message: "user data fetched successfully",
       data: user_data,
+      count,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+exports.getSubscriptionBasedCompanyList = async (req, res) => {
+  try {
+    const { offset = 0, limit = 10, search, status } = req.query
+    let filter = {}
+    if (search) {
+      filter['$and'] = [
+        {
+          $or: [
+            {
+              company_name: { $regex: search, $options: 'i' }
+            },
+            {
+              access_code: { $regex: search, $options: 'i' }
+            },
+            {
+              email: { $regex: search, $options: 'i' }
+            }
+          ]
+        }
+      ]
+    }
+    if (status && status !== "trial") {
+      if (!filter['$and']) {
+        filter['$and'] = [];
+      }
+      filter['$and'].push(
+        {
+          $or:
+            [
+              { "subscription.status": status },
+              { "trial.status": status }
+            ]
+        }
+      );
+    }
+    if (status === "trial") {
+      filter.trial = { $exists: true }
+      filter.subscription = { $exists: false }
+    }
+    console.log("filter : ", filter)
+
+    const companydata = await Company.aggregate(
+      [
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata.plan_tiers"
+                }
+              },
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_tiers._id"]
+                  }
+                }
+              }
+            ],
+            as: "subscription",
+            let: { id: "$plan_tier.tier_id" }
+          }
+        },
+        {
+          $lookup: {
+            from: "trails",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata"
+                }
+              }
+            ],
+            as: "trial"
+          }
+        },
+        {
+          $addFields: {
+            subscription: {
+              $arrayElemAt: ["$subscription", 0]
+            },
+            trial: { $arrayElemAt: ["$trial", 0] }
+          }
+        },
+        {
+          $match: filter
+        },
+        // {
+        //   $project: {
+        //     // password: 0,
+        //     // confirm_password: 0
+        //     full_name: 1,
+        //     email: 1,
+        //     personal_cards: 1,
+        //     companyAccessCardDetails: 1,
+        //     status: 1,
+        //     trial: 1,
+        //     subscription: 1,
+        //     is_deleted: 1,
+        //     profile_image: 1,
+        //     sex: 1,
+        //     email_domain: 1,
+        //     is_btmember: 1
+        //   }
+        // },
+        {
+          $sort: {
+            createdAt: -1
+          }
+        },
+        {
+          $skip: parseInt(offset)
+        },
+        {
+          $limit: parseInt(limit)
+        }
+      ]
+    )
+
+    const count = await Company.countDocuments(
+      [
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata.plan_tiers"
+                }
+              },
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$$id", "$plan_tiers._id"]
+                  }
+                }
+              }
+            ],
+            as: "subscription",
+            let: { id: "$plan_tier.tier_id" }
+          }
+        },
+        {
+          $lookup: {
+            from: "trails",
+            localField: "_id",
+            foreignField: "user_id",
+            pipeline: [
+              {
+                $sort: { createdAt: -1 }
+              },
+              {
+                $lookup: {
+                  from: "plans",
+                  localField: "plan_id",
+                  foreignField: "plan_id",
+                  as: "plandata"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$plandata"
+                }
+              }
+            ],
+            as: "trial"
+          }
+        },
+        {
+          $addFields: {
+            subscription: {
+              $arrayElemAt: ["$subscription", 0]
+            },
+            trial: { $arrayElemAt: ["$trial", 0] }
+          }
+        },
+      ]
+    )
+    return res.status(200).json({
+      message: "company data fetched successfully",
+      data: companydata,
       count,
       code: 200
     })
