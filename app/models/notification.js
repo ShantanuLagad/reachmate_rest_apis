@@ -27,6 +27,7 @@ const NotificationSchema = new mongoose.Schema(
                 "new_trial",
                 "free_trial_to_new_user",
                 "trial_expired",
+                "admin_action"
             ],
             required: true,
         },

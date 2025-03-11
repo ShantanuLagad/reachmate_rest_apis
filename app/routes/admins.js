@@ -515,4 +515,11 @@ router.get(
   controller.getSubscriptionBasedUserList
 )
 
+router.patch(
+  "/changeSubscriptionTrail",
+  requireAuth,
+  trimRequest.all,
+  controller.changeSubscriptionTrail
+)
+
 module.exports = router
