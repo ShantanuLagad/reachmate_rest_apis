@@ -6152,31 +6152,34 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
 
 exports.createSessionActivity = async (req, res) => {
   try {
-    const { session_id, user_id, action, route } = req.body
+    const { session_token, user_id, action, route } = req.body
     console.log("body : ", req.body)
-    const session = await account_session.findOne({ session_id, user_id })
+    const session = await account_session.findOne({ session_id: session_token, user_id, session_status: "active" })
     console.log("session : ", session)
     if (!session) {
       return res.status(204).json({ message: "Invalid session id", code: 403 });
     }
 
-    const previousactivity = await session_activity.findOne({ session_id, user_id }).sort({ session_count: -1 });
+    const previousactivity = await session_activity.findOne({ session_unique_id: session_token, user_id }).sort({ session_count: -1 });
     console.log("previousactivity : ", previousactivity)
 
     let sessioncount = 1
     if (previousactivity) {
       sessioncount = previousactivity.session_count + 1
+      previousactivity.end_at = new Date()
+      await previousactivity.save()
     }
     const newactivity = await session_activity.create({
       session_id: session._id,
-      session_unique_id: session_id,
+      session_unique_id: session_token,
       user_id: user_id,
       action,
       route,
       date_and_time: new Date(),
       performed_by: 'user',
       status: 'completed',
-      session_count: sessioncount
+      session_count: sessioncount,
+      start_end: new Date()
     })
 
     console.log("newactivity : ", newactivity)
