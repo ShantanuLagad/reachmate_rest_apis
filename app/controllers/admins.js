@@ -67,6 +67,7 @@ const cardDetials = require('../models/cardDetials')
 const sharedCards = require('../models/sharedCards.js')
 const user_account_log = require('../models/user_account_log.js')
 const Subscription = require('../models/subscription.js')
+const Trial = require('../models/trial.js')
 const Plan = require('../models/plan.js')
 const teamMember = require('../models/teamMember.js')
 const fcm_devices = require('../models/fcm_devices.js')
@@ -141,6 +142,31 @@ const findUser = async email => {
   })
 }
 
+
+const sendUsernotificationhelper = async (user_id, notificationbody, dbnotificationbody) => {
+  try {
+    //user notification
+    const userFcmDevices = await fcm_devices.find({ user_id });
+    console.log("userFcmDevices : ", userFcmDevices)
+    const notificationMessage = notificationbody
+    if (userFcmDevices && userFcmDevices.length > 0) {
+      userFcmDevices.forEach(async i => {
+        const token = i.token
+        console.log("token : ", token)
+        await utils.sendNotification(token, notificationMessage);
+      })
+      const userNotificationData = dbnotificationbody
+      const newuserNotification = new Notification(userNotificationData);
+      console.log("newuserNotification : ", newuserNotification)
+      await newuserNotification.save();
+    } else {
+      console.log(`No active FCM tokens found for user`);
+    }
+
+  } catch (error) {
+    console.log(error)
+  }
+}
 
 
 const setUserInfo = req => {
@@ -3094,8 +3120,11 @@ exports.getUser = async (req, res) => {
       ]
     }
 
-    if (user_type) {
-      filter.user_type = user_type
+    if (user_type === "btmember") {
+      filter.btmember = { $exists: true }
+    }
+    if (user_type && user_type !== "btmember") {
+      filter.btmember = { $exists: true }
     }
     if (status) {
       filter.status = status
@@ -3103,6 +3132,50 @@ exports.getUser = async (req, res) => {
     const user_data = await User.aggregate([
       {
         $match: filter
+      },
+      {
+        $addFields: {
+          email_domain: {
+            $arrayElemAt: [
+              { $split: ["$email", "@"] },
+              1
+            ]
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "teammembers",
+          let: {
+            id: "$email_domain",
+            email: "$email"
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    {
+                      $eq: [
+                        "$$id",
+                        "$company_details.email_domain"
+                      ]
+                    },
+                    {
+                      $eq: ["$$email", "$work_email"]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "btmember"
+        }
+      },
+      {
+        $unwind: {
+          path: "$btmember"
+        }
       },
       {
         $project: {
@@ -5143,7 +5216,10 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       ]
     }
 
-    if (user_type) {
+    if (user_type === "btmember") {
+      filter.btmember = { $exists: true }
+    }
+    if (user_type && user_type !== "btmember") {
       filter.user_type = user_type
     }
     if (status && status !== "trial") {
@@ -5166,89 +5242,6 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
     }
     console.log("filter : ", filter)
     const user_data = await User.aggregate(
-      // [
-      //   {
-      //     $lookup: {
-      //       from: "subscriptions",
-      //       localField: "_id",
-      //       foreignField: "user_id",
-      //       pipeline: [
-      //         {
-      //           $sort: { createdAt: -1 }
-      //         },
-      //         {
-      //           $lookup: {
-      //             from: "plans",
-      //             localField: "plan_id",
-      //             foreignField: "plan_id",
-      //             as: "plandata"
-      //           }
-      //         },
-      //         {
-      //           $unwind: {
-      //             path: "$plandata"
-      //           }
-      //         }
-      //       ],
-      //       as: "subscription"
-      //     }
-      //   },
-      //   {
-      //     $lookup: {
-      //       from: "trails",
-      //       localField: "_id",
-      //       foreignField: "user_id",
-      //       pipeline: [
-      //         {
-      //           $sort: { createdAt: -1 }
-      //         },
-      //         {
-      //           $lookup: {
-      //             from: "plans",
-      //             localField: "plan_id",
-      //             foreignField: "plan_id",
-      //             as: "plandata"
-      //           }
-      //         },
-      //         {
-      //           $unwind: {
-      //             path: "$plandata"
-      //           }
-      //         }
-      //       ],
-      //       as: "trial"
-      //     }
-      //   },
-      //   {
-      //     $addFields: {
-      //       subscription: {
-      //         $arrayElemAt: ["$subscription", 0]
-      //       },
-      //       trial: { $arrayElemAt: ["$trial", 0] }
-      //     }
-      //   },
-      //   {
-      //     $match: filter
-      //   },
-      //   {
-      //     $project: {
-      //       password: 0,
-      //       confirm_password: 0
-      //     }
-      //   },
-      //   {
-      //     $sort: {
-      //       createdAt: -1
-      //     }
-      //   },
-      //   {
-      //     $skip: parseInt(offset)
-      //   },
-      //   {
-      //     $limit: parseInt(limit)
-      //   }
-      // ]
-
       [
         {
           $lookup: {
@@ -5264,40 +5257,12 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
                   from: "plans",
                   localField: "plan_id",
                   foreignField: "plan_id",
-                  as: "plandata",
-                  pipeline: [
-                    {
-                      $unwind: {
-                        path: "$plan_tiers",
-                        preserveNullAndEmptyArrays: true
-                      }
-                    },
-                    {
-                      $match: {
-                        $expr: {
-                          $cond: {
-                            if: {
-                              $ne: ["$plan_tier", null]
-                            },
-                            then: {
-                              $eq: [
-                                "$plan_tiers._id",
-                                "$$tierId"
-                              ]
-                            },
-                            else: true
-                          }
-                        }
-                      }
-                    }
-                  ],
-                  let: { tierId: "$plan_tier.tier_id" }
+                  as: "plandata"
                 }
               },
               {
                 $unwind: {
-                  path: "$plandata",
-                  preserveNullAndEmptyArrays: true
+                  path: "$plandata"
                 }
               }
             ],
@@ -5323,8 +5288,7 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
               },
               {
                 $unwind: {
-                  path: "$plandata",
-                  preserveNullAndEmptyArrays: true
+                  path: "$plandata"
                 }
               }
             ],
@@ -5336,9 +5300,51 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
             subscription: {
               $arrayElemAt: ["$subscription", 0]
             },
-            trial: {
-              $arrayElemAt: ["$trial", 0]
+            trial: { $arrayElemAt: ["$trial", 0] }
+          }
+        },
+        {
+          $addFields: {
+            email_domain: {
+              $arrayElemAt: [
+                { $split: ["$email", "@"] },
+                1
+              ]
             }
+          }
+        },
+        {
+          $lookup: {
+            from: "teammembers",
+            let: {
+              id: "$email_domain",
+              email: "$email"
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          "$$id",
+                          "$company_details.email_domain"
+                        ]
+                      },
+                      {
+                        $eq: ["$$email", "$work_email"]
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "btmember"
+          }
+        },
+        {
+          $unwind: {
+            path: "$btmember"
           }
         },
         {
@@ -5346,8 +5352,20 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
         },
         {
           $project: {
-            password: 0,
-            confirm_password: 0
+            // password: 0,
+            // confirm_password: 0
+            full_name: 1,
+            email: 1,
+            personal_cards: 1,
+            companyAccessCardDetails: 1,
+            status: 1,
+            trial: 1,
+            subscription: 1,
+            is_deleted: 1,
+            profile_image: 1,
+            sex: 1,
+            email_domain: 1,
+            btmember: 1
           }
         },
         {
@@ -5362,6 +5380,130 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
           $limit: parseInt(limit)
         }
       ]
+
+      // [
+      //   {
+      //     $lookup: {
+      //       from: "subscriptions",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata",
+      //             pipeline: [
+      //               {
+      //                 $unwind: {
+      //                   path: "$plan_tiers",
+      //                   preserveNullAndEmptyArrays: true
+      //                 }
+      //               },
+      //               {
+      //                 $match: {
+      //                   $expr: {
+      //                     $cond: {
+      //                       if: {
+      //                         $ne: ["$plan_tier", null]
+      //                       },
+      //                       then: {
+      //                         $eq: [
+      //                           "$plan_tiers._id",
+      //                           "$$tierId"
+      //                         ]
+      //                       },
+      //                       else: true
+      //                     }
+      //                   }
+      //                 }
+      //               }
+      //             ],
+      //             let: { tierId: "$plan_tier.tier_id" }
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata",
+      //             preserveNullAndEmptyArrays: true
+      //           }
+      //         }
+      //       ],
+      //       as: "subscription"
+      //     }
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "trails",
+      //       localField: "_id",
+      //       foreignField: "user_id",
+      //       pipeline: [
+      //         {
+      //           $sort: { createdAt: -1 }
+      //         },
+      //         {
+      //           $lookup: {
+      //             from: "plans",
+      //             localField: "plan_id",
+      //             foreignField: "plan_id",
+      //             as: "plandata"
+      //           }
+      //         },
+      //         {
+      //           $unwind: {
+      //             path: "$plandata",
+      //             preserveNullAndEmptyArrays: true
+      //           }
+      //         }
+      //       ],
+      //       as: "trial"
+      //     }
+      //   },
+      //   {
+      //     $addFields: {
+      //       subscription: {
+      //         $arrayElemAt: ["$subscription", 0]
+      //       },
+      //       trial: {
+      //         $arrayElemAt: ["$trial", 0]
+      //       }
+      //     }
+      //   },
+      //   {
+      //     $match: filter
+      //   },
+      //   {
+      //     $project: {
+      //       // password: 0,
+      //       // confirm_password: 0
+      //       full_name: 1,
+      //       email: 1,
+      //       personal_cards: 1,
+      //       companyAccessCardDetails: 1,
+      //       status: 1,
+      //       trial: 1,
+      //       subscription: 1,
+      //       is_deleted: 1,
+      //       profile_image: 1,
+      //       sex: 1
+      //     }
+      //   },
+      //   {
+      //     $sort: {
+      //       createdAt: -1
+      //     }
+      //   },
+      //   {
+      //     $skip: parseInt(offset)
+      //   },
+      //   {
+      //     $limit: parseInt(limit)
+      //   }
+      // ]
     )
 
     const count = await User.countDocuments(
@@ -5417,6 +5559,12 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       ]
     )
 
+    user_data.forEach(i => {
+      if (i?.subscription?.plan_tier && i?.subscription?.plandata?.plan_tiers?.length > 0) {
+        i.subscription.plandata.plan_tiers = i.subscription.plandata.plan_tiers.filter((m) => m._id.toString() === i.subscription.plan_tier.tier_id.toString())
+      }
+    })
+
     return res.status(200).json({
       message: "user data fetched successfully",
       data: user_data,
@@ -5428,4 +5576,210 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
   }
 }
 
+exports.changeSubscriptionTrail = async (req, res) => {
+  try {
+    const { id, is_trial, start_at, end_at, user_type, plan_id } = req.body
+    console.log("data : ", req.body)
+    let subtrialdata = {}
+    if (is_trial === true || is_trial === "true") {
+      subtrialdata = await Trial.findOne({ _id: id })
+      console.log("subtrialdata : ", subtrialdata)
+    } else {
+      subtrialdata = await Subscription.findOne({ _id: id })
+      console.log("subtrialdata : ", subtrialdata)
+    }
+    if (!subtrialdata) {
+      return res.status(404).json({
+        message: "No data found",
+        code: 404
+      })
+    }
+    const plandata = await Plan.findOne({ plan_id })
+    console.log("plandata : ", plandata)
+    if (!plandata) {
+      return res.status(404).json({
+        message: "No Plan found",
+        code: 404
+      })
+    }
 
+    const startDate = new Date(start_at);
+    const endDate = new Date(end_at);
+
+    if (isNaN(startDate.getTime())) {
+      return res.status(400).json({
+        message: "Invalid start date",
+        code: 400,
+      });
+    }
+
+    if (isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        message: "Invalid end date",
+        code: 400,
+      });
+    }
+
+    if (endDate <= startDate) {
+      return res.status(400).json({
+        message: "end date must be after start date",
+        code: 400,
+      });
+    }
+
+    if (user_type === "individual") {
+      if (is_trial === true || is_trial === "true") {
+        const result = await Trial.findOneAndUpdate(
+          {
+            _id: id
+          }, {
+          $set: {
+            start_end: start_at,
+            end_at: end_at
+          }
+        }, { new: true }
+        )
+        console.log("trial result : ", result)
+
+        let notificationbody = {
+          title: 'Trial updated by admin',
+          description: `Your Trial has been updated by admin. Plan ID : ${result.plan_id}`,
+          trial_id: result._id
+        }
+
+        let dbnotificationbody = {
+          title: 'Trial updated by admin',
+          description: `Your Trial has been updated by admin. Plan ID : ${result.plan_id}`,
+          type: "admin_action",
+          receiver_id: result.user_id,
+          related_to: result._id,
+          related_to_type: "trial",
+        }
+
+        await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+        return res.status(200).json({
+          message: "Individual user trial plan updated successfully",
+          data: result,
+          code: 200
+        })
+      } else {
+        const result = await Subscription.findOneAndUpdate(
+          {
+            _id: id
+          }, {
+          $set: {
+            start_end: start_at,
+            end_at: end_at
+          }
+        }, { new: true }
+        )
+        console.log("subscription result : ", result)
+      }
+      let notificationbody = {
+        title: 'Subscription updated by admin',
+        description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+        subscription_id: result.subscription_id
+      }
+
+      let dbnotificationbody = {
+        title: 'Subscription updated by admin',
+        description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+        type: "admin_action",
+        receiver_id: result.user_id,
+        related_to: result._id,
+        related_to_type: "subscription",
+      }
+
+      await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+      return res.status(200).json({
+        message: "Individual user plan updated successfully",
+        data: result,
+        code: 200
+      })
+    }
+
+    if (user_type === "corporate") {
+      if (is_trial === true || is_trial === "true") {
+        const result = await Trial.findOneAndUpdate(
+          {
+            _id: id
+          }, {
+          $set: {
+            start_end: start_at,
+            end_at: end_at
+          }
+        }, { new: true }
+        )
+        console.log("trial result : ", result)
+        let notificationbody = {
+          title: 'Trial updated by admin',
+          description: `Your Trial has been updated by admin. Plan ID : ${result.plan_id}`,
+          trial_id: result._id
+        }
+
+        let dbnotificationbody = {
+          title: 'Trial updated by admin',
+          description: `Your Trial has been updated by admin. Plan ID : ${result.plan_id}`,
+          type: "admin_action",
+          receiver_id: result.user_id,
+          related_to: result._id,
+          related_to_type: "trial",
+        }
+
+        await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+
+        return res.status(200).json({
+          message: "Corporate user trial plan updated successfully",
+          data: result,
+          code: 200
+        })
+      } else {
+        let data = {
+          start_end: start_at,
+          end_at: end_at
+        }
+        if (req.body.user_count) {
+          data.plan_tier.user_count = req.body.user_count
+        }
+        const result = await Subscription.findOneAndUpdate(
+          {
+            _id: id
+          }, {
+          $set: data
+        }, { new: true }
+        )
+        console.log("subscription result : ", result)
+        let notificationbody = {
+          title: 'Subscription updated by admin',
+          description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+          subscription_id: result.subscription_id
+        }
+
+        let dbnotificationbody = {
+          title: 'Subscription updated by admin',
+          description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+          type: "admin_action",
+          receiver_id: result.user_id,
+          related_to: result._id,
+          related_to_type: "subscription",
+        }
+
+        await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+
+        return res.status(200).json({
+          message: "Corporate user plan updated successfully",
+          data: result,
+          code: 200
+        })
+      }
+    }
+
+    return res.status(403).json({
+      message: "invalid data sent",
+      code: 403
+    })
+
+  } catch (error) {
+    handleError(res, error);
+  }
+}
