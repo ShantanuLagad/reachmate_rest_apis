@@ -6227,7 +6227,7 @@ exports.changeSubscriptionTrail = async (req, res) => {
       }
     }
     if (user_type === "corporate") {
-      if ((is_trial === true || is_trial === "true") && (plan_type === "freemium")) {
+      if (is_trial === true || is_trial === "true") {
         const result = await Trial.findOneAndUpdate(
           {
             _id: id
