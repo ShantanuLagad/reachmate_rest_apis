@@ -5929,9 +5929,14 @@ exports.getSubscriptionBasedCompanyList = async (req, res) => {
   }
 }
 
+async function SubscriptionId() {
+  const token = await crypto.randomBytes(8).toString('hex')
+  return `sub_${token}`
+}
+
 exports.changeSubscriptionTrail = async (req, res) => {
   try {
-    const { id, is_trial, start_at, end_at, user_type, plan_id } = req.body
+    const { id, is_trial, start_at, end_at, user_type, plan_id, plan_type, user_id } = req.body
     console.log("data : ", req.body)
     let subtrialdata = {}
     if (is_trial === true || is_trial === "true") {
@@ -5980,8 +5985,11 @@ exports.changeSubscriptionTrail = async (req, res) => {
       });
     }
 
+    const plantoupgrade = await Plan.findOne({ individual_selected: true, period: "monthly", plan_variety: "premium" })
+    console.log("plantoupgrade : ", plantoupgrade)
+
     if (user_type === "user") {
-      if (is_trial === true || is_trial === "true") {
+      if ((is_trial === true || is_trial === "true") && (plan_type === "freemium")) {
         const result = await Trial.findOneAndUpdate(
           {
             _id: id
@@ -6010,12 +6018,83 @@ exports.changeSubscriptionTrail = async (req, res) => {
         }
 
         await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+
+        const accountlog = await user_account_log.create({
+          user_id: user_id,
+          action: 'Trial updated by admin',
+          previous_status: 'Trial updated',
+          new_status: 'Trial updated',
+          performed_by: 'admin',
+          date_and_time: new Date()
+        })
+        console.log("accountlog : ", accountlog)
+
         return res.status(200).json({
           message: "Individual user trial plan updated successfully",
           data: result,
           code: 200
         })
-      } else {
+      }
+      else if ((is_trial === true || is_trial === "true") && (plan_type === "premium")) {
+        const result = await Trial.findOneAndUpdate(
+          {
+            _id: id
+          }, {
+          $set: {
+            status: "terminated"
+          }
+        }, { new: true }
+        )
+        console.log("trial result : ", result)
+
+        let subscriptionid = await SubscriptionId()
+        console.log("subscriptionid : ", subscriptionid)
+        const newSubscription = {
+          user_id: user_id,
+          subscription_id: subscriptionid,
+          plan_id: plantoupgrade.plan_id,
+          plan_started_at: startOfPeriod,
+          start_at: startDate,
+          end_at: endDate,
+          status: "active"
+        }
+        const saveToDB = new Subscription(newSubscription);
+        console.log("saveToDB : ", saveToDB)
+        await saveToDB.save()
+        let notificationbody = {
+          title: 'new Subscription created by admin',
+          description: `Your Trial has been updated to premium by admin.ID : ${saveToDB.subscription_id}`,
+          subscription_id: saveToDB.subscription_id
+        }
+
+        let dbnotificationbody = {
+          title: 'new Subscription created by admin',
+          description: `Your Trial has been updated to premium by admin.ID : ${saveToDB.subscription_id}`,
+          type: "admin_action",
+          receiver_id: user_id,
+          related_to: saveToDB._id,
+          related_to_type: "subscription",
+        }
+
+        await sendUsernotificationhelper(user_id, notificationbody, dbnotificationbody)
+
+        const accountlog = await user_account_log.create({
+          user_id: user_id,
+          action: 'New Subscription created by admin',
+          previous_status: 'Subscription created',
+          new_status: 'Subscription created',
+          performed_by: 'admin',
+          date_and_time: new Date()
+        })
+        console.log("accountlog : ", accountlog)
+
+        return res.status(200).json({
+          message: "Individual user plan updated successfully",
+          data: saveToDB,
+          code: 200
+        })
+      }
+      else if ((is_trial === false || is_trial === "false") && (plan_type === "premium")) {
         const result = await Subscription.findOneAndUpdate(
           {
             _id: id
@@ -6027,32 +6106,128 @@ exports.changeSubscriptionTrail = async (req, res) => {
         }, { new: true }
         )
         console.log("subscription result : ", result)
-      }
-      let notificationbody = {
-        title: 'Subscription updated by admin',
-        description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
-        subscription_id: result.subscription_id
-      }
+        let notificationbody = {
+          title: 'Subscription updated by admin',
+          description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+          subscription_id: result.subscription_id
+        }
 
-      let dbnotificationbody = {
-        title: 'Subscription updated by admin',
-        description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
-        type: "admin_action",
-        receiver_id: result.user_id,
-        related_to: result._id,
-        related_to_type: "subscription",
+        let dbnotificationbody = {
+          title: 'Subscription updated by admin',
+          description: `Your Subscription has been updated by admin. ID : ${result.subscription_id}`,
+          type: "admin_action",
+          receiver_id: result.user_id,
+          related_to: result._id,
+          related_to_type: "subscription",
+        }
+        await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
+        const accountlog = await user_account_log.create({
+          user_id: user_id,
+          action: 'Subscription updated by admin',
+          previous_status: 'Subscription updated',
+          new_status: 'Subscription updated',
+          performed_by: 'admin',
+          date_and_time: new Date()
+        })
+        console.log("accountlog : ", accountlog)
+        return res.status(200).json({
+          message: "Individual user plan updated successfully",
+          data: result,
+          code: 200
+        })
       }
+      else {
+        if (plan_type === "freemium") {
+          const newTrial = await Trial.create({
+            user_id,
+            plan_id: plantoupgrade.plan_id,
+            start_at: startDate,
+            end_at: endDate,
+            status: 'active',
+          })
+          console.log("newTrial : ", newTrial)
+          let notificationbody = {
+            title: 'new trial created by admin',
+            description: `Admin has created a trial for you. Plan ID : ${newTrial.plan_id}`,
+            trial_id: newTrial._id
+          }
 
-      await sendUsernotificationhelper(result.user_id, notificationbody, dbnotificationbody)
-      return res.status(200).json({
-        message: "Individual user plan updated successfully",
-        data: result,
-        code: 200
-      })
+          let dbnotificationbody = {
+            title: 'new trial created by admin',
+            description: `Admin has created a trial for you. Plan ID : ${newTrial.plan_id}`,
+            type: "admin_action",
+            receiver_id: user_id,
+            related_to: newTrial._id,
+            related_to_type: "trial",
+          }
+
+          await sendUsernotificationhelper(user_id, notificationbody, dbnotificationbody)
+          const accountlog = await user_account_log.create({
+            user_id: user_id,
+            action: 'Trial created by admin',
+            previous_status: 'Trial created',
+            new_status: 'Trial created',
+            performed_by: 'admin',
+            date_and_time: new Date()
+          })
+          console.log("accountlog : ", accountlog)
+          return res.status(200).json({
+            message: "Individual user plan updated successfully",
+            data: saveToDB,
+            code: 200
+          })
+        }
+
+        if (plan_type === "premium") {
+          let subscriptionid = await SubscriptionId()
+          console.log("subscriptionid : ", subscriptionid)
+          const newSubscription = {
+            user_id: user_id,
+            subscription_id: subscriptionid,
+            plan_id: plantoupgrade.plan_id,
+            plan_started_at: startDate,
+            start_at: startDate,
+            end_at: endDate,
+            status: "active"
+          }
+          const saveToDB = new Subscription(newSubscription);
+          console.log("saveToDB : ", saveToDB)
+          await saveToDB.save()
+          let notificationbody = {
+            title: 'new Subscription created by admin',
+            description: `Admin has created a premium subscription for you.ID : ${saveToDB.subscription_id}`,
+            subscription_id: saveToDB.subscription_id
+          }
+
+          let dbnotificationbody = {
+            title: 'new Subscription created by admin',
+            description: `Your Trial has been updated to premium by admin.ID : ${saveToDB.subscription_id}`,
+            type: "admin_action",
+            receiver_id: user_id,
+            related_to: saveToDB._id,
+            related_to_type: "subscription",
+          }
+
+          await sendUsernotificationhelper(user_id, notificationbody, dbnotificationbody)
+          const accountlog = await user_account_log.create({
+            user_id: user_id,
+            action: 'Subscription created by admin',
+            previous_status: 'Subscription created',
+            new_status: 'Subscription created',
+            performed_by: 'admin',
+            date_and_time: new Date()
+          })
+          console.log("accountlog : ", accountlog)
+          return res.status(200).json({
+            message: "Individual user plan updated successfully",
+            data: saveToDB,
+            code: 200
+          })
+        }
+      }
     }
-
     if (user_type === "corporate") {
-      if (is_trial === true || is_trial === "true") {
+      if ((is_trial === true || is_trial === "true") && (plan_type === "freemium")) {
         const result = await Trial.findOneAndUpdate(
           {
             _id: id
@@ -6086,7 +6261,8 @@ exports.changeSubscriptionTrail = async (req, res) => {
           data: result,
           code: 200
         })
-      } else {
+      }
+      else {
         let data = {
           start_end: start_at,
           end_at: end_at

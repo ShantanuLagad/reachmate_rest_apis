@@ -2013,7 +2013,7 @@ exports.createSubscription = async (req, res) => {
 
       if (!req.body.isTrial) {
         const razorpayOrder = await createRazorpayOrder(req.body.amount, user_id);
-        subcription.plan_tier.razorpay_order = razorpayOrder
+        subcription.plan_tier.razorpay_order = razorpayOrder.id
         console.log("razorpayOrder : ", razorpayOrder)
       }
 
