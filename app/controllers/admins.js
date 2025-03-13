@@ -5946,12 +5946,12 @@ exports.changeSubscriptionTrail = async (req, res) => {
       subtrialdata = await Subscription.findOne({ _id: id })
       console.log("subtrialdata : ", subtrialdata)
     }
-    if (!subtrialdata) {
-      return res.status(404).json({
-        message: "No data found",
-        code: 404
-      })
-    }
+    // if (!subtrialdata) {
+    //   return res.status(404).json({
+    //     message: "No data found",
+    //     code: 404
+    //   })
+    // }
     const plandata = await Plan.findOne({ plan_id })
     console.log("plandata : ", plandata)
     if (!plandata) {
@@ -6268,7 +6268,7 @@ exports.changeSubscriptionTrail = async (req, res) => {
           end_at: end_at
         }
         if (req.body.user_count) {
-          data.plan_tier = subtrialdata.plan_tier
+          data.plan_tier = subtrialdata?.plan_tier
           data.plan_tier["user_count"] = req.body.user_count
         }
         const result = await Subscription.findOneAndUpdate(
