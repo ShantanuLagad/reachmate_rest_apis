@@ -5954,12 +5954,12 @@ exports.changeSubscriptionTrail = async (req, res) => {
     // }
     const plandata = await Plan.findOne({ plan_id })
     console.log("plandata : ", plandata)
-    if (!plandata) {
-      return res.status(404).json({
-        message: "No Plan found",
-        code: 404
-      })
-    }
+    // if (!plandata) {
+    //   return res.status(404).json({
+    //     message: "No Plan found",
+    //     code: 404
+    //   })
+    // }
 
     const startDate = new Date(start_at);
     const endDate = new Date(end_at);
@@ -6307,6 +6307,154 @@ exports.changeSubscriptionTrail = async (req, res) => {
     return res.status(403).json({
       message: "invalid data sent",
       code: 403
+    })
+
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.getLoginFrequencyChartData = async (req, res) => {
+  try {
+    const { selectedPeriod } = req.query;
+    let currentDate = new Date();
+    let startOfPeriod, endOfPeriod;
+
+    if (selectedPeriod === 'daily') {
+      startOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      endOfPeriod = new Date(currentDate.setHours(23, 59, 59, 999));
+    } else if (selectedPeriod === 'weekly') {
+      const startOfWeek = new Date();
+      startOfWeek.setDate(currentDate.getDate() - 6);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      startOfPeriod = startOfWeek;
+      endOfPeriod = endOfWeek;
+    } else if (selectedPeriod === 'monthly') {
+      const today = new Date();
+      endOfPeriod = new Date(currentDate.setHours(0, 0, 0, 0));
+      startOfPeriod = new Date(today.setMonth(today.getMonth() - 1));
+    }
+    else if (selectedPeriod === 'yearly') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth()
+      const date = currentDate.getDate()
+      startOfPeriod = new Date(year - 1, month, date);
+      // endOfPeriod = new Date(year, 11, 31, 23, 59, 59, 999);
+      endOfPeriod = new Date(year, month, date);
+    }
+
+    console.log("start date:", startOfPeriod, "end date:", endOfPeriod);
+
+    let filter = {};
+    let data = [];
+    if (selectedPeriod) {
+      filter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
+      filter.new_status = "Login"
+    }
+
+    console.log("filter:", filter);
+
+    if (selectedPeriod === 'daily') {
+      const dailyData = await user_account_log.aggregate([
+        { $match: filter },
+        { $project: { hour: { $hour: "$createdAt" } } },
+        { $group: { _id: "$hour", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("daily data:", dailyData);
+
+      data = Array(24).fill(0);
+      dailyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+
+    } else if (selectedPeriod === 'weekly') {
+      const month = currentDate.getMonth();
+      const year = currentDate.getFullYear();
+
+      const startOfMonth = new Date(year, month, 1);
+      const endOfMonth = new Date(year, month + 1, 0);
+      console.log("startOfMonth : ", startOfMonth)
+      console.log("endOfMonth : ", endOfMonth)
+      // console.log("endOfMonth.getDate() + startOfMonth.getDay()) / 7 : ", (endOfMonth.getDate() + startOfMonth.getDay()) / 7)
+
+      const weeksInMonth = Math.ceil((endOfMonth.getDate() + startOfMonth.getDay()) / 7);
+      console.log("weeksInMonth : ", weeksInMonth)
+
+      const weeklyData = await user_account_log.aggregate([
+        { $match: filter },
+        {
+          $project: {
+            weekOfMonth: {
+              $ceil: {
+                $divide: [
+                  { $subtract: ["$createdAt", startOfMonth] },
+                  1000 * 60 * 60 * 24 * 7
+                ]
+              }
+            }
+          }
+        },
+        { $group: { _id: "$weekOfMonth", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("weekly data:", weeklyData);
+
+      data = Array(weeksInMonth).fill(0);
+      weeklyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+
+    } else if (selectedPeriod === "monthly") {
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      console.log("daysInMonth : ", daysInMonth)
+
+      const monthlyData = await user_account_log.aggregate([
+        { $match: filter },
+        { $project: { day: { $dayOfMonth: "$createdAt" } } },
+        { $group: { _id: "$day", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("Monthly data:", monthlyData);
+
+      data = Array(daysInMonth).fill(0);
+      monthlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    else if (selectedPeriod === 'yearly') {
+      const yearlyData = await user_account_log.aggregate([
+        { $match: filter },
+        { $project: { month: { $month: "$createdAt" } } },
+        { $group: { _id: "$month", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]);
+
+      console.log("yearly data:", yearlyData);
+      data = Array(12).fill(0);
+      yearlyData.forEach(item => {
+        data[item._id - 1] = item.count;
+      });
+    }
+
+    return res.status(200).json({
+      message: "User Login Frequency data fetched successfully",
+      data,
+      code: 200
     })
 
   } catch (error) {
