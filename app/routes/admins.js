@@ -521,6 +521,12 @@ router.get(
   controller.getSubscriptionBasedCompanyList
 )
 
+router.get(
+  "/getLoginFrequencyChartData",
+  trimRequest.all,
+  controller.getLoginFrequencyChartData
+)
+
 router.patch(
   "/changeSubscriptionTrail",
   requireAuth,
