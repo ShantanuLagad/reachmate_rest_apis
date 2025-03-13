@@ -6038,7 +6038,7 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
     console.log("User ID : ", userId);
     const userdata = await User.findOne({ _id: userId });
     console.log("userdata : ", userdata);
-    const plansdata = await Plan.find({ individual_selected: true, period: "monthly", plan_variety: "premium" })
+    const plansdata = await Plan.findOne({ individual_selected: true, period: "monthly", plan_variety: "premium" })
     console.log("plansdata : ", plansdata)
     const today = new Date();
     const endedat = new Date(today);
@@ -6046,7 +6046,7 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
     console.log("startedat : ", today, " endedat : ", endedat)
     const firstTrial = await Trial.create({
       user_id: userId,
-      plan_id: plansdata[0].plan_id,
+      plan_id: plansdata.plan_id,
       status: "active",
       start_at: today,
       end_at: endedat
