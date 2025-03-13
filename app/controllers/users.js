@@ -4107,6 +4107,8 @@ exports.webhook = async (req, res) => {
   const payload = JSON.stringify(req.body);
   const signature = req.get('X-Razorpay-Signature');
 
+  res.sendStatus(200);
+
   console.log("signature", signature)
   // Verify signature
   const expectedSignature = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET)
@@ -4240,11 +4242,11 @@ exports.webhook = async (req, res) => {
         console.log('Unhandled event:', event);
     }
 
-    return res.sendStatus(200);
+   
   } else {
     // Signature verification failed
     console.error('Invalid webhook signature');
-    return res.sendStatus(200);
+   
   }
 }
 
