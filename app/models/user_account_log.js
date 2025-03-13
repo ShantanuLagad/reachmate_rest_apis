@@ -20,7 +20,7 @@ const UserAccountLogSchema = new mongoose.Schema(
         },
         performed_by: {
             type: String,
-            enum: ['user', 'admin']
+            enum: ['user', 'admin', "reachmate"]
         },
         date_and_time: {
             type: Date,
