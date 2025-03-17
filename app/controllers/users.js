@@ -4777,7 +4777,7 @@ exports.updateSubscription = async (req, res) => {
         if (admins) {
           const notificationMessage = {
             title: 'subscription upgraded',
-            description: `${userdata.full_name} has upgrade a subscription . ID : ${result.subscription_id}`,
+            description: `${req.user.full_name} has upgrade a subscription . ID : ${result.subscription_id}`,
             subscription_id: result.subscription_id
           };
 
