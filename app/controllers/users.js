@@ -4242,11 +4242,11 @@ exports.webhook = async (req, res) => {
         console.log('Unhandled event:', event);
     }
 
-   
+
   } else {
     // Signature verification failed
     console.error('Invalid webhook signature');
-   
+
   }
 }
 
@@ -6156,13 +6156,13 @@ exports.createSessionActivity = async (req, res) => {
   try {
     const { session_token, user_id, action, route } = req.body
     console.log("body : ", req.body)
-    const session = await account_session.findOne({ session_id: session_token, user_id, session_status: "active" })
+    const session = await account_session.findOne({ session_id: session_token, user_id: new mongoose.Types.ObjectId(user_id), session_status: "active" })
     console.log("session : ", session)
     if (!session) {
       return res.status(204).json({ message: "Invalid session id", code: 403 });
     }
 
-    const previousactivity = await session_activity.findOne({ session_unique_id: session_token, user_id }).sort({ session_count: -1 });
+    const previousactivity = await session_activity.findOne({ session_unique_id: session_token, user_id: new mongoose.Types.ObjectId(user_id) }).sort({ session_count: -1 });
     console.log("previousactivity : ", previousactivity)
 
     let sessioncount = 1
