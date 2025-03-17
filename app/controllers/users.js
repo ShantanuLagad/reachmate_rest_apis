@@ -4676,14 +4676,12 @@ exports.updateSubscription = async (req, res) => {
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
     console.log("activeSubscription : ", activeSubscription)
 
-    if (plan.plan_variety === "premium") {
-      console.log("check...")
-      if (!activeSubscription) {
-        if (!checkIsTrialExits) {
-          return res.json({ message: "You don not have any active subscription", code: 404 });
-        }
+    if (!activeSubscription) {
+      if (!checkIsTrialExits) {
+        return res.json({ message: "You don not have any active subscription", code: 404 });
       }
-
+    }
+    if (plan.plan_variety === "premium") {
       if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
         const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
         console.log("result : ", result)
