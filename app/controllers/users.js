@@ -3492,7 +3492,7 @@ exports.exportCardToExcel = async (req, res) => {
     console.log("excelFilePath : ", excelFilePath)
 
     if (!fs.existsSync(excelFilePath)) {
-      fs.mkdirSync(excelFilePath, excelBuffer, { recursive: true });
+      fs.mkdirSync(excelFilePath,{ recursive: true });
       console.log('Directory created:', excelFilePath);
     } else {
       console.log('Directory already exists:', excelFilePath);
