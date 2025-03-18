@@ -3486,8 +3486,8 @@ exports.exportCardToExcel = async (req, res) => {
     console.log("ws and wb : ", ws, " ", wb)
 
     // Specify the server folder path and Excel file name
-    const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
-    // const serverFolderPath = '/public'
+    // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
+    const serverFolderPath = '/public'
     console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
