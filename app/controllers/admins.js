@@ -3233,10 +3233,11 @@ exports.getSingleUser = async (req, res) => {
         if (session.start_at && session.end_at) {
           const start = new Date(session.start_at);
           const end = new Date(session.end_at);
-          totalTimeMs += (end - start);
+          let diff = end.getMilliseconds() - start.getMilliseconds();
+          totalTimeMs += diff;
         }
       });
-      totalTimeHours = totalTimeMs / (1000 * 60 * 60);
+      totalTimeHours = totalTimeMs / (24 * 60 * 60);
       console.log("Total time (hours): ", totalTimeHours);
     }
 
@@ -3244,14 +3245,18 @@ exports.getSingleUser = async (req, res) => {
     let totalSessionActivityTimeMs = 0;
     if (session_activity_data && session_activity_data.length !== 0) {
       session_activity_data.forEach(activity => {
-        if (activity.start_at && activity.end_at) {
-          const start = new Date(activity.start_at);
-          const end = new Date(activity.end_at);
-          totalSessionActivityTimeMs += (end - start);
+        // if (activity.start_at && activity.end_at) {
+        //   const start = new Date(activity.start_at);
+        //   const end = new Date(activity.end_at);
+        //   totalSessionActivityTimeMs += (end - start);
+        // }
+        if (activity.date_and_time) {
+          const start = new Date(activity.date_and_time);
+          totalSessionActivityTimeMs += start.getMilliseconds();
         }
       });
     }
-    const totalSessionActivityTimeHours = totalSessionActivityTimeMs / (1000 * 60 * 60);
+    const totalSessionActivityTimeHours = totalSessionActivityTimeMs / (24 * 60 * 60);
     console.log("Total session activity time (hours): ", totalSessionActivityTimeHours);
 
     let avgTimeSpent = 0;
