@@ -533,6 +533,18 @@ router.get(
   controller.getFeatureChartData
 )
 
+router.get(
+  "/getInteractionPatternData",
+  trimRequest.all,
+  controller.getInteractionPatternData
+)
+
+router.get(
+  "/getSingleUserFeatureChartData/:userId",
+  trimRequest.all,
+  controller.getSingleUserFeatureChartData
+)
+
 router.patch(
   "/changeSubscriptionTrail",
   requireAuth,

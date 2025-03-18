@@ -6487,3 +6487,176 @@ exports.getFeatureChartData = async (req, res) => {
     handleError(res, error);
   }
 }
+
+exports.getInteractionPatternData = async (req, res) => {
+  try {
+    const { period } = req.query;
+    let filter = {};
+
+    if (period) {
+      const today = new Date(period);
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filter = {
+        createdAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
+    const data = await account_session.aggregate(
+      [
+        {
+          $match: filter,
+        },
+        {
+          $addFields: {
+            hour: { $hour: "$createdAt" }
+          }
+        },
+        {
+          $addFields: {
+            timeRange: {
+              $switch: {
+                branches: [
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 0] },
+                        { $lt: ["$hour", 3] }
+                      ]
+                    },
+                    then: "0-3AM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 3] },
+                        { $lt: ["$hour", 6] }
+                      ]
+                    },
+                    then: "3-6AM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 6] },
+                        { $lt: ["$hour", 9] }
+                      ]
+                    },
+                    then: "6-9AM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 9] },
+                        { $lt: ["$hour", 12] }
+                      ]
+                    },
+                    then: "9AM-12PM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 12] },
+                        { $lt: ["$hour", 15] }
+                      ]
+                    },
+                    then: "12-3PM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 15] },
+                        { $lt: ["$hour", 18] }
+                      ]
+                    },
+                    then: "3-6PM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 18] },
+                        { $lt: ["$hour", 21] }
+                      ]
+                    },
+                    then: "6-9PM"
+                  },
+                  {
+                    case: {
+                      $and: [
+                        { $gte: ["$hour", 21] },
+                        { $lt: ["$hour", 24] }
+                      ]
+                    },
+                    then: "9PM-12AM"
+                  }
+                ],
+                default: "Unknown"
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$timeRange",
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { _id: 1 }
+        }
+      ]
+    )
+
+    console.log("data : ", data)
+    return res.status(200).json({
+      message: "Interaction chart data fetched successfully",
+      data,
+      code: 200
+    })
+
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+exports.getSingleUserFeatureChartData = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    console.log("userId : ", userId);
+
+    const data = await session_activity.aggregate(
+      [
+        {
+          $match: {
+            user_id: new mongoose.Types.ObjectId(userId)
+          }
+        },
+        {
+          $group: {
+            _id: "$route",
+            action: { $first: "$action" },
+            totalcount: {
+              $sum: 1
+            }
+          }
+        }
+      ]
+    )
+
+    console.log("data : ", data)
+    return res.status(200).json({
+      message: "chart data fetched successfully",
+      data,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
