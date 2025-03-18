@@ -987,7 +987,7 @@ exports.dashBoardCard = async (req, res) => {
       ]
     );
 
-    const totalUsersCount = await User.countDocuments({})
+    const totalUsersCount = await User.countDocuments()
     console.log("totalUsersCount : ", totalUsersCount)
 
     const totalIndividualUserCount = await User.countDocuments({ user_type: "personal" })
@@ -1014,7 +1014,7 @@ exports.dashBoardCard = async (req, res) => {
       });
     }
 
-    res.json({ data: { users: totalUser.length, deletedAccounts, individualUsers: totalIndividualUserCount, pendingRenewal, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
+    res.json({ data: { users: totalUsersCount, deletedAccounts, individualUsers: totalIndividualUserCount, pendingRenewal, company: totalComany, revenue: totalRevenue, demographicChart: pieChartData }, code: 200 })
   } catch (error) {
     console.log(error)
     handleError(res, error)
