@@ -3275,7 +3275,7 @@ exports.getSingleUser = async (req, res) => {
       message: 'User data fetched successfully',
       data: {
         ...userdata.toObject(),
-        avg_time_spent: avgTimeSpent
+        avg_time_spent: avgTimeSpent.toFixed(2)
       },
       code: 200
     })
@@ -5275,18 +5275,16 @@ exports.getSubscriptionBasedUserList = async (req, res) => {
       filter.user_type = user_type
     }
     if (status && status !== "trial") {
-      if (!filter['$and']) {
-        filter['$and'] = [];
+      // if (!filter['$and']) {
+      //   filter['$and'] = [];
+      // }
+
+      if (status === "premium") {
+        filter["subscription.plandata.plan_variety"] = status
       }
-      filter['$and'].push(
-        {
-          $or:
-            [
-              { "subscription.status": status },
-              { "trial.status": status }
-            ]
-        }
-      );
+      if (status === "freemium") {
+        filter["trial.plandata.plan_variety"] = status
+      }
     }
     if (status === "trial") {
       filter.trial = { $exists: true }
