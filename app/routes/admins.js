@@ -527,6 +527,12 @@ router.get(
   controller.getLoginFrequencyChartData
 )
 
+router.get(
+  "/getFeatureChartData",
+  trimRequest.all,
+  controller.getFeatureChartData
+)
+
 router.patch(
   "/changeSubscriptionTrail",
   requireAuth,

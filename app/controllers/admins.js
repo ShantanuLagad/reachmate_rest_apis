@@ -6461,3 +6461,29 @@ exports.getLoginFrequencyChartData = async (req, res) => {
     handleError(res, error);
   }
 }
+
+exports.getFeatureChartData = async (req, res) => {
+  try {
+    const data = await session_activity.aggregate(
+      [
+        {
+          $group: {
+            _id: "$route",
+            action: { $first: '$action' },
+            totalcount: {
+              $sum: 1
+            }
+          }
+        }
+      ]
+    )
+    console.log("data : ", data)
+    return res.status(200).json({
+      message: "Feature chart data fetched successfully",
+      data,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
