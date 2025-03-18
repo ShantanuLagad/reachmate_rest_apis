@@ -3815,7 +3815,7 @@ async function isTrailNeedToBeGiven(user_id) {
 
 function getTotalCount(interval) {
   if (interval === 12) {
-    return 1
+    return 12
   } else if (interval === 6) {
     return 20
   } else if (interval === 3) {
@@ -3920,7 +3920,7 @@ exports.createSubscription = async (req, res) => {
     //  }
     // }
 
-    const plan = await await Plan.findOne({ plan_id: plan_id });
+    const plan = await Plan.findOne({ plan_id: plan_id });
     console.log("plan : ", plan)
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
 
@@ -4015,7 +4015,7 @@ exports.createSubscription = async (req, res) => {
         total_count: getTotalCount(plan.interval),
         quantity: 1,
         customer_notify: 1,
-        expire_by: expireBy
+        expire_by: expireBy,
       });
 
       const subcription = await instance.subscriptions.create({
