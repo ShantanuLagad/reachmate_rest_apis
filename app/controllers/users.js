@@ -4748,7 +4748,8 @@ exports.updateSubscription = async (req, res) => {
             plan_id: plan_id,
             schedule_change_at: "cycle_end",
             customer_notify: true,
-            remaining_count: getTotalCount(plan.interval)
+            remaining_count: getTotalCount(plan.interval),
+            status: "active"
           }
 
           console.log("update : ", update)
