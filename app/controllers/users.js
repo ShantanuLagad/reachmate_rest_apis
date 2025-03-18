@@ -3477,7 +3477,6 @@ exports.exportCardToExcel = async (req, res) => {
       return utils.handleError(res, { message: "No card found", code: 400 });
     }
 
-    // Convert JSON to Excel
     const ws = XLSX.utils.json_to_sheet(sharedCards);
     console.log("ws : ", ws)
     const wb = XLSX.utils.book_new();
@@ -3485,7 +3484,6 @@ exports.exportCardToExcel = async (req, res) => {
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
     console.log("ws and wb : ", ws, " ", wb)
 
-    // Specify the server folder path and Excel file name
     // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
     const serverFolderPath = '/var/www/mongo/reachmate_rest_apis/public/cardExcelSheet'
     console.log("serverFolderPath : ", serverFolderPath)
@@ -3493,14 +3491,25 @@ exports.exportCardToExcel = async (req, res) => {
     const excelFilePath = `${serverFolderPath}/${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
 
-    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
     if (!fs.existsSync(excelFilePath)) {
-      fs.writeFile(excelFilePath, excelBuffer ,{ recursive: true });
+      fs.mkdirSync(excelFilePath, { recursive: true });
       console.log('Directory created:', excelFilePath);
     } else {
       console.log('Directory already exists:', excelFilePath);
     }
+
+    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    fs.writeFileSync(excelFilePath, excelBuffer);
+    console.log('Excel file created successfully:', excelFilePath);
+
+    // const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    // if (!fs.existsSync(excelFilePath)) {
+    //   fs.writeFile(excelFilePath, excelBuffer ,{ recursive: true });
+    //   console.log('Directory created:', excelFilePath);
+    // } else {
+    //   console.log('Directory already exists:', excelFilePath);
+    // }
 
     // XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
