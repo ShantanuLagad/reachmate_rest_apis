@@ -3487,10 +3487,10 @@ exports.exportCardToExcel = async (req, res) => {
 
     // Specify the server folder path and Excel file name
     // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
-    const serverFolderPath = '/public'
+    const serverFolderPath = '/var/www/mongo/reachmate_rest_apis/public/cardExcelSheet/'
     console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
-    const excelFilePath = `${serverFolderPath}/cardExcelSheet/${excelFileName}`;
+    const excelFilePath = `${serverFolderPath}${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
 
     if (!fs.existsSync(excelFilePath)) {
