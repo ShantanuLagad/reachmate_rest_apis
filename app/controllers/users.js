@@ -3485,33 +3485,20 @@ exports.exportCardToExcel = async (req, res) => {
     console.log("ws and wb : ", ws, " ", wb)
 
     // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
-    const serverFolderPath = '/var/www/mongo/reachmate_rest_apis/public/cardExcelSheet'
+    const serverFolderPath = '/public/cardExcelSheet'
     console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
     const excelFilePath = `${serverFolderPath}/${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
 
     if (!fs.existsSync(excelFilePath)) {
-      fs.mkdirSync(excelFilePath, { recursive: true });
+      fs.mkdirSync(excelFilePath, excelBuffer, { recursive: true });
       console.log('Directory created:', excelFilePath);
     } else {
       console.log('Directory already exists:', excelFilePath);
     }
 
-    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    fs.writeFileSync(excelFilePath, excelBuffer);
-    console.log('Excel file created successfully:', excelFilePath);
-
-    // const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    // if (!fs.existsSync(excelFilePath)) {
-    //   fs.writeFile(excelFilePath, excelBuffer ,{ recursive: true });
-    //   console.log('Directory created:', excelFilePath);
-    // } else {
-    //   console.log('Directory already exists:', excelFilePath);
-    // }
-
-    // XLSX.writeFile(wb, excelFilePath, { bookSST: true });
+    XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
     // const media = await uploadFilefromPath(excelFilePath)
 
