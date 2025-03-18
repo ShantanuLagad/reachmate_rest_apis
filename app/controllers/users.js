@@ -3493,14 +3493,16 @@ exports.exportCardToExcel = async (req, res) => {
     const excelFilePath = `${serverFolderPath}/${excelFileName}`;
     console.log("excelFilePath : ", excelFilePath)
 
+    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
     if (!fs.existsSync(excelFilePath)) {
-      fs.mkdirSync(excelFilePath, { recursive: true });
+      fs.writeFile(excelFilePath, excelBuffer ,{ recursive: true });
       console.log('Directory created:', excelFilePath);
     } else {
       console.log('Directory already exists:', excelFilePath);
     }
 
-    XLSX.writeFile(wb, excelFilePath, { bookSST: true });
+    // XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
     // const media = await uploadFilefromPath(excelFilePath)
 
