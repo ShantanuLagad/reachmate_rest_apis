@@ -57,7 +57,7 @@ var html_to_pdf = require('html-pdf-node');
 const commaNumber = require('comma-number')
 const crypto = require('crypto');
 const FormData = require('form-data');
-
+const _dir = process.cwd()
 const {
 
   getItemThroughId,
@@ -3484,51 +3484,20 @@ exports.exportCardToExcel = async (req, res) => {
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet 1');
     console.log("ws and wb : ", ws, " ", wb)
 
-    // const serverFolderPath = process.env.STORAGE_PATH_FOR_EXCEL;
     const serverFolderPath = '/public/cardExcelSheet'
     console.log("serverFolderPath : ", serverFolderPath)
     const excelFileName = Date.now() + 'cards.xlsx';
-    const excelFilePath = `${serverFolderPath}/${excelFileName}`;
-    console.log("excelFilePath : ", excelFilePath)
+    const excelFilePath = path.join(_dir, `${serverFolderPath}/${excelFileName}`);
 
-    if (!fs.existsSync(excelFilePath)) {
-      fs.mkdirSync(excelFilePath,{ recursive: true });
-      console.log('Directory created:', excelFilePath);
+    const checkPath = path.join(_dir, `${serverFolderPath}`)
+
+    if (!fs.existsSync(checkPath)) {
+      fs.mkdirSync(checkPath, { recursive: true });
     } else {
       console.log('Directory already exists:', excelFilePath);
     }
 
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
-
-    // const media = await uploadFilefromPath(excelFilePath)
-
-    // const path = `${process.env.STORAGE_PATH_HTTP}/cardExcelSheet/${excelFileName}`;
-    // console.log("path : ", path)
-
-    // console.log(email)
-    // let mailOptions = {
-    //   to: email,
-    //   subject: `Exported Card from ${process.env.APP_NAME}`,
-    //   name: req.user.full_name,
-    //   logo: `${process.env.STORAGE_PATH_HTTP_AWS}/logo/1710589801750LogoO.png`,
-    //   attachments: [],
-    // };
-
-    // mailOptions.attachments.push({
-    //   filename: `business_cards.xlsx`,
-    //   path: path,
-    // });
-
-    // try {
-    //   await sendInvoiceEmail(mailOptions);
-    //   res.json({ data: "Mail sent to your email with the Excel sheet", code: 200 });
-    // } catch (sendError) {
-    //   console.error("Error sending email:", sendError);
-    //   utils.handleError(res, { message: "Failed to send email", code: 500 });
-    // }
-
-    const path = await uploadExcelFile(excelFilePath);
-    console.log("path : ", path)
 
     let mailOptions = {
       to: email,
@@ -3545,6 +3514,8 @@ exports.exportCardToExcel = async (req, res) => {
 
     try {
       await sendInvoiceEmail(mailOptions);
+      fs.unlinkSync(excelFilePath);
+      console.log(`Deleted the file: ${excelFilePath}`);
       res.json({ data: "Mail sent to your email with the Excel sheet", code: 200 });
     } catch (sendError) {
       console.error("Error sending email:", sendError);
