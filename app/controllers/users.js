@@ -3499,6 +3499,9 @@ exports.exportCardToExcel = async (req, res) => {
 
     XLSX.writeFile(wb, excelFilePath, { bookSST: true });
 
+    const path = await uploadExcelFile(excelFilePath);
+    console.log("path : ", path)
+
     let mailOptions = {
       to: email,
       subject: `Exported Card from ${process.env.APP_NAME}`,
@@ -3507,7 +3510,7 @@ exports.exportCardToExcel = async (req, res) => {
       attachments: [
         {
           filename: `business_cards.xlsx`,
-          path: excelFilePath,
+          path: path,
         },
       ],
     };
