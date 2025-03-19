@@ -4183,6 +4183,7 @@ exports.webhook = async (req, res) => {
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
         break;
       case 'subscription.activated':
+        await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
         break;
       case 'subscription.pending':
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
