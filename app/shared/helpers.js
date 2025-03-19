@@ -4,6 +4,8 @@ const querystring = require('querystring');
 const utils = require('../middleware/utils')
 const Notification = require("../models/notification")
 const fs = require("fs")
+const path = require("path")
+
 
 const AWS = require("aws-sdk");
 const ACCESS_KEY = process.env.ACCESS_KEY
@@ -91,8 +93,8 @@ module.exports = {
 
     const params = {
       Bucket: Bucket,
-      Key: object.path + "/" + filename,
-      Body: file.data,
+      Key: excelFilePath,
+      Body: file,
       ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
 
