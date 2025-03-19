@@ -3787,7 +3787,7 @@ async function isTrailNeedToBeGiven(user_id) {
 
 function getTotalCount(interval) {
   if (interval === 12) {
-    return 1
+    return 8
   } else if (interval === 6) {
     return 20
   } else if (interval === 3) {
@@ -4882,7 +4882,7 @@ exports.updateSubscription = async (req, res) => {
       if (admins) {
         const notificationMessage = {
           title: 'subscription downgraded',
-          description: `${userdata.full_name} has downgrade a subscription to freemium. Plan ID : ${trial.plan_id}`,
+          description: `${req.user.full_name} has downgrade a subscription to freemium. Plan ID : ${trial.plan_id}`,
           trial_id: trial._id
         };
 
