@@ -3507,7 +3507,7 @@ exports.exportCardToExcel = async (req, res) => {
       attachments: [
         {
           filename: `business_cards.xlsx`,
-          path: path,
+          path: excelFilePath,
         },
       ],
     };
