@@ -2837,7 +2837,7 @@ exports.enableOrDisableLink = async (req, res) => {
       dataToUpdate["contact_details.mobile_number_enabled"] = link_status
     }
 
-    await CardDetials.updateOne({ owner_id: owner_id }, dataToUpdate);
+    await CardDetials.updateMany({ owner_id: owner_id }, dataToUpdate);
 
     res.json({ code: 200, message: "Link status changed successfully" })
   } catch (error) {
