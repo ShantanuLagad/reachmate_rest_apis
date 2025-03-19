@@ -3785,17 +3785,30 @@ async function isTrailNeedToBeGiven(user_id) {
 
 }
 
+// function getTotalCount(interval) {
+//   if (interval === 12) {
+//     return 8
+//   } else if (interval === 6) {
+//     return 20
+//   } else if (interval === 3) {
+//     return 40
+//   } else if (interval === 1) {
+//     return 100
+//   }
+// }
+
 function getTotalCount(interval) {
   if (interval === 12) {
-    return 8
+    return 1; // 1 payment for 12 months
   } else if (interval === 6) {
-    return 20
+    return 2; // 2 payments for 12 months
   } else if (interval === 3) {
-    return 40
+    return 4; // 4 payments for 12 months
   } else if (interval === 1) {
-    return 100
+    return 12; // 12 payments for 12 months
   }
 }
+
 
 async function SubscriptionId() {
   const token = await crypto.randomBytes(8).toString('hex')
