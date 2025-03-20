@@ -1802,12 +1802,25 @@ exports.activeSubscription = async (req, res) => {
               from: "plans",
               let: {
                 id: "$plan_id",
+                tier_id: "$plan_tier.tier_id"
               },
               pipeline: [
                 {
+                  $unwind: {
+                    path: "$plan_tiers"
+                  }
+                },
+                {
                   $match: {
                     $expr: {
-                      $eq: ["$$id", "$plan_id"]
+                      $and: [
+                        {
+                          $eq: ["$$id", "$plan_id"]
+                        },
+                        {
+                          $eq: ["$$tier_id", "$plan_tiers._id"]
+                        }
+                      ]
                     }
                   }
                 }
@@ -1820,7 +1833,7 @@ exports.activeSubscription = async (req, res) => {
           },
           {
             $addFields: {
-              'plan_tier.plan_tier_data': { $first: '$plan.plan_tiers' }
+              'plan_tier.plan_tier_data': '$plan.plan_tiers'
             }
           },
           {
@@ -2161,6 +2174,9 @@ exports.updateSubscription = async (req, res) => {
     if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
 
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
+    if (!activeSubscription) {
+      activeSubscription = await Trial.findOne({ user_id, status: "active" })
+    }
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
     if (plan?.plan_tiers && plan?.plan_tiers?.length !== 0) {
