@@ -1727,6 +1727,7 @@ exports.activeSubscription = async (req, res) => {
 
     let data = []
     let isactiveSubscription = false;
+    let trial_period = false
     data = await Subscription.aggregate(
       [
         {
@@ -1834,12 +1835,15 @@ exports.activeSubscription = async (req, res) => {
           }
         ]
       )
+      if (data.length > 0) {
+        trial_period = true
+      }
     }
     if (data && data.length > 0) {
       isactiveSubscription = true
     }
     console.log("data : ", data)
-    return res.json({ data: data[0], isactiveSubscription, code: 200 })
+    return res.json({ data: data[0], isactiveSubscription, trial_period, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
