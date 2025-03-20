@@ -4960,9 +4960,9 @@ exports.registration = async (req, res) => {
     // if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
 
 
-    const isEmailExist = await Registration.findOne({ email: email });
+    // const isEmailExist = await Registration.findOne({ email: email });
 
-    if (isEmailExist) return utils.handleError(res, { message: "You have already register", code: 400 });
+    // if (isEmailExist) return utils.handleError(res, { message: "You have already register", code: 400 });
     // if (mobile_number) {
     //   const isPhoneNumberExist = await Registration.findOne({ mobile_number: mobile_number });
     //   console.log("isPhoneNumberExist", isPhoneNumberExist)
