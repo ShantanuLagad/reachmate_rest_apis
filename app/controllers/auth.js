@@ -497,9 +497,9 @@ exports.createCompanyAccount = async (req, res) => {
     const isEmailExist = await Company.findOne({ email: email });
     if (isEmailExist) return utils.handleError(res, { message: "Email already Exists", code: 400 })
 
-    const emailDomain = extractDomainFromEmail(email);
-    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
-    if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
+    // const emailDomain = extractDomainFromEmail(email);
+    // const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    // if (isDomainExists) return utils.handleError(res, { message: "Domain name already Exists", code: 400 });
 
 
     const isEmailRegistered = await Registration.findOne({ email: email });
