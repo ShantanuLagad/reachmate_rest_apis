@@ -2058,6 +2058,7 @@ exports.createSubscription = async (req, res) => {
         // }
         const newTrial = await Trial.create({
           user_id,
+          subscription_id: await SubscriptionId(),
           plan_id: planId,
           start_at: startOfPeriod,
           end_at: endOfPeriod,
