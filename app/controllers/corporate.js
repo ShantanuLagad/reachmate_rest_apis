@@ -1716,17 +1716,23 @@ exports.plansList = async (req, res) => {
 exports.activeSubscription = async (req, res) => {
   try {
     let company_id = req.user._id;
+    console.log("user : ", req.user)
 
     const type = req.user.type;
     if (type === "sub admin") {
       company_id = req.user.company_id
     }
 
-    const activeSubscription = await Subscription.aggregate(
+    console.log("company_id : ", company_id)
+
+    let data = []
+    let isactiveSubscription = false;
+    data = await Subscription.aggregate(
       [
         {
           $match: {
-            user_id: company_id
+            user_id: new mongoose.Types.ObjectId(company_id),
+            status: "active"
           }
         },
         {
@@ -1780,22 +1786,50 @@ exports.activeSubscription = async (req, res) => {
         }
       ]
     )
-
-
-
-
-    // const activePlan = {
-    //   user_id : company_id,
-    //   plan_id : '1',
-    //   start_at : new Date("2024-02-24"),
-    //   end_at : new Date("2024-08-24"),
-    //   is_trail_active : true,
-    //   status : "active"
-    // }
-
-    // await Subscription.create(activePlan);
-
-    res.json({ data: activeSubscription[0], code: 200 })
+    console.log("data : ", data)
+    if (data.length === 0) {
+      data = await Trial.aggregate(
+        [
+          {
+            $match: {
+              user_id: new mongoose.Types.ObjectId(company_id),
+              status: "active"
+            }
+          },
+          {
+            $lookup: {
+              from: "plans",
+              let: {
+                id: "$plan_id",
+              },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $eq: ["$$id", "$plan_id"]
+                    }
+                  }
+                }
+              ],
+              as: "plan"
+            }
+          },
+          {
+            $unwind: "$plan"
+          },
+          {
+            $sort: {
+              createdAt: -1
+            }
+          }
+        ]
+      )
+    }
+    if (data && data.length > 0) {
+      isactiveSubscription = true
+    }
+    console.log("data : ", data)
+    return res.json({ data: data[0], isactiveSubscription, code: 200 })
   } catch (error) {
     console.log(error)
     utils.handleError(res, error)
