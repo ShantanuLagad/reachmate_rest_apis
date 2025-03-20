@@ -9,7 +9,6 @@ const trialSchema = new mongoose.Schema(
         },
         subscription_id: {
             type: String,
-            required: true
         },
         plan_id: {
             type: String
