@@ -2658,8 +2658,14 @@ exports.paymentVerification = async (req, res) => {
     const userId = req.user._id
     console.log("userId : ", userId)
     const { subscription_id, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body
-    const subscription_data = await Subscription.findOne({ user_id: userId, status: 'active' })
+    let subscription_data = {}
+    subscription_data = await Subscription.findOne({ user_id: userId, status: 'active' })
     console.log("subscription_data : ", subscription_data)
+
+    if (!subscription_data) {
+      subscription_data = await Trial.findOne({ user_id: userId, status: 'active' })
+      console.log("subscription_data : ", subscription_data)
+    }
 
     const razorpay_payment_data = await instance.payments.fetch(razorpay_payment_id);
     console.log("razorpay_payment_data : ", razorpay_payment_data)
