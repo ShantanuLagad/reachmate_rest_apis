@@ -74,6 +74,7 @@ const fcm_devices = require('../models/fcm_devices.js')
 const admin_notification = require('../models/admin_notification.js')
 const account_session = require('../models/account_session.js')
 const session_activity = require('../models/session_activity.js')
+const registration = require('../models/registration')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -1702,7 +1703,12 @@ exports.deleteCompany = async (req, res) => {
     const company_id = req.params.company_id;
     console.log("company_id", company_id)
 
+    const companydata = await Company.findOne({ _id: mongoose.Types.ObjectId(company_id) })
+    if (!companydata) {
+      return res.json({ message: "Company not found", code: 404 })
+    }
     const result = await Company.findOneAndDelete({ _id: mongoose.Types.ObjectId(company_id) })
+    const deleteres = await registration.findOneAndDelete({ email: companydata?.email })
     const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
 
     console.log("result : ", result, " response : ", response)
