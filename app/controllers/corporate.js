@@ -1818,6 +1818,16 @@ exports.activeSubscription = async (req, res) => {
             $unwind: "$plan"
           },
           {
+            $addFields: {
+              'plan_tier.plan_tier_data': { $first: '$plan.plan_tiers' }
+            }
+          },
+          {
+            $project: {
+              plan: 0
+            }
+          },
+          {
             $sort: {
               createdAt: -1
             }
