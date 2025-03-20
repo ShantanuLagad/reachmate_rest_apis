@@ -1789,6 +1789,7 @@ exports.activeSubscription = async (req, res) => {
     )
     console.log("data : ", data)
     if (data.length === 0) {
+      console.log("inside trial check....")
       data = await Trial.aggregate(
         [
           {
@@ -1848,7 +1849,7 @@ exports.activeSubscription = async (req, res) => {
           }
         ]
       )
-      if (data.length > 0) {
+      if (data.length !== 0) {
         trial_period = true
       }
     }
@@ -2174,13 +2175,15 @@ exports.updateSubscription = async (req, res) => {
     if (!plan) return utils.handleError(res, { message: "Plan not found", code: 404 });
     if (plan.plan_type !== "company") return utils.handleError(res, { message: "This plan is not for company", code: 400 });
 
+    let isTrial = false;
     let activeSubscription = await Subscription.findOne({ user_id: user_id, status: { $nin: ["expired", "created"] } }).sort({ createdAt: -1 })
     if (!activeSubscription) {
       activeSubscription = await Trial.findOne({ user_id, status: "active" })
+      if (activeSubscription) isTrial = true
     }
     if (!activeSubscription) return res.json({ message: "You don not have any active subscription", code: 404 });
 
-    if (plan?.plan_tiers && plan?.plan_tiers?.length !== 0) {
+    if (plan?.plan_tiers) {
       const status = activeSubscription.status;
       if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
       if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
@@ -2659,12 +2662,14 @@ exports.paymentVerification = async (req, res) => {
     console.log("userId : ", userId)
     const { subscription_id, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body
     let subscription_data = {}
+    let isTrial = false;
     subscription_data = await Subscription.findOne({ user_id: userId, status: 'active' })
     console.log("subscription_data : ", subscription_data)
 
     if (!subscription_data) {
       subscription_data = await Trial.findOne({ user_id: userId, status: 'active' })
       console.log("subscription_data : ", subscription_data)
+      if (subscription_data) isTrial = true
     }
 
     const razorpay_payment_data = await instance.payments.fetch(razorpay_payment_id);
@@ -2674,17 +2679,35 @@ exports.paymentVerification = async (req, res) => {
     console.log("updaterequest : ", updaterequest)
 
     if (!["failed", "cancelled"].includes(razorpay_payment_data.status)) {
-      subscription_data.user_id = updaterequest?.user_id
-      subscription_data.plan_id = updaterequest?.plan_id
-      subscription_data.plan_started_at = updaterequest?.start_at
-      subscription_data.start_at = updaterequest?.start_at
-      subscription_data.end_at = updaterequest?.end_at
-      subscription_data.status = "active"
-      subscription_data.plan_tier = updaterequest?.plan_tier
-      await subscription_data.save()
+      if (isTrial === false) {
+        subscription_data.user_id = updaterequest?.user_id
+        subscription_data.plan_id = updaterequest?.plan_id
+        subscription_data.plan_started_at = updaterequest?.start_at
+        subscription_data.start_at = updaterequest?.start_at
+        subscription_data.end_at = updaterequest?.end_at
+        subscription_data.status = "active"
+        subscription_data.plan_tier = updaterequest?.plan_tier
+        await subscription_data.save()
 
-      updaterequest.status = "approved"
-      await updaterequest.save()
+        updaterequest.status = "approved"
+        await updaterequest.save()
+      } else {
+        const dataForDatabase = {
+          user_id: updaterequest?.user_id,
+          subscription_id: await SubscriptionId(),
+          plan_id: updaterequest?.plan_id,
+          plan_started_at: updaterequest?.start_at,
+          start_at: updaterequest?.start_at,
+          end_at: updaterequest?.end_at,
+          status: "active",
+          plan_tier: updaterequest?.plan_tier
+        }
+        const newSubscription = await Subscription.create(dataForDatabase);
+        console.log("newSubscription : ", newSubscription)
+
+        const result = await Trial.findOneAndUpdate({ user_id: userId, status: 'active' }, { $set: { status: "terminated" } }, { new: true })
+        console.log("result : ", result)
+      }
     }
 
     const paymentdata = {
