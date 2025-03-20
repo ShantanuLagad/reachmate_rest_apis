@@ -769,9 +769,9 @@ exports.addCompany = async (req, res) => {
     const isEmailExist = await Company.findOne({ email: data.email });
     if (isEmailExist) return handleError(res, { message: "Email already Exists", code: 400 })
 
-    // const emailDomain = extractDomainFromEmail(data.email);
+    const emailDomain = extractDomainFromEmail(data.email);
 
-    // const isDomainExists = await Company.findOne({ email_domain: emailDomain });
+    const isDomainExists = await Company.findOne({ email_domain: emailDomain });
     // if (isDomainExists) return handleError(res, { message: "Domain name already Exists", code: 400 })
 
     var password = generator.generate({
