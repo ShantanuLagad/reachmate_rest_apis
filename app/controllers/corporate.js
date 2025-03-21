@@ -43,6 +43,7 @@ const payments = require('../models/payments')
 const { default: axios } = require('axios')
 const updateSubscriptionRequest = require('../models/updateSubscriptionRequest')
 const account_session = require('../models/account_session')
+const fcm_devices = require('../models/fcm_devices')
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -2813,7 +2814,7 @@ exports.addFCMDevice = async (req, res) => {
     const { device_id, device_type, token } = req.body;
     const user_id = req.user._id;
 
-    const isDeviceExist = await FCMDevice.findOne({ user_id: user_id })
+    const isDeviceExist = await fcm_devices.findOne({ user_id: user_id })
 
     if (isDeviceExist) {
       isDeviceExist.token = token;
@@ -2825,7 +2826,7 @@ exports.addFCMDevice = async (req, res) => {
         device_type: device_type,
         token: token,
       }
-      const item = new FCMDevice(data);
+      const item = new fcm_devices(data);
       await item.save()
     }
 
@@ -2860,11 +2861,11 @@ exports.deleteFCMDevice = async (req, res) => {
     const { token } = req.body;
     const user_id = req.user._id;
 
-    const fcmToken = await FCMDevice.findOne({ user_id: user_id, token: token })
+    const fcmToken = await fcm_devices.findOne({ user_id: user_id, token: token })
 
     if (!fcmToken) return utils.handleError(res, { message: "Token not found", code: 404 });
 
-    await FCMDevice.deleteOne({ user_id: user_id, token: token })
+    await fcm_devices.deleteOne({ user_id: user_id, token: token })
 
     const newsession = await account_session.findOneAndUpdate(
       {
