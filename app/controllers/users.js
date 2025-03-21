@@ -2929,16 +2929,20 @@ exports.getCard = async (req, res) => {
 
     const primaryPersonalCards = await Promise.all(
       user_data.personal_cards.map(async (i) => {
-        const card = await CardDetials.findOne({ _id: i });
+        const card = await CardDetials.findOne({ _id: new mongoose.Types.ObjectId(i) });
         console.log("fetched card : ", card)
-        return card && card?.primary_card ? card : null;
+        if (card && card?.primary_card) {
+          return card
+        } else {
+          return null
+        }
       })
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryPersonalCards : ", primaryPersonalCards);
 
     let primaryCompanyCards = await Promise.all(
       user_data.companyAccessCardDetails.map(async (i) => {
-        const company = await Company.findOne({ _id: i.company_id }, { bio: 0, password: 0, decoded_password: 0 });
+        const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
         console.log('Fetched company:', company);
         if (company && company.primary_card) {
           const data = await TeamMember.findOne({ 'company_details.company_id': company._id });
@@ -2952,6 +2956,7 @@ exports.getCard = async (req, res) => {
           } : null;
           return {
             bio,
+            card_type : "corporate",
             ...company.toObject(),
           };
         }
