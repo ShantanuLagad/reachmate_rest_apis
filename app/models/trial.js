@@ -35,6 +35,10 @@ const trialSchema = new mongoose.Schema(
             type: String,
             enum: ["active", "completed", "terminated"],
             default: "active"
+        },
+        is_new_user_trial: {
+            type: Boolean,
+            default: false
         }
     },
     {
