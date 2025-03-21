@@ -6031,7 +6031,8 @@ exports.giveFreeTrialToFirstUser = async (req, res) => {
       plan_id: plansdata.plan_id,
       status: "active",
       start_at: today,
-      end_at: endedat
+      end_at: endedat,
+      is_new_user_trial: true
     })
     console.log("firstTrial : ", firstTrial)
 
