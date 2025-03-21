@@ -4260,11 +4260,8 @@ exports.plansList = async (req, res) => {
       let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
       console.log("checkIsTrialExits", checkIsTrialExits)
 
-      if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+      if (checkIsTrialExits && checkIsTrialExits.end_at > new Date()) {
         let result = { ...checkIsTrialExits.toObject() }
-        const freemium = plans.find(i => i.plan_variety === "freemium")
-        console.log(freemium, "freemium?.plan_id : ", freemium?.plan_id)
-        result.plan_id = freemium?.plan_id
         console.log("result : ", result)
         return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
       }

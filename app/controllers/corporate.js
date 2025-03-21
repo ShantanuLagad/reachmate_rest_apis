@@ -1705,11 +1705,18 @@ exports.plansList = async (req, res) => {
           planfromDatabase
         }
       }
+      return res.json({ data: plans, isTrialActive: false, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan ? updatedPlan : null, code: 200 });
+    } else {
+      let checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+      console.log("checkIsTrialExits", checkIsTrialExits)
 
+      if (checkIsTrialExits && checkIsTrialExits.end_at > new Date()) {
+        let result = { ...checkIsTrialExits.toObject() }
+        console.log("result : ", result)
+        return res.json({ data: plans, isTrialActive: true, active: result, update: updatedPlan ? updatedPlan : null, code: 200 });
+      }
     }
-
-    res.json({ data: plans, active: activeSubscription?.status !== "created" ? activeSubscription : null, update: updatedPlan, code: 200 });
-
+    return res.json({ data: plans, isTrialActive: false, active: null, update: null, code: 200 });
   } catch (error) {
     utils.handleError(res, error)
   }
