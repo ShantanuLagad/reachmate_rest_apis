@@ -1045,13 +1045,13 @@ function sendInvoiceEmailForTransaction(mailOptions) {
 
 async function checkSusbcriptionIsActive(user_id) {
 
-  const checkIsTrialExits = await Trial.findOne({ user_id });
+  const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
   console.log('endd date>>', checkIsTrialExits?.end_at)
-  if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+  if (checkIsTrialExits) {
     return true
   }
 
-  const subcription = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
+  const subcription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 });
 
   console.log("subcription", subcription, 'subcription.end_at', subcription?.end_at, 'subcription.status', subcription?.status)
   if (!subcription) return false
