@@ -3730,14 +3730,24 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
     sixMonthsAgo.setMonth(today.getMonth() - 6);
     console.log("sixMonthsAgo : ", sixMonthsAgo)
 
-    if (!plan_tier_type) {
-      return res.status(400).json({
-        message: "Missing plan tier type parameter",
-        code: 400
-      });
+    // if (!plan_tier_type) {
+    //   return res.status(400).json({
+    //     message: "Missing plan tier type parameter",
+    //     code: 400
+    //   });
+    // }
+
+    let filter = {}
+    if (plan_tier_type) {
+      filter["plan_tier_data.single_plan_data.tier_type"] = plan_tier_type
     }
 
     let data = await Subscription.aggregate([
+      {
+        $match: {
+          start_at: { $gte: sixMonthsAgo }
+        }
+      },
       {
         $lookup: {
           from: "plans",
@@ -3783,11 +3793,14 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
           preserveNullAndEmptyArrays: true
         }
       },
+      // {
+      //   $match: {
+      //     "plan_tier_data.single_plan_data.tier_type": plan_tier_type,
+      //     "start_at": { $gte: sixMonthsAgo }
+      //   }
+      // },
       {
-        $match: {
-          "plan_tier_data.single_plan_data.tier_type": plan_tier_type,
-          "start_at": { $gte: sixMonthsAgo }
-        }
+        $match: filter
       },
       {
         $addFields: {
