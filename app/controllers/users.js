@@ -2175,7 +2175,8 @@ exports.makeIndividualCardPrimary = async (req, res) => {
     if (existingCard) {
       existingCard.primary_card = true;
       await existingCard.save();
-    } else if (existingAccessCard) {
+    }
+    if (existingAccessCard) {
       existingAccessCard.primary_card = true;
       await existingAccessCard.save();
     }
@@ -2956,7 +2957,7 @@ exports.getCard = async (req, res) => {
           } : null;
           return {
             bio,
-            card_type : "corporate",
+            card_type: "corporate",
             ...company.toObject(),
           };
         }
