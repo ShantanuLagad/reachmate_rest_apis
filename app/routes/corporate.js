@@ -366,4 +366,20 @@ router.put(
   controller.setDefaultPaymentMethod
 )
 
+
+router.post(
+  "/addFCMDevice",
+  requireAuth,
+  trimRequest.all,
+  controller.addFCMDevice
+)
+
+router.post(
+  "/deleteFCMDevice",
+  requireAuth,
+  trimRequest.all,
+  controller.deleteFCMDevice
+)
+
+
 module.exports = router

@@ -2803,3 +2803,89 @@ exports.setDefaultPaymentMethod = async (req, res) => {
     utils.handleError(res, error)
   }
 }
+
+
+
+exports.addFCMDevice = async (req, res) => {
+  try {
+    const { device_id, device_type, token } = req.body;
+    const user_id = req.user._id;
+
+    const isDeviceExist = await FCMDevice.findOne({ user_id: user_id })
+
+    if (isDeviceExist) {
+      isDeviceExist.token = token;
+      await isDeviceExist.save();
+    } else {
+      const data = {
+        user_id: user_id,
+        device_id: device_id,
+        device_type: device_type,
+        token: token,
+      }
+      const item = new FCMDevice(data);
+      await item.save()
+    }
+
+    const sessionid = crypto.randomUUID()
+
+    const newsession = await account_session.create({
+      session_id: sessionid,
+      user_id,
+      action: 'Account Session',
+      previous_status: 'session created',
+      // new_status: 'session deleted',
+      start_at: new Date(),
+      date_and_time: new Date(),
+      performed_by: 'user',
+      session_status: 'active'
+    })
+    console.log("newsession : ", newsession)
+
+    res.json({
+      message: "Token added successfully",
+      session_id: sessionid,
+      code: 200,
+    });
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error);
+  }
+};
+
+exports.deleteFCMDevice = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user_id = req.user._id;
+
+    const fcmToken = await FCMDevice.findOne({ user_id: user_id, token: token })
+
+    if (!fcmToken) return utils.handleError(res, { message: "Token not found", code: 404 });
+
+    await FCMDevice.deleteOne({ user_id: user_id, token: token })
+
+    const newsession = await account_session.findOneAndUpdate(
+      {
+        user_id: new mongoose.Types.ObjectId(user_id),
+        session_status: 'active'
+      },
+      {
+        $set: {
+          new_status: 'session deleted',
+          end_at: new Date(),
+          session_status: 'completed'
+        }
+      }, { new: true }
+    )
+    console.log("newsession : ", newsession)
+
+    res.json({
+      message: "Token deleted successfully",
+      code: 200
+    });
+
+  } catch (error) {
+    console.log(error)
+    utils.handleError(res, error);
+  }
+};
