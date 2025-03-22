@@ -44,6 +44,7 @@ const { default: axios } = require('axios')
 const updateSubscriptionRequest = require('../models/updateSubscriptionRequest')
 const account_session = require('../models/account_session')
 const fcm_devices = require('../models/fcm_devices')
+const deleted_account = require('../models/deleted_account')
 var instance = new Razorpay({
   key_id: process.env.RAZORPAY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -2618,6 +2619,23 @@ exports.deleteAccount = async (req, res) => {
     const user_id = req.user._id;
     const company_email = req.user.email
     console.log('User', user_id)
+    const companydata = await Company.findOne({ email: company_email });
+    console.log("companydata : ", companydata)
+
+    const newdeletedaccount = await deleted_account.create(
+      {
+        user_id: companydata?._id,
+        name: companydata?.bio?.full_name,
+        biod: companydata?.bio,
+        contact_details: companydata?.contact_details,
+        email: companydata?.email,
+        Phone_number: companydata?.contact_details?.mobile_number,
+        account_category: "company",
+        billing_address: companydata?.address
+      }
+    )
+    console.log("newdeletedaccount : ", newdeletedaccount)
+
     await Company.deleteOne({ _id: user_id });
     await Registration.deleteOne({ email: company_email })
     await CardDetials.deleteOne({ owner_id: user_id })

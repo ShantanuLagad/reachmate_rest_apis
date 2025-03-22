@@ -80,6 +80,7 @@ const admin_notification = require('../models/admin_notification');
 const notification = require('../models/notification');
 const account_session = require('../models/account_session');
 const session_activity = require('../models/session_activity');
+const deleted_account = require('../models/deleted_account');
 
 
 /*********************
@@ -3146,6 +3147,27 @@ exports.feedback = async (req, res) => {
 exports.deleteAccount = async (req, res) => {
   try {
     const user_id = req.user._id;
+
+    const userdata = await User.findOne({ _id: user_id });
+    console.log("userdata : ", userdata)
+
+    const newdeletedaccount = await deleted_account.create(
+      {
+        user_id: userdata?._id,
+        name: userdata?.full_name,
+        email: userdata?.email,
+        designation: userdata?.designation,
+        Phone_number: userdata?.Phone_number,
+        dateOfBirth: userdata?.dateOfBirth,
+        sex: userdata?.sex,
+        social_id: userdata?.social_id,
+        social_type: userdata?.social_type,
+        user_type: userdata?.user_type,
+        account_category: "user",
+        billing_address: userdata?.billing_address
+      }
+    )
+    console.log("newdeletedaccount : ", newdeletedaccount)
 
     // const result = await User.findOneAndUpdate({ _id: user_id }, { $set: { is_deleted: true } }, { new: true });
     const result = await User.deleteOne({ _id: user_id });
