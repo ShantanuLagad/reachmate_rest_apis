@@ -2626,7 +2626,8 @@ exports.deleteAccount = async (req, res) => {
       {
         user_id: companydata?._id,
         name: companydata?.bio?.full_name,
-        biod: companydata?.bio,
+        company_name: companydata?.company_name,
+        bio: companydata?.bio,
         contact_details: companydata?.contact_details,
         email: companydata?.email,
         Phone_number: companydata?.contact_details?.mobile_number,
