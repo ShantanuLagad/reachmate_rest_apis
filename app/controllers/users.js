@@ -4242,6 +4242,17 @@ exports.webhook = async (req, res) => {
           console.log("result : ", result)
         }
 
+        const allcreatedSubscription = await Subscription.find({ user_id: user_id, status: "created" })
+        if (allcreatedSubscription && allcreatedSubscription.length !== 0) {
+          await Subscription.deleteMany({
+            user_id: user_id, status: "created"
+          })
+          const cancelPromises = allcreatedSubscription.map(i =>
+            instance.subscriptions.cancel(i.subscription_id)
+          );
+          await Promise.all(cancelPromises);
+        }
+
         break;
       case 'subscription.cancelled':
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status })
