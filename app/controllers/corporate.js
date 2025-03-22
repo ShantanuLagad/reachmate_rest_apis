@@ -2622,17 +2622,16 @@ exports.deleteAccount = async (req, res) => {
     const companydata = await Company.findOne({ email: company_email });
     console.log("companydata : ", companydata)
 
-    let toupdate = {}
-    Object.entries(companydata).map((key, value) => {
-      console.log(key, " : ", value)
-      toupdate[`${key}`] = value
-    })
+    let toupdate = {
+      id: companydata?._id,
+    };
+    Object.entries(userdata).forEach(([key, value]) => {
+      console.log(key, " : ", value);
+      toupdate[key] = value;
+    });
 
     const newdeletedaccount = await deleted_account.create(
-      {
-        id: companydata?._id,
-        ...toupdate
-      }
+      toupdate
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
 
@@ -2652,7 +2651,7 @@ exports.deleteAccount = async (req, res) => {
         await instance.subscriptions.cancel(isSubcriptionExist.subscription_id, false);
       }
     }
-    res.json({ message: "Your account is deleted successfully" , code : 200});
+    res.json({ message: "Your account is deleted successfully", code: 200 });
   } catch (error) {
     console.log("================error", error)
     utils.handleError(res, error);
