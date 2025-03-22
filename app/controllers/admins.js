@@ -1687,9 +1687,21 @@ exports.deletePersonalCardHolders = async (req, res) => {
   try {
 
     const user_id = req.params.user_id;
+    const userdata = await User.findOne({ _id: user_id })
+    console.log("userdata : ", userdata)
 
     await User.deleteOne({ _id: mongoose.Types.ObjectId(user_id) });
     await CardDetials.deleteOne({ owner_id: mongoose.Types.ObjectId(user_id) })
+
+    let toupdate = {
+      id: userdata?._id,
+      ...(userdata ? userdata.toObject() : {})
+    };
+
+    const newdeletedaccount = await deleted_account.create(
+      toupdate
+    )
+    console.log("newdeletedaccount : ", newdeletedaccount)
 
     res.json({ message: "Account is deleted successfully", code: 200 });
 
@@ -3358,15 +3370,20 @@ exports.deleteSignleUser = async (req, res) => {
       })
     }
 
-    const result = await User.findOneAndUpdate(
+    let toupdate = {
+      id: userdata?._id,
+      ...(userdata ? userdata.toObject() : {})
+    };
+
+    const newdeletedaccount = await deleted_account.create(
+      toupdate
+    )
+    console.log("newdeletedaccount : ", newdeletedaccount)
+
+    const result = await User.deleteOne(
       {
         _id: new mongoose.Types.ObjectId(id)
-      },
-      {
-        $set: {
-          is_deleted: true
-        }
-      }, { new: true }
+      }
     )
     console.log("result : ", result)
     return res.status(200).json({
