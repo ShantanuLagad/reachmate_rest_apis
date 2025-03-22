@@ -3153,18 +3153,8 @@ exports.deleteAccount = async (req, res) => {
 
     const newdeletedaccount = await deleted_account.create(
       {
-        user_id: userdata?._id,
-        name: userdata?.full_name,
-        email: userdata?.email,
-        designation: userdata?.designation,
-        Phone_number: userdata?.Phone_number,
-        dateOfBirth: userdata?.dateOfBirth,
-        sex: userdata?.sex,
-        social_id: userdata?.social_id,
-        social_type: userdata?.social_type,
-        user_type: userdata?.user_type,
-        account_category: "user",
-        billing_address: userdata?.billing_address
+        id: userdata?._id,
+        ...userdata
       }
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
