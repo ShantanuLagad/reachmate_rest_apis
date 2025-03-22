@@ -4205,13 +4205,13 @@ exports.webhook = async (req, res) => {
         break;
       case 'subscription.charged':
 
-        let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
-        console.log("activeSubscription : ", activeSubscription)
+        // let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
+        // console.log("activeSubscription : ", activeSubscription)
 
-        if (activeSubscription) {
-          await Subscription.findByIdAndDelete(activeSubscription._id);
-          await instance.subscriptions.cancel(activeSubscription.subscription_id)
-        }
+        // if (activeSubscription) {
+        //   await Subscription.findByIdAndDelete(activeSubscription._id);
+        //   await instance.subscriptions.cancel(activeSubscription.subscription_id)
+        // }
 
         const payment_id = req?.body?.payload?.payment?.entity?.id
         const payment_details = req?.body?.payload?.payment?.entity
