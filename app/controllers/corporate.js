@@ -2622,10 +2622,16 @@ exports.deleteAccount = async (req, res) => {
     const companydata = await Company.findOne({ email: company_email });
     console.log("companydata : ", companydata)
 
+    let toupdate = {}
+    Object.entries(companydata).map((key, value) => {
+      console.log(key, " : ", value)
+      toupdate[`${key}`] = value
+    })
+
     const newdeletedaccount = await deleted_account.create(
       {
         id: companydata?._id,
-        ...companydata
+        ...toupdate
       }
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
