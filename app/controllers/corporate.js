@@ -2624,14 +2624,11 @@ exports.deleteAccount = async (req, res) => {
 
     let toupdate = {
       id: companydata?._id,
+      ...(companydata ? companydata.toObject() : {})
     };
-    Object.entries(companydata).forEach(([key, value]) => {
-      console.log(key, " : ", value);
-      toupdate[key] = value;
-    });
 
     const newdeletedaccount = await deleted_account.create(
-      ...toupdate.toObject()
+      toupdate
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
 
