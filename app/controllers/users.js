@@ -3852,10 +3852,10 @@ exports.createSubscription = async (req, res) => {
     const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
     console.log("checkIsTrialExits", checkIsTrialExits)
 
-    if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
-      const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
-      console.log("result : ", result)
-    }
+    // if (checkIsTrialExits && checkIsTrialExits.end_at > new Date() && checkIsTrialExits.status === "active") {
+    //   const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
+    //   console.log("result : ", result)
+    // }
 
     const getCard = await CardDetials.findOne({ owner_id: user_id })
 
@@ -3953,6 +3953,10 @@ exports.createSubscription = async (req, res) => {
     let newTrial
 
     if (plan.plan_variety === "freemium") {
+      if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+        const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
+        console.log("result : ", result)
+      }
       newTrial = await Trial.create({
         user_id,
         plan_id,
@@ -4119,7 +4123,6 @@ exports.webhook = async (req, res) => {
     const user_id = subscription.notes.user_id;
     const user_type = subscription.notes.user_type;
 
-
     var user_country = ""
 
     let buyerData = null;
@@ -4146,11 +4149,11 @@ exports.webhook = async (req, res) => {
       case 'subscription.authenticated':
         await Subscription.updateOne({ user_id: mongoose.Types.ObjectId(user_id), subscription_id: subscription.id }, { status: subscription.status });
 
-        const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
-        if (checkIsTrialExits) {
-          checkIsTrialExits.status = "completed";
-          await checkIsTrialExits.save()
-        }
+        // const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+        // if (checkIsTrialExits) {
+        //   checkIsTrialExits.status = "completed";
+        //   await checkIsTrialExits.save()
+        // }
 
         if (user_type === "individual") {
           const user = await User.findById(user_id);
@@ -4202,6 +4205,14 @@ exports.webhook = async (req, res) => {
         break;
       case 'subscription.charged':
 
+        let activeSubscription = await Subscription.findOne({ user_id: user_id, status: "active" }).sort({ createdAt: -1 })
+        console.log("activeSubscription : ", activeSubscription)
+
+        if (activeSubscription) {
+          await Subscription.findByIdAndDelete(activeSubscription._id);
+          await instance.subscriptions.cancel(activeSubscription.subscription_id)
+        }
+
         const payment_id = req?.body?.payload?.payment?.entity?.id
         const payment_details = req?.body?.payload?.payment?.entity
 
@@ -4222,6 +4233,14 @@ exports.webhook = async (req, res) => {
 
 
         sendSubscriptionInvoiceEmail(transaction, subscription, plan, buyerData);
+
+        const checkIsTrialExits = await Trial.findOne({ user_id, status: "active" });
+        console.log("checkIsTrialExits", checkIsTrialExits)
+
+        if (checkIsTrialExits) {
+          const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
+          console.log("result : ", result)
+        }
 
         break;
       case 'subscription.cancelled':
@@ -4674,10 +4693,10 @@ exports.updateSubscription = async (req, res) => {
       }
     }
     if (plan.plan_variety === "premium") {
-      if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
-        const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
-        console.log("result : ", result)
-      }
+      // if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+      //   const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
+      //   console.log("result : ", result)
+      // }
 
       if (activeSubscription) {
         const subcription = await instance.subscriptions.fetch(activeSubscription.subscription_id);
@@ -4688,10 +4707,10 @@ exports.updateSubscription = async (req, res) => {
         if (status === "created") {
           return res.json({ message: `You already have an pending subscription . please wait for activation`, code: 400 });
         }
-        if (status !== "created") {
-          await Subscription.findByIdAndDelete(activeSubscription._id);
-          await instance.subscriptions.cancel(activeSubscription.subscription_id)
-        }
+        // if (status !== "created") {
+        //   await Subscription.findByIdAndDelete(activeSubscription._id);
+        //   await instance.subscriptions.cancel(activeSubscription.subscription_id)
+        // }
         // if (status !== "authenticated" && status !== "active") return res.json({ message: `You can not update a ${status} subscription`, code: 400 });
 
         if (status === "authenticated") return res.json({ message: `You can not update subscription in trial period`, code: 400 });
@@ -4717,7 +4736,8 @@ exports.updateSubscription = async (req, res) => {
             expire_by: expireBy,
             "notes": {
               "user_id": user_id.toString(),
-              "user_type": "individual"
+              "user_type": "individual",
+              "action": "create subscription"
             }
           })
 
@@ -4820,7 +4840,8 @@ exports.updateSubscription = async (req, res) => {
           expire_by: expireBy,
           "notes": {
             "user_id": user_id.toString(),
-            "user_type": "individual"
+            "user_type": "individual",
+            "action": "create subscription"
           }
         })
 
@@ -4853,6 +4874,10 @@ exports.updateSubscription = async (req, res) => {
       }
     }
     if (plan.plan_variety === "freemium") {
+      if (checkIsTrialExits && checkIsTrialExits?.end_at > new Date() && checkIsTrialExits?.status === "active") {
+        const result = await Trial.findOneAndUpdate({ _id: checkIsTrialExits._id, user_id }, { $set: { status: "terminated" } }, { new: true });
+        console.log("result : ", result)
+      }
       trial = await Trial.create({
         user_id,
         plan_id,
