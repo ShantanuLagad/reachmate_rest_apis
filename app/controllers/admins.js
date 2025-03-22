@@ -1708,6 +1708,15 @@ exports.deleteCompany = async (req, res) => {
     if (!companydata) {
       return res.json({ message: "Company not found", code: 404 })
     }
+    let toupdate = {
+      id: companydata?._id,
+      ...(companydata ? companydata.toObject() : {})
+    };
+
+    const newdeletedaccount = await deleted_account.create(
+      toupdate
+    )
+    console.log("newdeletedaccount : ", newdeletedaccount)
     const result = await Company.findOneAndDelete({ _id: mongoose.Types.ObjectId(company_id) })
     const deleteres = await registration.findOneAndDelete({ email: companydata?.email })
     const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
