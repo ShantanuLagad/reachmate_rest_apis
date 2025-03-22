@@ -3161,7 +3161,7 @@ exports.deleteAccount = async (req, res) => {
 
 
     const newdeletedaccount = await deleted_account.create(
-      toupdate
+      ...toupdate.toObject()
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
 
