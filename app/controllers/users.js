@@ -3193,7 +3193,7 @@ exports.deleteAccount = async (req, res) => {
     })
     console.log("accountlog : ", accountlog)
 
-    res.json({ message: "Your account is deleted successfully" });
+    res.json({ message: "Your account is deleted successfully", code: 200 });
   } catch (error) {
     console.log("================error", error)
     utils.handleError(res, error);
