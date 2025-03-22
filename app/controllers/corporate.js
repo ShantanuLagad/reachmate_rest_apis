@@ -2625,7 +2625,7 @@ exports.deleteAccount = async (req, res) => {
     let toupdate = {
       id: companydata?._id,
     };
-    Object.entries(userdata).forEach(([key, value]) => {
+    Object.entries(companydata).forEach(([key, value]) => {
       console.log(key, " : ", value);
       toupdate[key] = value;
     });
