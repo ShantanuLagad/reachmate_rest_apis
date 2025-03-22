@@ -75,6 +75,7 @@ const admin_notification = require('../models/admin_notification.js')
 const account_session = require('../models/account_session.js')
 const session_activity = require('../models/session_activity.js')
 const registration = require('../models/registration')
+const deleted_account = require('../models/deleted_account.js')
 
 
 const generateToken = (_id, role, remember_me) => {
@@ -997,7 +998,7 @@ exports.dashBoardCard = async (req, res) => {
     const pendingRenewal = await Subscription.countDocuments({ status: "expired", end_at: { $gt: new Date() } })
     console.log("pendingRenewal : ", pendingRenewal)
 
-    const deletedAccounts = await User.countDocuments({ is_deleted: true })
+    const deletedAccounts = await deleted_account.countDocuments()
     console.log("deletedAccounts : ", deletedAccounts)
 
     const pieChartData = demographicChart.map(item => {
