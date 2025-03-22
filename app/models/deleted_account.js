@@ -50,16 +50,6 @@ const deletedAccountSchema = new mongoose.Schema(
         sex: {
             type: String
         },
-        password: {
-            type: String,
-            required: true,
-            // select: false
-        },
-        confirm_password: {
-            type: String,
-            // required: true,
-            // select: false
-        },
         text_color: {
             type: String,
             default: ""
@@ -157,13 +147,6 @@ const deletedAccountSchema = new mongoose.Schema(
             },
         ],
         access_code: {
-            type: String,
-        },
-        password: {
-            type: String,
-            required: true,
-        },
-        decoded_password: {
             type: String,
         },
         email_domain: {
