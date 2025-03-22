@@ -107,45 +107,12 @@ const deletedAccountSchema = new mongoose.Schema(
             type: String
         },
         billing_address: {
-            country: String,
-            state: String,
-            city: String,
-            address_line_1: String,
-            address_line_2: String,
-            pin_code: String
+            type: mongoose.Schema.Types.Mixed
         },
 
-        companyAccessCardDetails: [
-            {
-                company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company' },
-                email_domain: { type: String },
-                primary_card: { type: Boolean, default: false },
-                company_name: { type: String },
-                access_code: { type: String },
-                _id: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: 'TeamMember',
-                },
-                accessCard_social_links: {
-                    linkedin: {
-                        type: String,
-                        default: ""
-                    },
-                    x: {
-                        type: String,
-                        default: ""
-                    },
-                    instagram: {
-                        type: String,
-                        default: ""
-                    },
-                    youtube: {
-                        type: String,
-                        default: ""
-                    }
-                },
-            },
-        ],
+        companyAccessCardDetails: {
+            type: mongoose.Schema.Types.Mixed
+        },
         access_code: {
             type: String,
         },
@@ -206,88 +173,23 @@ const deletedAccountSchema = new mongoose.Schema(
             default: true,
         },
         bio: {
-            first_name: {
-                type: String,
-                default: ""
-            },
-            last_name: {
-                type: String,
-                default: ""
-            },
-            full_name: {
-                type: String,
-                default: ""
-            },
-            designation: {
-                type: String,
-                default: ""
-            }
+            type: mongoose.Schema.Types.Mixed
         },
         contact_details: {
-            country_code: {
-                type: String,
-                default: ""
-            },
-            mobile_number: {
-                type: String,
-                default: ""
-            },
-            office_landline: {
-                type: String,
-                default: ""
-            },
-            email: {
-                type: String,
-                default: ""
-            },
-            website: {
-                type: String,
-                default: ""
-            },
+            type: mongoose.Schema.Types.Mixed
         },
         address: {
-            country: String,
-            state: String,
-            city: String,
-            address_line_1: {
-                type: String,
-            },
-            address_line_2: {
-                type: String,
-            },
-            pin_code: {
-                type: String,
-            },
+            type: mongoose.Schema.Types.Mixed
         },
         social_links: {
-            linkedin: {
-                type: String,
-                default: ""
-            },
-            x: {
-                type: String,
-                default: ""
-            },
-            instagram: {
-                type: String,
-                default: ""
-            },
-            youtube: {
-                type: String,
-                default: ""
-            }
+            type: mongoose.Schema.Types.Mixed
         },
         is_profile_completed: {
             type: Boolean,
             default: false
         },
         billing_address: {
-            country: String,
-            state: String,
-            city: String,
-            address_line_1: String,
-            address_line_2: String,
-            pin_code: String
+            type: mongoose.Schema.Types.Mixed
         }
     },
     {
