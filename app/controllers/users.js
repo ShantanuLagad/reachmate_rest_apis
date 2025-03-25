@@ -1442,8 +1442,8 @@ exports.changePassword = async (req, res) => {
 
 exports.addSharedCard = async (req, res) => {
   try {
-
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    const isSubscriptionActive = await checkSusbcriptionIsActive(req.user._id);
+    console.log("isSubscriptionActive : ", isSubscriptionActive)
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const { card_id } = req.body;
