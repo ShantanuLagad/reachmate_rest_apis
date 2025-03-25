@@ -248,7 +248,7 @@ cron.schedule("30 3 * * * ", async () => {
       const trail = todayEndingTrail[index];
 
 
-      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+      const isSubscriptionActive = await checkSusbcriptionIsActive(trail.user_id);
 
       if (!isSubscriptionActive) {
         emailer.sendReminderEmail({
@@ -436,7 +436,7 @@ cron.schedule("30 3 * * * ", async () => {
       console.log("todayEndingTrailsdfg")
       const trail = trailEndingInOneDays[index];
 
-      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+      const isSubscriptionActive = await checkSusbcriptionIsActive(trail.user_id);
 
       if (!isSubscriptionActive) {
 
@@ -629,7 +629,7 @@ cron.schedule("30 3 * * * ", async () => {
       console.log("todayEndingTrailsdfg")
       const trail = trailEndingInSevenDays[index];
 
-      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+      const isSubscriptionActive = await checkSusbcriptionIsActive(trail.user_id);
 
       if (!isSubscriptionActive) {
 
@@ -815,7 +815,7 @@ cron.schedule("30 3 * * * ", async () => {
 
       const trail = trailEndingInFifteenDays[index];
 
-      const isSubscriptionActive = await isSubscriptionActiveOrNot(trail.user_id);
+      const isSubscriptionActive = await checkSusbcriptionIsActive(trail.user_id);
 
       if (!isSubscriptionActive) {
         emailer.sendReminderEmail({
@@ -1442,8 +1442,8 @@ exports.changePassword = async (req, res) => {
 
 exports.addSharedCard = async (req, res) => {
   try {
-
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    const isSubscriptionActive = await checkSusbcriptionIsActive(req.user._id);
+    console.log("isSubscriptionActive : ", isSubscriptionActive)
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const { card_id } = req.body;
@@ -3373,7 +3373,7 @@ exports.getNotification = async (req, res) => {
 
 exports.exportCardToExcel = async (req, res) => {
   try {
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    const isSubscriptionActive = await checkSusbcriptionIsActive(req.user._id);
     if (isSubscriptionActive === false) return utils.handleError(res, { message: "Your subscription has expired. Please renew to continue accessing our services", code: 400 });
 
     const user_id = req.user._id;
@@ -5399,7 +5399,7 @@ exports.deleteCard = async (req, res) => {
 
 exports.deleteUserCards = async (req, res) => {
   try {
-    const isSubscriptionActive = await isSubscriptionActiveOrNot(req.user);
+    const isSubscriptionActive = await checkSusbcriptionIsActive(req.user._id);
     if (!isSubscriptionActive) {
       return utils.handleError(res, {
         message: "Your subscription has expired. Please renew to continue accessing our services.",
