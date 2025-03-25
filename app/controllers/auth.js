@@ -160,7 +160,7 @@ const saveUserAccessAndReturnToken = async (req, user) => {
 
   console.log("users", user)
   user = user.toJSON()
-  let haveSubscription = await isSubscriptionActiveOrNot(user)
+  let haveSubscription = await checkSusbcriptionIsActive(user._id)
 
   delete user.password;
   delete user.confirm_password;
@@ -1265,7 +1265,7 @@ exports.loginUser = async (req, res) => {
     user = user.toJSON()
 
     console.log("user", user);
-    let haveSubscription = await isSubscriptionActiveOrNot(user)
+    let haveSubscription = await checkSusbcriptionIsActive(user._id)
     console.log("haveSubscription", haveSubscription);
 
     delete user.password;
