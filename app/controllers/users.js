@@ -5034,15 +5034,15 @@ exports.registration = async (req, res) => {
     }
     const register = new Registration(data);
     const userInfo = {
-      id: register._id,
-      first_name: register.first_name,
-      last_name: register.last_name,
-      email: register.email,
-      country_code: register.country_code,
-      mobile_number: register.mobile_number,
-      company_name: register.company_name,
-      country: register.country,
-      how_can_we_help_you: register.how_can_we_help_you,
+      id: register?._id,
+      first_name: register?.first_name,
+      last_name: register?.last_name,
+      email: register?.email,
+      country_code: register?.country_code,
+      mobile_number: register?.mobile_number,
+      company_name: register?.company_name,
+      country: register?.country,
+      how_can_we_help_you: register?.how_can_we_help_you,
     };
     const locale = req.getLocale()
     const isProduction = process.env.NODE_ENV === 'production';
@@ -5052,9 +5052,9 @@ exports.registration = async (req, res) => {
 
     const dataForMail = {
       subject: 'Your Reachmate Account Creation',
-      company_name: `${userInfo.first_name} ${userInfo.last_name}`,
-      email: userInfo.email,
-      link: `${baseURL}CreateAccount?email=${userInfo.email}`
+      company_name: `${userInfo?.first_name} ${userInfo?.last_name}`,
+      email: userInfo?.email,
+      link: `${baseURL}CreateAccount?email=${userInfo?.email}`
     };
 
 
