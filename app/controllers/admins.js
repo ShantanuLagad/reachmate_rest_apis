@@ -4122,7 +4122,7 @@ exports.subscriptionDashboardData = async (req, res) => {
               $cond: {
                 if: {
                   $ne: [
-                    { $size: "$plan_data.plan_tiers" },
+                    { $size: { $ifNull: ["$plan_data.plan_tiers", []] } },
                     0
                   ]
                 },
