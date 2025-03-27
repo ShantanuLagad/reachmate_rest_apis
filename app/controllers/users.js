@@ -2206,6 +2206,7 @@ const generateNumericOTP = () => {
 exports.matchAccessCode = async (req, res) => {
   try {
     const { email, access_code } = req.body;
+    console.log("re.body : ", req.body)
     const userId = req.user._id;
     //console.log('USER>>>',req.user)
     const user = await User.findById(userId);
@@ -2259,7 +2260,7 @@ exports.matchAccessCode = async (req, res) => {
 
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
-    if (company.access_code !== access_code) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
+    if (company.access_code.toString() !== access_code.toString()) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
     const isTeamMemberExist = await TeamMember.findOne({ work_email: email })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
