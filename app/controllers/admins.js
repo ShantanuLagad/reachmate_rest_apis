@@ -1800,24 +1800,23 @@ exports.sendNotification = async (req, res) => {
 
       if (element.notification === true && element?.device_token) {
         device_tokens.push(element?.device_token?.token)
+        let notificationbody = {
+          title: title,
+          description: body
+        }
+
+        let dbnotificationbody = {
+          title: title,
+          description: body,
+          type: "admin_action",
+          receiver_id: element?._id,
+          related_to: element?._id,
+          related_to_type: "user",
+        }
+
+        await sendUsernotificationhelper(element?._id, notificationbody, dbnotificationbody)
+
       }
-
-      let notificationbody = {
-        title: title,
-        description: body
-      }
-
-      let dbnotificationbody = {
-        title: title,
-        description: body,
-        type: "admin_action",
-        receiver_id: element?._id,
-        related_to: element?._id,
-        related_to_type: "user",
-      }
-
-      await sendUsernotificationhelper(element?._id, notificationbody, dbnotificationbody)
-
     }
 
     console.log("device_token", device_tokens)
@@ -1857,21 +1856,24 @@ exports.sendNotification = async (req, res) => {
           device_tokens.push(element?.device_token?.token)
         }
 
-        let notificationbody = {
-          title: title,
-          description: body
+        if (element?.device_token && element?.notification) {
+          let notificationbody = {
+            title: title,
+            description: body
+          }
+
+          let dbnotificationbody = {
+            title: title,
+            description: body,
+            type: "admin_action",
+            receiver_id: element?._id,
+            related_to: element?._id,
+            related_to_type: "user",
+          }
+
+          await sendUsernotificationhelper(element?._id, notificationbody, dbnotificationbody)
+
         }
-  
-        let dbnotificationbody = {
-          title: title,
-          description: body,
-          type: "admin_action",
-          receiver_id: element?._id,
-          related_to: element?._id,
-          related_to_type: "user",
-        }
-  
-        await sendUsernotificationhelper(element?._id, notificationbody, dbnotificationbody)  
 
       }
 
