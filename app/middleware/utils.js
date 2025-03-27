@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken')
 const auth = require('../middleware/auth')
 const { admin } = require("./../../config/firebase");
 const fcm_devices = require('../models/fcm_devices')
+const { MongoError } = require('mongodb'); 
 /**
  * Removes extension from file
  * @param {string} file - filename
