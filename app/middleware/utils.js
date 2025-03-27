@@ -47,7 +47,22 @@ exports.handleError = (res, err) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(err)
   }
-  // Sends error to user
+  if (err instanceof MongoError) {
+    // Check MongoDB specific error codes and map them to appropriate HTTP status codes
+    if (err.code === 17124) {
+      // Example: Invalid aggregation error code
+      err.code = 400; // Bad Request
+      err.message = "Invalid data provided for aggregation.";
+    } else if (err.code === 11000) {
+      // Example: Duplicate key error
+      err.code = 409; // Conflict
+      err.message = "Duplicate key error.";
+    } else {
+      // Default MongoDB error mapping
+      err.code = 500; // Internal Server Error
+      err.message = "A database error occurred.";
+    }
+  }
 
   if ('statusCode' in err && "error" in err) {
     err.code = err?.statusCode;
