@@ -3870,7 +3870,7 @@ exports.getSubscriptionRevenueChartData = async (req, res) => {
               if: {
                 $and: [
                   { $ne: ["$plan_data.plan_tiers", null] },
-                  { $gt: [{ $size: "$plan_data.plan_tiers" }, 0] },
+                  { $gt: [{ $size: { $ifNull: ["$plan_data.plan_tiers", []] } }, 0] },
                   { $eq: ["$plan_data.plan_type", "company"] }
                 ]
               },
