@@ -2260,6 +2260,7 @@ exports.matchAccessCode = async (req, res) => {
 
     const company = await Company.findOne({ email_domain }, { password: 0, decoded_password: 0 })
     if (!company) return utils.handleError(res, { message: "Company not found", code: 404 });
+    console.log(company.access_code.toString(), " ", access_code.toString())
     if (company.access_code.toString() !== access_code.toString()) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
     const isTeamMemberExist = await TeamMember.findOne({ work_email: email })
