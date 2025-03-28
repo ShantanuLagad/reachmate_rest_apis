@@ -2274,9 +2274,9 @@ exports.matchAccessCode = async (req, res) => {
     await otpData.save();
 
     await emailer.sendAccessCodeOTP_Email(req.body.locale || 'en', {
-      id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
+      id: user?._id,
+      first_name: user?.first_name,
+      last_name: user?.last_name,
       email: email,
       otp: otp,
     }, "matchAccessCodeOTP");
@@ -2344,24 +2344,24 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     }
 
     const bio = {
-      first_name: teamMember.first_name,
-      last_name: teamMember.last_name,
-      full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-      designation: teamMember.designation || "",
-      phone_number: teamMember.phone_number
+      first_name: teamMember?.first_name,
+      last_name: teamMember?.last_name,
+      full_name: `${teamMember?.first_name} ${teamMember?.last_name}`,
+      designation: teamMember?.designation || "",
+      phone_number: teamMember?.phone_number
     };
 
     const companyAccessDetails = {
-      company_id: company._id,
-      email_domain: company.email_domain,
-      company_name: company.company_name,
-      access_code: company.access_code,
-      _id: teamMember._id,
+      company_id: company?._id,
+      email_domain: company?.email_domain,
+      company_name: company?.company_name,
+      access_code: company?.access_code,
+      _id: teamMember?._id,
       accessCard_social_links: {
-        linkedin: teamMember.social_links?.linkedin || "",
-        x: teamMember.social_links?.x || "",
-        instagram: teamMember.social_links?.instagram || "",
-        youtube: teamMember.social_links?.youtube || "",
+        linkedin: teamMember?.social_links?.linkedin || "",
+        x: teamMember?.social_links?.x || "",
+        instagram: teamMember?.social_links?.instagram || "",
+        youtube: teamMember?.social_links?.youtube || "",
       },
     };
 
@@ -2374,13 +2374,13 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       //   website: '',
       //   mobile_number_enabled: ''
       // },
-      contact_details: company.contact_details,
+      contact_details: company?.contact_details,
       bio: bio,
       social_links: {
-        linkedin: teamMember.social_links?.linkedin || "",
-        x: teamMember.social_links?.x || "",
-        instagram: teamMember.social_links?.instagram || "",
-        youtube: teamMember.social_links?.youtube || ""
+        linkedin: teamMember?.social_links?.linkedin || "",
+        x: teamMember?.social_links?.x || "",
+        instagram: teamMember?.social_links?.instagram || "",
+        youtube: teamMember?.social_links?.youtube || ""
       },
       address: company?.address,
       business_logo: company?.business_logo,
