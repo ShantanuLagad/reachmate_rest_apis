@@ -688,7 +688,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let planId = isActiveSubscription ? isActiveSubscription?.plan_id : trialdata?.plan_id
     console.log("planId : ", planId)
-    let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier_id
+    let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier?.plan_tier_id
     console.log("planTierId : ", planTierId)
 
     let plandata = await Plan.aggregate(
@@ -723,27 +723,28 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let totalteamcount = await TeamMember.countDocuments({ 'company_details.email': userData?.work_email })
     console.log("totalteamcount : ", totalteamcount)
-    if (trialdata && trialdata.end_at > new Date()) {
-      console.log("inside freemium....")
-      if (totalteamcount > 1) {
-        return res.status(400).json({
-          errors: {
-            msg: 'You have exceed the freemium plan limit . please active subscription',
-          },
-        });
-      }
-    }
+    // if (trialdata) {
+    //   console.log("inside freemium....")
+    //   if (totalteamcount > 1) {
+    //     return res.status(400).json({
+    //       errors: {
+    //         msg: 'You have exceed the freemium plan limit . please active subscription',
+    //       },
+    //     });
+    //   }
+    // }
 
-    if (isActiveSubscription && isActiveSubscription.status == 'active' && isActiveSubscription.end_at > new Date()) {
-      console.log("inside max user condition...", isActiveSubscription?.plan_tier?.user_count)
-      if (totalteamcount > isActiveSubscription?.plan_tier?.user_count) {
-        return res.status(400).json({
-          errors: {
-            msg: 'You have exceed the premium plan limit maximum user limit . please upgrade plan tier',
-          },
-        });
-      }
+    // if (isActiveSubscription && isActiveSubscription.status == 'active' && isActiveSubscription.end_at > new Date()) {
+    let maxcount = isActiveSubscription?.plan_tier?.user_count ? isActiveSubscription?.plan_tier?.user_count : trialdata?.plan_tier?.user_count
+    console.log("inside max user condition...", maxcount)
+    if (totalteamcount > maxcount) {
+      return res.status(400).json({
+        errors: {
+          msg: 'You have exceed the maximum user limit . please upgrade plan tier',
+        },
+      });
     }
+    //}
 
 
     if (workEmailDomain !== companyDomain) {
