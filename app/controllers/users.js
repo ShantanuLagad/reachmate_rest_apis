@@ -2013,6 +2013,7 @@ exports.editCardDetails = async (req, res) => {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
       if (!existingEntity) {
         existingEntity = await Company.findOne({ _id: card_id });
+        console.log("existingEntity : ", existingEntity)
         const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity._id })
         companyTeammate = company_employee.find(i => {
           if (i.work_email) {
@@ -2461,7 +2462,7 @@ exports.getAllAccessCards = async (req, res) => {
     const enrichedCompanies = await Promise.all(
       companies.map(async (company) => {
         const userAccessCardDetail = user.companyAccessCardDetails.find(
-          (detail) => detail.email_domain === company.email_domain
+          (detail) => detail.access_code === company.access_code
         );
 
         const teamMember = userAccessCardDetail?._id
