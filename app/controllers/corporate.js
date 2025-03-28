@@ -721,7 +721,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       });
     }
 
-    let totalteamcount = await TeamMember.countDocuments({ 'company_details.email': work_email })
+    let totalteamcount = await TeamMember.countDocuments({ 'company_details.email': userData?.work_email })
     console.log("totalteamcount : ", totalteamcount)
     if (trialdata && trialdata.end_at > new Date()) {
       console.log("inside freemium....")
