@@ -2251,7 +2251,7 @@ exports.matchAccessCode = async (req, res) => {
     console.log("email_domain : ", email_domain)
 
     if (user && Array.isArray(user.companyAccessCardDetails) && user.companyAccessCardDetails.length !== 0) {
-      const isSameDomainExists = await user.companyAccessCardDetails.find(i => i.email_domain.toString() === email_domain.toString())
+      const isSameDomainExists = await user.companyAccessCardDetails.find(i => i.access_code.toString() === access_code.toString())
       console.log("isSameDomainExists : ", isSameDomainExists)
 
       if (isSameDomainExists) {
@@ -2264,7 +2264,7 @@ exports.matchAccessCode = async (req, res) => {
     console.log(company.access_code.toString(), " ", access_code.toString())
     if (company.access_code.toString() !== access_code.toString()) return utils.handleError(res, { message: "Invalid Access Code", code: 400 });
     //----------
-    const isTeamMemberExist = await TeamMember.findOne({ work_email: email })
+    const isTeamMemberExist = await TeamMember.findOne({ work_email: email, "company_details.access_code": access_code })
     if (!isTeamMemberExist) return utils.handleError(res, { message: "Email does not exist", code: 404 });
 
     const otp = generateNumericOTP();
@@ -2445,7 +2445,7 @@ exports.getAllAccessCards = async (req, res) => {
     }
 
     const companyConditions = user.companyAccessCardDetails.map((detail) => ({
-      email_domain: detail.email_domain,
+      // email_domain: detail.email_domain,
       access_code: detail.access_code,
     }));
     console.log("companyConditions : ", companyConditions)
