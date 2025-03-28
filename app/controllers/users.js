@@ -2270,7 +2270,7 @@ exports.matchAccessCode = async (req, res) => {
     const otp = generateNumericOTP();
 
     await Otp.deleteMany({ email });
-    const otpData = new Otp({ email, otp });
+    const otpData = new Otp({ email, otp, access_code });
     await otpData.save();
 
     await emailer.sendAccessCodeOTP_Email(req.body.locale || 'en', {
@@ -2314,6 +2314,10 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(400).json({ message: 'Invalid OTP.' });
     }
 
+    if (!otpRecord?.access_code) {
+      return res.status(400).json({ message: 'Unknown OTP' });
+    }
+
     if (Date.now() > otpRecord.expired) {
       return res.status(400).json({ message: 'This OTP has expired.' });
     }
@@ -2321,7 +2325,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     const emailDomain = email.split('@')[1];
 
     const company = await Company.findOne(
-      { email_domain: emailDomain },
+      { access_code: otpRecord?.access_code },
       { password: 0, decoded_password: 0, bio: 0, social_links: 0 }
     );
     console.log("company : ", company)
@@ -2334,7 +2338,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    const teamMember = await TeamMember.findOne({ work_email: email });
+    const teamMember = await TeamMember.findOne({ "company_details.access_code": otpRecord?.access_code });
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
     }
