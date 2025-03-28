@@ -667,9 +667,12 @@ exports.corporateCardHolder = async (req, res) => {
 exports.addTeamMemberByBusinessTeam = async (req, res) => {
   try {
     const userData = req.body;
+    console.log("userData : ", userData)
     const userId = req.user._id
     const workEmailDomain = userData.work_email.split('@')[1];
     const companyDomain = req.user.email_domain;
+    const companydata = await Company.findOne({ _id: userId })
+    console.log("companydata : ", companydata)
     let isActiveSubscription = await Subscription.findOne({ user_id: userId, status: 'active' })
     console.log("isActiveSubscription : ", isActiveSubscription)
 
@@ -721,7 +724,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       });
     }
 
-    let totalteamcount = await TeamMember.countDocuments({ 'company_details.email': userData?.work_email })
+    let totalteamcount = await TeamMember.countDocuments({ 'company_details.access_code': companydata.access_code })
     console.log("totalteamcount : ", totalteamcount)
     // if (trialdata) {
     //   console.log("inside freemium....")
