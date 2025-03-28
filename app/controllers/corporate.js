@@ -688,7 +688,7 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
 
     let planId = isActiveSubscription ? isActiveSubscription?.plan_id : trialdata?.plan_id
     console.log("planId : ", planId)
-    let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier?.plan_tier_id
+    let planTierId = isActiveSubscription ? isActiveSubscription?.plan_tier?.tier_id : trialdata?.plan_tier?.tier_id
     console.log("planTierId : ", planTierId)
 
     let plandata = await Plan.aggregate(
