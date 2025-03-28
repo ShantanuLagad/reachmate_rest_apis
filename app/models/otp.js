@@ -11,6 +11,9 @@ const OtpSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    access_code : {
+      type : String
+    },
     expired : {
       type : Date,
     },
