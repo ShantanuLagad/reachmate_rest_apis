@@ -22,10 +22,10 @@ const teamMemberSchema = new mongoose.Schema({
  },
   phone_number: {
     type: String,
-    validate: {
-      validator: (v) => /^[0-9]{10}$/.test(v),
-      message: "PHONE_NUMBER_IS_NOT_VALID",
-    },
+    // validate: {
+    //   validator: (v) => /^[0-9]{10}$/.test(v),
+    //   message: "PHONE_NUMBER_IS_NOT_VALID",
+    // },
   },
   status: {
     type: String,
