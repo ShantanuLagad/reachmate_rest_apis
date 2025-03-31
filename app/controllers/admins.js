@@ -1734,7 +1734,7 @@ exports.deleteCompany = async (req, res) => {
     const deleteres = await registration.findOneAndDelete({ email: companydata?.email })
     const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
 
-    console.log("result : ", result, " response : ", response)
+    console.log("result : ", result, " response : ", response, " deleteres : ", deleteres)
 
     res.json({ message: "Company and all related Card are deleted successfully", code: 200 });
   } catch (error) {
