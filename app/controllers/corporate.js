@@ -428,7 +428,8 @@ exports.forgotPassword = async (req, res) => {
     const emailData = {
       email: user.email,
       name: user.company_name,
-      url:`${process.env.PRODUCTION_COMPANY_URL}resetPassword/${token}`,
+      url: `${process.env.PRODUCTION_COMPANY_URL}resetPassword/${token}`,
+      logo: process.env.STORAGE_PATH_HTTP + "/assets/icons/reachmate.png"
     }
 
     console.log("url==============", emailData.url)
