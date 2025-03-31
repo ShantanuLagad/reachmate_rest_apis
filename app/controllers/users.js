@@ -3171,6 +3171,8 @@ exports.deleteAccount = async (req, res) => {
     // const result = await User.findOneAndUpdate({ _id: user_id }, { $set: { is_deleted: true } }, { new: true });
     const result = await User.deleteOne({ _id: user_id });
     console.log("result : ", result)
+    const deleteres = await Registration.findOneAndDelete({ email: userdata?.email })
+    console.log("deleteres : ", deleteres)
     await CardDetials.deleteOne({ owner_id: user_id })
 
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
