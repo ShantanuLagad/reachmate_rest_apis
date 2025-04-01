@@ -2189,7 +2189,7 @@ exports.makeIndividualCardPrimary = async (req, res) => {
     const card_id = req.body._id; // company id
     console.log("card id : ", card_id)
     if (!card_id) return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
-    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id});
+    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
     console.log("existingCard : ", existingCard)
     let existingAccessCard;
     if (!existingCard) {
@@ -2985,36 +2985,43 @@ exports.getCard = async (req, res) => {
     const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(user_data?._id), card_type: "corporate" })
     console.log("corporateCards : ", corporateCards);
 
-    let primaryCompanyCards = await Promise.all(
-      // user_data.companyAccessCardDetails.map(async (i) => {
-      //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
-      //   console.log('Fetched company:', company);
-      //   if (company && company.primary_card) {
-      //     const data = await TeamMember.findOne({ 'company_details.company_id': company._id, "company_details.access_code": company.access_code, _id: new mongoose.Types.ObjectId(i._id) });
-      //     const bio = data ? {
-      //       first_name: data.first_name,
-      //       last_name: data.last_name,
-      //       full_name: `${data.first_name} ${data.last_name}`,
-      //       designation: data.designation || "",
-      //       work_email: data.work_email,
-      //       phone_number: data.phone_number
-      //     } : null;
-      //     return {
-      //       bio,
-      //       card_type: "corporate",
-      //       ...company.toObject(),
-      //     };
-      //   }
-      //   return null;
-      // })      
-      corporateCards?.map(i => {
-        if (i?.primary_card) {
-          return true
-        } else {
-          return false
-        }
-      })
-    );
+    // let primaryCompanyCards = await Promise.all(
+    //   // user_data.companyAccessCardDetails.map(async (i) => {
+    //   //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
+    //   //   console.log('Fetched company:', company);
+    //   //   if (company && company.primary_card) {
+    //   //     const data = await TeamMember.findOne({ 'company_details.company_id': company._id, "company_details.access_code": company.access_code, _id: new mongoose.Types.ObjectId(i._id) });
+    //   //     const bio = data ? {
+    //   //       first_name: data.first_name,
+    //   //       last_name: data.last_name,
+    //   //       full_name: `${data.first_name} ${data.last_name}`,
+    //   //       designation: data.designation || "",
+    //   //       work_email: data.work_email,
+    //   //       phone_number: data.phone_number
+    //   //     } : null;
+    //   //     return {
+    //   //       bio,
+    //   //       card_type: "corporate",
+    //   //       ...company.toObject(),
+    //   //     };
+    //   //   }
+    //   //   return null;
+    //   // })      
+    //   corporateCards?.map(i => {
+    //     if (i?.primary_card) {
+    //       return true
+    //     } else {
+    //       return false
+    //     }
+    //   })
+    // );
+    let primaryCompanyCards = corporateCards?.map(i => {
+      if (i?.primary_card) {
+        return true
+      } else {
+        return false
+      }
+    })
     primaryCompanyCards = primaryCompanyCards.filter(card => card !== null);
     console.log("primaryCompanyCards : ", primaryCompanyCards);
 
