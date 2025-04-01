@@ -1706,165 +1706,172 @@ exports.getSharedCardsForUser = async (req, res) => {
             localField: "card_id",
             foreignField: "_id",
             as: "cardDetails",
+            pipeline: [
+              {
+                $project: {
+                  _id: 0
+                }
+              }
+            ]
           }
         },
         {
           $unwind: "$cardDetails"
         },
-        {
-          $lookup: {
-            from: "companies",
-            localField: "cardDetails.company_id",
-            foreignField: "_id",
-            as: "company",
-          },
-        },
-        {
-          $unwind: {
-            path: "$company",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $addFields: {
-            'cardDetails.bio.business_name': {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.company_name',
-                else: '$cardDetails.bio.business_name'
-              }
-            },
-            'cardDetails.card_color': {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.card_color',
-                else: '$cardDetails.card_color'
-              }
-            },
-            'cardDetails.text_color': {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.text_color',
-                else: '$cardDetails.text_color'
-              }
-            },
-            "cardDetails.business_logo": {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.business_logo',
-                else: '$cardDetails.business_logo'
-              }
-            },
-            "cardDetails.business_and_logo_status": {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.business_and_logo_status',
-                else: '$cardDetails.business_and_logo_status'
-              }
-            },
-            "cardDetails.address": {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.address',
-                else: '$cardDetails.address'
-              }
-            },
-            "cardDetails.contact_details.website": {
-              $cond: {
-                if: { $eq: ['$cardDetails.card_type', 'corporate'] },
-                then: '$company.contact_details.website',
-                else: '$cardDetails.contact_details.website'
-              }
-            },
-          }
-        },
+        // {
+        //   $lookup: {
+        //     from: "companies",
+        //     localField: "cardDetails.company_id",
+        //     foreignField: "_id",
+        //     as: "company",
+        //   },
+        // },
+        // {
+        //   $unwind: {
+        //     path: "$company",
+        //     preserveNullAndEmptyArrays: true,
+        //   },
+        // },
+        // {
+        //   $addFields: {
+        //     'cardDetails.bio.business_name': {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.company_name',
+        //         else: '$cardDetails.bio.business_name'
+        //       }
+        //     },
+        //     'cardDetails.card_color': {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.card_color',
+        //         else: '$cardDetails.card_color'
+        //       }
+        //     },
+        //     'cardDetails.text_color': {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.text_color',
+        //         else: '$cardDetails.text_color'
+        //       }
+        //     },
+        //     "cardDetails.business_logo": {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.business_logo',
+        //         else: '$cardDetails.business_logo'
+        //       }
+        //     },
+        //     "cardDetails.business_and_logo_status": {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.business_and_logo_status',
+        //         else: '$cardDetails.business_and_logo_status'
+        //       }
+        //     },
+        //     "cardDetails.address": {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.address',
+        //         else: '$cardDetails.address'
+        //       }
+        //     },
+        //     "cardDetails.contact_details.website": {
+        //       $cond: {
+        //         if: { $eq: ['$cardDetails.card_type', 'corporate'] },
+        //         then: '$company.contact_details.website',
+        //         else: '$cardDetails.contact_details.website'
+        //       }
+        //     },
+        //   }
+        // },
         {
           $match: query
         },
-        {
-          $addFields: {
-            "cardDetails.social_links": {
-              $cond: {
-                if: {
-                  $eq: [
-                    new mongoose.Types.ObjectId(user_id),
-                    "$card_owner_id"
-                  ]
-                },
-                then: "$cardDetails.social_links",
-                else: {
-                  linkedin: {
-                    $cond: {
-                      if: {
-                        $eq: [
-                          "$cardDetails.social_links.linkedin_enabled",
-                          true
-                        ]
-                      },
-                      then: "$cardDetails.social_links.linkedin",
-                      else: null
-                    }
-                  },
-                  linkedin_enabled: "$cardDetails.social_links.linkedin_enabled",
-                  instagram: {
-                    $cond: {
-                      if: {
-                        $eq: [
-                          "$cardDetails.social_links.instagram_enabled",
-                          true
-                        ]
-                      },
-                      then: "$cardDetails.social_links.instagram",
-                      else: null
-                    }
-                  },
-                  instagram_enabled: "$cardDetails.social_links.instagram_enabled",
-                  youtube: {
-                    $cond: {
-                      if: {
-                        $eq: [
-                          "$cardDetails.social_links.youtube_enabled",
-                          true
-                        ]
-                      },
-                      then: "$cardDetails.social_links.youtube",
-                      else: null
-                    }
-                  },
-                  youtube_enabled: "$cardDetails.social_links.youtube_enabled",
-                  x: {
-                    $cond: {
-                      if: {
-                        $eq: [
-                          "$cardDetails.social_links.x_enabled",
-                          true
-                        ]
-                      },
-                      then: "$cardDetails.social_links.x",
-                      else: null
-                    }
-                  },
-                  x_enabled: "$cardDetails.social_links.x_enabled"
-                }
-              }
-            }
-          }
-        },
+        // {
+        //   $addFields: {
+        //     "cardDetails.social_links": {
+        //       $cond: {
+        //         if: {
+        //           $eq: [
+        //             new mongoose.Types.ObjectId(user_id),
+        //             "$card_owner_id"
+        //           ]
+        //         },
+        //         then: "$cardDetails.social_links",
+        //         else: {
+        //           linkedin: {
+        //             $cond: {
+        //               if: {
+        //                 $eq: [
+        //                   "$cardDetails.social_links.linkedin_enabled",
+        //                   true
+        //                 ]
+        //               },
+        //               then: "$cardDetails.social_links.linkedin",
+        //               else: null
+        //             }
+        //           },
+        //           linkedin_enabled: "$cardDetails.social_links.linkedin_enabled",
+        //           instagram: {
+        //             $cond: {
+        //               if: {
+        //                 $eq: [
+        //                   "$cardDetails.social_links.instagram_enabled",
+        //                   true
+        //                 ]
+        //               },
+        //               then: "$cardDetails.social_links.instagram",
+        //               else: null
+        //             }
+        //           },
+        //           instagram_enabled: "$cardDetails.social_links.instagram_enabled",
+        //           youtube: {
+        //             $cond: {
+        //               if: {
+        //                 $eq: [
+        //                   "$cardDetails.social_links.youtube_enabled",
+        //                   true
+        //                 ]
+        //               },
+        //               then: "$cardDetails.social_links.youtube",
+        //               else: null
+        //             }
+        //           },
+        //           youtube_enabled: "$cardDetails.social_links.youtube_enabled",
+        //           x: {
+        //             $cond: {
+        //               if: {
+        //                 $eq: [
+        //                   "$cardDetails.social_links.x_enabled",
+        //                   true
+        //                 ]
+        //               },
+        //               then: "$cardDetails.social_links.x",
+        //               else: null
+        //             }
+        //           },
+        //           x_enabled: "$cardDetails.social_links.x_enabled"
+        //         }
+        //       }
+        //     }
+        //   }
+        // },
         {
           $skip: offsetInt
         },
         {
           $limit: limitInt
         },
-        {
-          $project: {
-            _id: 0, // Exclude the default _id field
-            card_id: "$card_id",
-            user_id: "$user_id",
-            card_owner_id: "$card_owner_id",
-            cardDetails: "$cardDetails",
-          }
-        }
+        // {
+        //   $project: {
+        //     _id: 0, // Exclude the default _id field
+        //     card_id: "$card_id",
+        //     user_id: "$user_id",
+        //     card_owner_id: "$card_owner_id",
+        //     cardDetails: "$cardDetails",
+        //   }
+        // }
       ]
     );
 
