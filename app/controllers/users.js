@@ -1573,12 +1573,12 @@ exports.addSharedCard = async (req, res) => {
         if (!isOppositeSieCardAlreadyExist) {
 
           const shareCardToOppositeSide = new SharedCards({
-            // card_id: your_card_id,
-            // user_id: card_owner_id,
-            // card_owner_id: user_id,
-            card_id: sharedCard?._id,
-            user_id: sharedCard?.user_id,
-            card_owner_id: sharedCard?.card_owner_id,
+            card_id: your_card_id,
+            user_id: card_owner_id,
+            card_owner_id: user_id,
+            // card_id: sharedCard?._id,
+            // user_id: sharedCard?.user_id,
+            // card_owner_id: sharedCard?.card_owner_id,
           })
 
           await shareCardToOppositeSide.save();
