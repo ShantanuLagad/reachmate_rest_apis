@@ -2013,18 +2013,18 @@ exports.editCardDetails = async (req, res) => {
       model = CardDetials;
     } else if (type === "corporate") {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
+      const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity._id })
+      companyTeammate = company_employee.find(i => {
+        if (i.work_email) {
+          if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
+        }
+        return false;
+      })
+
+      console.log("companyTeammate : ", companyTeammate);
       if (!existingEntity) {
         existingEntity = await Company.findOne({ _id: card_id });
         console.log("existingEntity : ", existingEntity)
-        const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity._id })
-        companyTeammate = company_employee.find(i => {
-          if (i.work_email) {
-            if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
-          }
-          return false;
-        })
-
-        console.log("companyTeammate : ", companyTeammate);
         model = Company;
       }
     } else {
@@ -2075,13 +2075,21 @@ exports.editCardDetails = async (req, res) => {
           }
         })
       )
+      let corporateCard = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(userdata), card_type: "corporate" })
+      console.log("corporateCard : ", corporateCard)
       let primaryCompanyCards = await Promise.all(
-        userdata?.companyAccessCardDetails?.map(async (i) => {
-          const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
-          console.log('Fetched company:', company);
-          if (company && company.primary_card) {
-            company.primary_card = false;
-            await company.save();
+        // userdata?.companyAccessCardDetails?.map(async (i) => {
+        //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
+        //   console.log('Fetched company:', company);
+        //   if (company && company.primary_card) {
+        //     company.primary_card = false;
+        //     await company.save();
+        //   }
+        // })
+        corporateCard?.map(i => {
+          if (i.primary_card) {
+            i.primary_card = false;
+            i.save();
           }
         })
       );
@@ -2974,27 +2982,37 @@ exports.getCard = async (req, res) => {
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryPersonalCards : ", primaryPersonalCards);
 
+    const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(user_data?._id), card_type: "corporate" })
+    console.log("corporateCards : ", corporateCards);
+
     let primaryCompanyCards = await Promise.all(
-      user_data.companyAccessCardDetails.map(async (i) => {
-        const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
-        console.log('Fetched company:', company);
-        if (company && company.primary_card) {
-          const data = await TeamMember.findOne({ 'company_details.company_id': company._id, "company_details.access_code": company.access_code, _id: new mongoose.Types.ObjectId(i._id) });
-          const bio = data ? {
-            first_name: data.first_name,
-            last_name: data.last_name,
-            full_name: `${data.first_name} ${data.last_name}`,
-            designation: data.designation || "",
-            work_email: data.work_email,
-            phone_number: data.phone_number
-          } : null;
-          return {
-            bio,
-            card_type: "corporate",
-            ...company.toObject(),
-          };
+      // user_data.companyAccessCardDetails.map(async (i) => {
+      //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
+      //   console.log('Fetched company:', company);
+      //   if (company && company.primary_card) {
+      //     const data = await TeamMember.findOne({ 'company_details.company_id': company._id, "company_details.access_code": company.access_code, _id: new mongoose.Types.ObjectId(i._id) });
+      //     const bio = data ? {
+      //       first_name: data.first_name,
+      //       last_name: data.last_name,
+      //       full_name: `${data.first_name} ${data.last_name}`,
+      //       designation: data.designation || "",
+      //       work_email: data.work_email,
+      //       phone_number: data.phone_number
+      //     } : null;
+      //     return {
+      //       bio,
+      //       card_type: "corporate",
+      //       ...company.toObject(),
+      //     };
+      //   }
+      //   return null;
+      // })      
+      corporateCards?.map(i => {
+        if (i?.primary_card) {
+          return true
+        } else {
+          return false
         }
-        return null;
       })
     );
     primaryCompanyCards = primaryCompanyCards.filter(card => card !== null);
