@@ -2016,7 +2016,7 @@ exports.editCardDetails = async (req, res) => {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
       console.log("existingEntity : ", existingEntity)
       model = CardDetials
-      const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity.company_id })
+      const company_employee = await TeamMember.find({ 'company_details.company_id': new mongoose.Types.ObjectId(existingEntity.company_id) })
       companyTeammate = company_employee.find(i => {
         if (i.work_email) {
           if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
