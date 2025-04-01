@@ -1731,10 +1731,11 @@ exports.deleteCompany = async (req, res) => {
     )
     console.log("newdeletedaccount : ", newdeletedaccount)
     const result = await Company.findOneAndDelete({ _id: mongoose.Types.ObjectId(company_id) })
+    const member = await teamMember.deleteMany({ "company_details.company_id": new mongoose.Types.ObjectId(company_id) })
     const deleteres = await registration.findOneAndDelete({ email: companydata?.email })
     const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
 
-    console.log("result : ", result, " response : ", response, " deleteres : ", deleteres)
+    console.log("result : ", result, " response : ", response, " deleteres : ", deleteres, "member : ", member)
 
     res.json({ message: "Company and all related Card are deleted successfully", code: 200 });
   } catch (error) {
