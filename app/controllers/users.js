@@ -1910,7 +1910,7 @@ exports.addPersonalCard = async (req, res) => {
       }
     }
 
-    const isFirstCard = user.personal_cards.length === 0 && user.companyAccessCardDetails.length === 0 && user.ocr_cards.length === 0;
+    const isFirstCard = (user?.personal_cards?.length === 0 && user?.companyAccessCardDetails?.length === 0 && user?.ocr_cards?.length === 0) ? true : false
     console.log('cardd is first card', isFirstCard)
 
     const data = req.body;
@@ -1964,7 +1964,7 @@ exports.addPersonalCard = async (req, res) => {
 
     await User.findByIdAndUpdate(owner_id, { is_card_created: true, user_type: "personal", text_color: data.text_color })
 
-    await giveTrialIfNotGive(owner_id)
+    // await giveTrialIfNotGive(owner_id)
 
     await SavedCard.deleteOne({ owner_id: owner_id })
 
@@ -1993,6 +1993,8 @@ exports.editCardDetails = async (req, res) => {
   try {
     const owner_id = req.user._id;
     console.log("owner id : ", owner_id)
+    const userdata = await User.findOne({ _id: owner_id })
+    console.log("userdata : ", userdata)
     const card_id = req.body._id;
     const data = req.body;
     const type = req.body.cardType;
@@ -2062,6 +2064,29 @@ exports.editCardDetails = async (req, res) => {
       existingEntity.bio.full_name = `${existingEntity.bio.first_name}${existingEntity.bio.last_name ? ` ${existingEntity.bio.last_name}` : ""}`;
     }
     console.log("existingEntity : ", existingEntity, " companyTeammate : ", companyTeammate)
+    if (data.primary_card) {
+      const primaryPersonalCards = await Promise.all(
+        userdata?.personal_cards?.map(async (i) => {
+          const card = await CardDetials.findOne({ _id: new mongoose.Types.ObjectId(i) });
+          console.log("fetched card : ", card)
+          if (card && card?.primary_card) {
+            card.primary_card = false;
+            await card.save();
+          }
+        })
+      )
+      let primaryCompanyCards = await Promise.all(
+        userdata?.companyAccessCardDetails?.map(async (i) => {
+          const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
+          console.log('Fetched company:', company);
+          if (company && company.primary_card) {
+            company.primary_card = false;
+            await company.save();
+          }
+        })
+      );
+      console.log("primaryPersonalCards : ", primaryPersonalCards, " primaryCompanyCards : ", primaryCompanyCards)
+    }
     if (companyTeammate) {
       await companyTeammate.save()
     }
