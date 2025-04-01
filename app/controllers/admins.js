@@ -3422,6 +3422,8 @@ exports.deleteSignleUser = async (req, res) => {
       }
     )
     console.log("result : ", result)
+    const member = await teamMember.findOneAndDelete({ work_email: userdata.email })
+    console.log("member : ", member)
     return res.status(200).json({
       message: "user deleted successfully",
       data: result,
