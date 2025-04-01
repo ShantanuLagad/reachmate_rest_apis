@@ -2017,6 +2017,7 @@ exports.editCardDetails = async (req, res) => {
       console.log("existingEntity : ", existingEntity)
       model = CardDetials
       const company_employee = await TeamMember.find({ 'company_details.company_id': new mongoose.Types.ObjectId(existingEntity.company_id) })
+      console.log("company_employee : ", company_employee)
       companyTeammate = company_employee.find(i => {
         if (i.work_email) {
           if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
@@ -5495,13 +5496,13 @@ exports.deleteUserCards = async (req, res) => {
       cardDeleted = true;
     }
 
-    const isCardExistInCompany = await Company.findOne({
-      _id: mongoose.Types.ObjectId(card_id),
-    });
+    // const isCardExistInCompany = await Company.findOne({
+    //   _id: mongoose.Types.ObjectId(card_id),
+    // });
 
-    if (isCardExistInCompany) {
-      const { email_domain, access_code } = isCardExistInCompany;
-
+    if (isCardExistInCardDetails.card_type === "corporate") {
+      const companydata = await Company.findOne({ _id: new mongoose.Types.ObjectId(isCardExistInCardDetails?.company_id) })
+      const { email_domain, access_code } = companydata;
       const updatedUser = await User.findOneAndUpdate(
         {
           _id: user_id,
@@ -5520,24 +5521,20 @@ exports.deleteUserCards = async (req, res) => {
         cardDeleted = true;
       }
     } else {
-      console.log("Card not found in users company access card details.");
-    }
+      const updatedUserWithPersonalCards = await User.findOneAndUpdate(
+        {
+          _id: user_id,
+          personal_cards: mongoose.Types.ObjectId(card_id),
+        },
+        {
+          $pull: { personal_cards: mongoose.Types.ObjectId(card_id) },
+        },
+        { new: true }
+      );
 
-    const updatedUserWithPersonalCards = await User.findOneAndUpdate(
-      {
-        _id: user_id,
-        personal_cards: mongoose.Types.ObjectId(card_id),
-      },
-      {
-        $pull: { personal_cards: mongoose.Types.ObjectId(card_id) },
-      },
-      { new: true }
-    );
-
-    if (updatedUserWithPersonalCards) {
-      cardDeleted = true;
-    } else {
-      console.log("Card not found in users personal cards.");
+      if (updatedUserWithPersonalCards) {
+        cardDeleted = true;
+      }
     }
 
     console.log("User After deletion:", req.user);
@@ -5561,9 +5558,6 @@ exports.deleteUserCards = async (req, res) => {
     });
   }
 };
-
-
-
 
 
 exports.addSubscription = async (req, res) => {
