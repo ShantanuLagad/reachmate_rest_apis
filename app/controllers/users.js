@@ -2424,10 +2424,10 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
     if (existingIndex > -1) {
       user.companyAccessCardDetails[existingIndex] = companyAccessDetails;
     } else {
-      const isFirstCard =
-        user.personal_cards.length === 0 &&
-        user.companyAccessCardDetails.length === 0;
+      const isFirstCard = (user?.personal_cards?.length === 0 && user?.companyAccessCardDetails?.length === 0 && user?.ocr_cards?.length === 0) ? true : false
+      console.log('cardd is first card', isFirstCard)
       company.primary_card = isFirstCard;
+      carddata.primary_card = isFirstCard;
       await company.save();
 
       user.companyAccessCardDetails.push(companyAccessDetails);
