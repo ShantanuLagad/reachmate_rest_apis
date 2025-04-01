@@ -2189,7 +2189,7 @@ exports.makeIndividualCardPrimary = async (req, res) => {
     const card_id = req.body._id; // company id
     console.log("card id : ", card_id)
     if (!card_id) return res.status(400).json({ code: 400, message: "Card ID (_id) is required." });
-    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id });
+    const existingCard = await CardDetials.findOne({ _id: card_id, owner_id});
     console.log("existingCard : ", existingCard)
     let existingAccessCard;
     if (!existingCard) {
