@@ -2010,9 +2010,11 @@ exports.editCardDetails = async (req, res) => {
 
     if (type === "individual") {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
+      console.log("existingEntity : ", existingEntity)
       model = CardDetials;
     } else if (type === "corporate") {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
+      console.log("existingEntity : ", existingEntity)
       model = CardDetials
       const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity.company_id })
       companyTeammate = company_employee.find(i => {
