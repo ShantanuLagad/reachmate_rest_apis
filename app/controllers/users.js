@@ -2979,7 +2979,7 @@ exports.getCard = async (req, res) => {
         const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
         console.log('Fetched company:', company);
         if (company && company.primary_card) {
-          const data = await TeamMember.findOne({ 'company_details.company_id': company._id });
+          const data = await TeamMember.findOne({ 'company_details.company_id': company._id, "company_details.access_code": company.access_code, work_email: user_data?.email });
           const bio = data ? {
             first_name: data.first_name,
             last_name: data.last_name,

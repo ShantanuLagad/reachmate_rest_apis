@@ -4,11 +4,9 @@ const mongoosePaginate = require('mongoose-paginate-v2');
 
 
 const teamMemberSchema = new mongoose.Schema({
-  
+  member_id: { type: String },
   first_name: { type: String },
-  
   last_name: { type: String },
-
   work_email: {
     type: String,
     validate: {
@@ -17,9 +15,9 @@ const teamMemberSchema = new mongoose.Schema({
     },
     lowercase: true,
   },
-  designation: { 
+  designation: {
     type: String
- },
+  },
   phone_number: {
     type: String,
     // validate: {
@@ -32,33 +30,33 @@ const teamMemberSchema = new mongoose.Schema({
     enum: ["active", "inactive"],
     default: "active",
   },
-  company_details: 
-    {
-       company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company', required: true },
-        email_domain: { type: String }, 
-        company_name: { type: String }, 
-        access_code:{type:String},
-        accessCard_social_links: {
-          linkedin: {
-            type: String,
-            default: ""
-          },
-          x: {
-            type: String,
-            default: ""
-          },
-          instagram: {
-            type: String,
-            default: ""
-          },
-          youtube: {
-            type: String,
-            default: ""
-          }
-        },
+  company_details:
+  {
+    company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'company', required: true },
+    email_domain: { type: String },
+    company_name: { type: String },
+    access_code: { type: String },
+    accessCard_social_links: {
+      linkedin: {
+        type: String,
+        default: ""
+      },
+      x: {
+        type: String,
+        default: ""
+      },
+      instagram: {
+        type: String,
+        default: ""
+      },
+      youtube: {
+        type: String,
+        default: ""
+      }
     },
-  
-},{
+  },
+
+}, {
   timestamps: true
 }
 
