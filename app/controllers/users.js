@@ -2406,14 +2406,17 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 
     const carddata = {
       // contact_details: {
-      //   coeuntry_code: '',
+      //   country_code: '',
       //   mobil_number: teamMember?.phone_number,
       //   office_landline: '',
       //   email: teamMember?.work_email,
       //   website: '',
       //   mobile_number_enabled: ''
       // },
-      contact_details: company?.contact_details,
+      contact_details: {
+        ...company?.contact_details,
+        email: teamMember?.work_email
+      },
       bio: bio,
       social_links: {
         linkedin: teamMember?.social_links?.linkedin || "",
