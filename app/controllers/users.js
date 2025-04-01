@@ -1863,15 +1863,15 @@ exports.getSharedCardsForUser = async (req, res) => {
         {
           $limit: limitInt
         },
-        // {
-        //   $project: {
-        //     _id: 0, // Exclude the default _id field
-        //     card_id: "$card_id",
-        //     user_id: "$user_id",
-        //     card_owner_id: "$card_owner_id",
-        //     cardDetails: "$cardDetails",
-        //   }
-        // }
+        {
+          $project: {
+            _id: 0, // Exclude the default _id field
+            // card_id: "$card_id",
+            // user_id: "$user_id",
+            // card_owner_id: "$card_owner_id",
+            // cardDetails: "$cardDetails",
+          }
+        }
       ]
     );
 
