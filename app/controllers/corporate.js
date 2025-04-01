@@ -665,6 +665,11 @@ exports.corporateCardHolder = async (req, res) => {
   }
 }
 
+async function genMemberId(name) {
+  let token = Math.floor(Math.random() * 1000000)
+  return `${name}-${token}`
+}
+
 exports.addTeamMemberByBusinessTeam = async (req, res) => {
   try {
     const userData = req.body;
@@ -771,6 +776,8 @@ exports.addTeamMemberByBusinessTeam = async (req, res) => {
       return res.status(400).json({ errors: { msg: 'Email already exists.' } });
     }
     userData.full_name = `${userData.first_name} ${userData.last_name}`
+    const memberId = await genMemberId(userData.first_name)
+    userData.member_id = memberId
     const newUser = new TeamMember(userData);
     const savedUser = await newUser.save();
     const userInfo = {
