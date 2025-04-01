@@ -2477,66 +2477,73 @@ exports.getAllAccessCards = async (req, res) => {
     console.log(' logged in USER IS>>>>', req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
     console.log("user : ", user)
-    if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
+    // if (!user || !user.companyAccessCardDetails || user.companyAccessCardDetails.length === 0) {
+    //   return res.status(204).json({ message: "No company access cards found." });
+    // }
+
+    // const companyConditions = user.companyAccessCardDetails.map((detail) => ({
+    //   // email_domain: detail.email_domain,
+    //   access_code: detail.access_code,
+    // }));
+    // console.log("companyConditions : ", companyConditions)
+
+    // const companies = await Company.find(
+    //   { $or: companyConditions },
+    //   { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
+    // );
+    // console.log("companies : ", companies)
+
+    // if (companies.length === 0) {
+    //   return res.status(204).json({ message: "No companies found for the access cards." });
+    // }
+    // const enrichedCompanies = await Promise.all(
+    //   companies.map(async (company) => {
+    //     const userAccessCardDetail = user.companyAccessCardDetails.find(
+    //       (detail) => detail.access_code === company.access_code
+    //     );
+
+    //     const teamMember = userAccessCardDetail?._id
+    //       ? await TeamMember.findById(userAccessCardDetail._id)
+    //       : null;
+    //     // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
+    //     // console.log('teammmmmm',teamMember)
+    //     const bio = teamMember
+    //       ? {
+    //         first_name: teamMember.first_name,
+    //         last_name: teamMember.last_name,
+    //         full_name: `${teamMember.first_name} ${teamMember.last_name}`,
+    //         designation: teamMember.designation || "",
+    //         work_email: teamMember.work_email,
+    //         phone_number: teamMember.phone_number
+    //       }
+    //       : null;
+    //     // console.log('bio',bio)
+    //     return {
+    //       bio,
+    //       ...company.toObject(),
+    //       social_links: userAccessCardDetail?.accessCard_social_links || {
+    //         linkedin: "",
+    //         x: "",
+    //         instagram: "",
+    //         youtube: "",
+    //       },
+    //     };
+    //   })
+    // );
+
+    const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(userId), card_type: "corporate" })
+    console.log("corporateCards : ", corporateCards)
+    const count = await CardDetials.countDocuments({ owner_id: new mongoose.Types.ObjectId(userId), card_type: "corporate" })
+
+    if (!corporateCards && corporateCards.length === 0) {
       return res.status(204).json({ message: "No company access cards found." });
     }
-
-    const companyConditions = user.companyAccessCardDetails.map((detail) => ({
-      // email_domain: detail.email_domain,
-      access_code: detail.access_code,
-    }));
-    console.log("companyConditions : ", companyConditions)
-
-    const companies = await Company.find(
-      { $or: companyConditions },
-      { bio: 0, social_links: 0, password: 0, decoded_password: 0 }
-    );
-    console.log("companies : ", companies)
-
-    if (companies.length === 0) {
-      return res.status(204).json({ message: "No companies found for the access cards." });
-    }
-    const enrichedCompanies = await Promise.all(
-      companies.map(async (company) => {
-        const userAccessCardDetail = user.companyAccessCardDetails.find(
-          (detail) => detail.access_code === company.access_code
-        );
-
-        const teamMember = userAccessCardDetail?._id
-          ? await TeamMember.findById(userAccessCardDetail._id)
-          : null;
-        // console.log('userAccessCardDetail._id',userAccessCardDetail._id)
-        // console.log('teammmmmm',teamMember)
-        const bio = teamMember
-          ? {
-            first_name: teamMember.first_name,
-            last_name: teamMember.last_name,
-            full_name: `${teamMember.first_name} ${teamMember.last_name}`,
-            designation: teamMember.designation || "",
-            work_email: teamMember.work_email,
-            phone_number: teamMember.phone_number
-          }
-          : null;
-        // console.log('bio',bio)
-        return {
-          bio,
-          ...company.toObject(),
-          social_links: userAccessCardDetail?.accessCard_social_links || {
-            linkedin: "",
-            x: "",
-            instagram: "",
-            youtube: "",
-          },
-        };
-      })
-    );
-
 
     res.status(200).json({
       code: 200,
       message: "Access Cards retrieved successfully.",
-      count: enrichedCompanies.length,
-      data: enrichedCompanies,
+      count,
+      data: corporateCards,
     });
 
     // const Allaccesscard = await CardDetials.find({ owner_id: userId, card_type: 'corporate' })
