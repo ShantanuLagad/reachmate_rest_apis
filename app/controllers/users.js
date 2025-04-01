@@ -2375,7 +2375,8 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    const teamMember = await TeamMember.findOne({ "company_details.access_code": otpRecord?.access_code });
+    const teamMember = await TeamMember.findOne({ "company_details.access_code": otpRecord?.access_code, work_email: email });
+    console.log("teamMember : ", teamMember)
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
     }
