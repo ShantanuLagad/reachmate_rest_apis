@@ -2397,10 +2397,10 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       access_code: company?.access_code,
       _id: teamMember?._id,
       accessCard_social_links: {
-        linkedin: teamMember?.social_links?.linkedin || "",
-        x: teamMember?.social_links?.x || "",
-        instagram: teamMember?.social_links?.instagram || "",
-        youtube: teamMember?.social_links?.youtube || "",
+        linkedin: teamMember?.company_details?.accessCard_social_links?.linkedin || "",
+        x: teamMember?.company_details?.accessCard_social_links?.x || "",
+        instagram: teamMember?.company_details?.accessCard_social_links?.instagram || "",
+        youtube: teamMember?.company_details?.accessCard_social_links?.youtube || "",
       },
     };
 
@@ -2419,10 +2419,10 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       },
       bio: bio,
       social_links: {
-        linkedin: teamMember?.social_links?.linkedin || "",
-        x: teamMember?.social_links?.x || "",
-        instagram: teamMember?.social_links?.instagram || "",
-        youtube: teamMember?.social_links?.youtube || ""
+        linkedin: teamMember?.company_details?.accessCard_social_links?.linkedin || "",
+        x: teamMember?.company_details?.accessCard_social_links?.x || "",
+        instagram: teamMember?.company_details?.accessCard_social_links?.instagram || "",
+        youtube: teamMember?.company_details?.accessCard_social_links?.youtube || ""
       },
       address: company?.address,
       business_logo: company?.business_logo,
