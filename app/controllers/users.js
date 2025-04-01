@@ -1706,13 +1706,13 @@ exports.getSharedCardsForUser = async (req, res) => {
             localField: "card_id",
             foreignField: "_id",
             as: "cardDetails",
-            pipeline: [
-              {
-                $project: {
-                  _id: 0
-                }
-              }
-            ]
+            // pipeline: [
+            //   {
+            //     $project: {
+            //       _id: 0
+            //     }
+            //   }
+            // ]
           }
         },
         {
