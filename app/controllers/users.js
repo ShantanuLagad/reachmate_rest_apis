@@ -2018,7 +2018,7 @@ exports.editCardDetails = async (req, res) => {
       model = CardDetials
       const company_employee = await TeamMember.find({ 'company_details.company_id': new mongoose.Types.ObjectId(existingEntity.company_id) })
       console.log("company_employee : ", company_employee)
-      companyTeammate = company_employee.find(i => {
+      companyTeammate = company_employee.filter(i => {
         if (i.work_email) {
           if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
         }
@@ -2336,6 +2336,7 @@ exports.matchAccessCode = async (req, res) => {
 exports.verifyOtpAndFetchCompany = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    console.log("body : ", req.body)
     const userId = req.user._id;
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -2375,7 +2376,7 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    const teamMember = await TeamMember.findOne({ "company_details.access_code": otpRecord?.access_code, work_email: email });
+    const teamMember = await TeamMember.findOne({ "company_details.access_code": otpRecord?.access_code, work_email: otpRecord?.email });
     console.log("teamMember : ", teamMember)
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found.' });
