@@ -3017,9 +3017,9 @@ exports.getCard = async (req, res) => {
     // );
     let primaryCompanyCards = corporateCards?.map(i => {
       if (i?.primary_card) {
-        return true
+        return i
       } else {
-        return false
+        return null
       }
     })
     primaryCompanyCards = primaryCompanyCards.filter(card => card !== null);
