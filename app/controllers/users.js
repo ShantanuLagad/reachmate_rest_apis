@@ -2251,6 +2251,7 @@ exports.matchAccessCode = async (req, res) => {
     const userId = req.user._id;
     //console.log('USER>>>',req.user)
     const user = await User.findById(userId);
+    console.log("user : ", user)
     if (!user) {
       return res.status(404).json({ errors: { msg: 'User not found.' } });
     }
@@ -2326,12 +2327,8 @@ exports.matchAccessCode = async (req, res) => {
     });
   } catch (error) {
     utils.handleError(res, error)
-
   }
 };
-
-
-
 
 
 
