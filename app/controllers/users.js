@@ -2013,7 +2013,8 @@ exports.editCardDetails = async (req, res) => {
       model = CardDetials;
     } else if (type === "corporate") {
       existingEntity = await CardDetials.findOne({ _id: card_id, owner_id });
-      const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity._id })
+      model = CardDetials
+      const company_employee = await TeamMember.find({ 'company_details.company_id': existingEntity.company_id })
       companyTeammate = company_employee.find(i => {
         if (i.work_email) {
           if (i.work_email.toString() === (req?.body?.contact_details?.email?.toString() || req?.body?.bio?.work_email?.toString())) return i
@@ -2022,11 +2023,11 @@ exports.editCardDetails = async (req, res) => {
       })
 
       console.log("companyTeammate : ", companyTeammate);
-      if (!existingEntity) {
-        existingEntity = await Company.findOne({ _id: card_id });
-        console.log("existingEntity : ", existingEntity)
-        model = Company;
-      }
+      // if (!existingEntity) {
+      //   existingEntity = await Company.findOne({ _id: card_id });
+      //   console.log("existingEntity : ", existingEntity)
+      //   model = Company;
+      // }
     } else {
       return res.status(400).json({ code: 400, message: "Invalid type. Allowed values: 'individual', 'corporate'." });
     }
@@ -2038,11 +2039,8 @@ exports.editCardDetails = async (req, res) => {
     for (const field in data) {
       if (field === 'bio') {
         for (const bioField in data.bio) {
-          if (!companyTeammate) {
-            existingEntity.bio[bioField] = data.bio[bioField];
-          } else {
-            companyTeammate[bioField] = data.bio[bioField];
-          }
+          existingEntity.bio[bioField] = data.bio[bioField];
+          companyTeammate[bioField] = data.bio[bioField];
         }
       } else if (field === 'contact_details') {
         for (const contactField in data.contact_details) {
@@ -2077,23 +2075,29 @@ exports.editCardDetails = async (req, res) => {
       )
       let corporateCard = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(userdata), card_type: "corporate" })
       console.log("corporateCard : ", corporateCard)
-      let primaryCompanyCards = await Promise.all(
-        // userdata?.companyAccessCardDetails?.map(async (i) => {
-        //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
-        //   console.log('Fetched company:', company);
-        //   if (company && company.primary_card) {
-        //     company.primary_card = false;
-        //     await company.save();
-        //   }
-        // })
-        corporateCard?.map(i => {
-          if (i.primary_card) {
-            i.primary_card = false;
-            i.save();
-          }
-        })
-      );
-      console.log("primaryPersonalCards : ", primaryPersonalCards, " primaryCompanyCards : ", primaryCompanyCards)
+      corporateCard?.forEach(async i => {
+        if (i.primary_card) {
+          i.primary_card = false;
+          await i.save();
+        }
+      })
+      // let primaryCompanyCards = await Promise.all(
+      //   // userdata?.companyAccessCardDetails?.map(async (i) => {
+      //   //   const company = await Company.findOne({ _id: new mongoose.Types.ObjectId(i?.company_id) }, { bio: 0, password: 0, decoded_password: 0 });
+      //   //   console.log('Fetched company:', company);
+      //   //   if (company && company.primary_card) {
+      //   //     company.primary_card = false;
+      //   //     await company.save();
+      //   //   }
+      //   // })
+      //   corporateCard?.map(i => {
+      //     if (i.primary_card) {
+      //       i.primary_card = false;
+      //       i.save();
+      //     }
+      //   })
+      // );
+      // console.log("primaryPersonalCards : ", primaryPersonalCards, " primaryCompanyCards : ", primaryCompanyCards)
     }
     if (companyTeammate) {
       await companyTeammate.save()
