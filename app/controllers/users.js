@@ -3244,6 +3244,10 @@ exports.deleteAccount = async (req, res) => {
     console.log("deleteres : ", deleteres)
     await CardDetials.deleteOne({ owner_id: user_id })
 
+    const member = await TeamMember.findOneAndDelete({ work_email: userdata.email })
+    const sharedcards = await SharedCards.findOneAndDelete({ user_id: userdata._id })
+    console.log("member : ", member, " sharedcards : ", sharedcards)
+
     const isSubcriptionExist = await Subscription.findOne({ user_id: user_id }).sort({ createdAt: -1 });
 
     if (isSubcriptionExist) {
