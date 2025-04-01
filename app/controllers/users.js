@@ -1537,9 +1537,7 @@ exports.addSharedCard = async (req, res) => {
 
     await sharedCard.save();
 
-
     //share card to opposite side
-
 
     let card_owner_subscription = await Subscription.findOne({ user_id: card_owner_id, status: "active" })
     console.log("card_owner_subscription : ", card_owner_subscription)
@@ -1575,9 +1573,12 @@ exports.addSharedCard = async (req, res) => {
         if (!isOppositeSieCardAlreadyExist) {
 
           const shareCardToOppositeSide = new SharedCards({
-            card_id: your_card_id,
-            user_id: card_owner_id,
-            card_owner_id: user_id,
+            // card_id: your_card_id,
+            // user_id: card_owner_id,
+            // card_owner_id: user_id,
+            card_id: sharedCard?._id,
+            user_id: sharedCard?.user_id,
+            card_owner_id: sharedCard?.card_owner_id,
           })
 
           await shareCardToOppositeSide.save();
@@ -2043,7 +2044,7 @@ exports.editCardDetails = async (req, res) => {
       if (field === 'bio') {
         for (const bioField in data.bio) {
           existingEntity.bio[bioField] = data.bio[bioField];
-          if(companyTeammate){
+          if (companyTeammate) {
             companyTeammate[bioField] = data.bio[bioField];
           }
         }
