@@ -63,7 +63,7 @@ router.post(
 
 router.get(
   "/getPersonalUser",
-  requireAuth,
+  // requireAuth,
   trimRequest.all,
   controller.getPersonalUser
 )

@@ -738,11 +738,30 @@ exports.getSingleCardHolder = async (req, res) => {
           _id: mongoose.Types.ObjectId(id)
         }
       },
+      // {
+      //   $lookup: {
+      //     from: "card_details",
+      //     localField: "_id",
+      //     foreignField: "owner_id",
+      //     as: "card_details",
+      //   },
+      // },
       {
         $lookup: {
           from: "card_details",
-          localField: "_id",
-          foreignField: "owner_id",
+          let: { userId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$owner_id", "$$userId"] },
+                    { $eq: ["$card_type", "personal"] }, 
+                  ],
+                },
+              },
+            },
+          ],
           as: "card_details",
         },
       },
@@ -1479,16 +1498,17 @@ exports.reply = async (req, res) => {
     const { support_id, reply } = req.body;
     const locale = req.getLocale()
     let user;
-
     const support = await Support.findById(support_id);
     if (!support) return utils.handleError(res, { message: "Question not found", code: 404 });
 
     user = await User.findById(support.user_id);
     if (!user) {
       user = await Company.findById(support.user_id);
-    } else {
-      return utils.handleError(res, { message: "User not found", code: 404 });
-    }
+      console.log('user',user)
+    } 
+    // else {
+    //   return utils.handleError(res, { message: "User not found", code: 404 });
+    // }
     // if(support.replied === true) return  utils.handleError(res, {message : "User not found" , code : 404});
 
     support.reply = reply;
