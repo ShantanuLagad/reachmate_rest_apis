@@ -1486,8 +1486,10 @@ exports.addSharedCard = async (req, res) => {
     }
 
     //chech the user have a card and get user card id
-    let userCard = await CardDetials.findOne({ _id: card_id })
-    console.log("userCard : ", userCard)
+    // let userCard = await CardDetials.findOne({ _id: card_id })
+    let userCard = await CardDetials.findOne({ owner_id: user_id ,primary_card:true})
+    console.log("userCardddd : ", userCard)
+  
     // if (!userCard) {
     //   let userCard = await Company.findOne({ _id: card_id })
     //   console.log("userCard : ", userCard)
@@ -1534,7 +1536,7 @@ exports.addSharedCard = async (req, res) => {
       user_id,
       card_owner_id,
     });
-
+console.log("sharedCardsharedCardsharedCardsharedCard",sharedCard);
     await sharedCard.save();
 
     //share card to opposite side
