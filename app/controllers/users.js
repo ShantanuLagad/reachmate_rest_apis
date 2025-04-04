@@ -1487,9 +1487,9 @@ exports.addSharedCard = async (req, res) => {
 
     //chech the user have a card and get user card id
     // let userCard = await CardDetials.findOne({ _id: card_id })
-    let userCard = await CardDetials.findOne({ owner_id: user_id ,primary_card:true})
+    let userCard = await CardDetials.findOne({ owner_id: user_id, primary_card: true })
     console.log("userCardddd : ", userCard)
-  
+
     // if (!userCard) {
     //   let userCard = await Company.findOne({ _id: card_id })
     //   console.log("userCard : ", userCard)
@@ -1536,7 +1536,6 @@ exports.addSharedCard = async (req, res) => {
       user_id,
       card_owner_id,
     });
-console.log("sharedCardsharedCardsharedCardsharedCard",sharedCard);
     await sharedCard.save();
 
     //share card to opposite side
@@ -2494,7 +2493,8 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 
 exports.getAllAccessCards = async (req, res) => {
   try {
-    const userId = req.user._id;
+    // const userId = req.user._id;
+    const userId = "6756906ffaf8813df7551571";
     console.log(' logged in USER IS>>>>', req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
     console.log("user : ", user)
@@ -2552,7 +2552,39 @@ exports.getAllAccessCards = async (req, res) => {
     //   })
     // );
 
-    const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(userId), card_type: "corporate" })
+    // const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(userId), card_type: "corporate" });
+    const corporateCards = await CardDetials.aggregate([
+      {
+        $match: {
+          owner_id: new mongoose.Types.ObjectId(userId),
+          card_type: "corporate"
+        }
+      },
+      {
+        $lookup: {
+          from: "companies", // the actual collection name, usually lowercase and plural
+          localField: "company_id",
+          foreignField: "_id",
+          as: "company"
+        }
+      },
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $addFields: {
+          company_name: "$company.company_name"
+        }
+      },
+      {
+        $project: {
+          company: 0,      
+        }
+      }
+    ]);
     console.log("corporateCards : ", corporateCards)
     const count = await CardDetials.countDocuments({ owner_id: new mongoose.Types.ObjectId(userId), card_type: "corporate" })
 
