@@ -2493,8 +2493,8 @@ exports.verifyOtpAndFetchCompany = async (req, res) => {
 
 exports.getAllAccessCards = async (req, res) => {
   try {
-    // const userId = req.user._id;
-    const userId = "6756906ffaf8813df7551571";
+    const userId = req.user._id;
+    // const userId = "6756906ffaf8813df7551571";
     console.log(' logged in USER IS>>>>', req.user)
     const user = await User.findById(userId).select("companyAccessCardDetails");
     console.log("user : ", user)
