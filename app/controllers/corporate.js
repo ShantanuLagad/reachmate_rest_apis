@@ -1165,6 +1165,20 @@ exports.updateAccount = async (req, res) => {
     const data = req.body;
 
     await Company.findByIdAndUpdate(company_id, data)
+    if (data.business_and_logo_status) {
+      const result = await CardDetials.updateMany(
+        {
+          card_type : "corporate",
+          company_id : new mongoose.Types.ObjectId(company_id)
+        },
+        {
+          $set : {
+            business_and_logo_status : data.business_and_logo_status
+          }
+        },{new : true}
+      )
+      console.log("result : ", result)
+    }
 
     res.json({ message: "Account updated successfully", code: 200 })
   } catch (error) {
