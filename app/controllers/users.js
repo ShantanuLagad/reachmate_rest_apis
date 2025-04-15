@@ -2581,7 +2581,7 @@ exports.getAllAccessCards = async (req, res) => {
       },
       {
         $project: {
-          company: 0,      
+          company: 0,
         }
       }
     ]);
@@ -3031,7 +3031,7 @@ exports.getCard = async (req, res) => {
 
     const primaryPersonalCards = await Promise.all(
       user_data.personal_cards.map(async (i) => {
-        const card = await CardDetials.findOne({ _id: new mongoose.Types.ObjectId(i) }).populate('company_id');
+        const card = await CardDetials.findOne({ _id: new mongoose.Types.ObjectId(i) })
         console.log("fetched card : ", card)
         if (card && card?.primary_card) {
           return card
@@ -3042,7 +3042,48 @@ exports.getCard = async (req, res) => {
     ).then(cards => cards.filter(card => card !== null));
     console.log("primaryPersonalCards : ", primaryPersonalCards);
 
-    const corporateCards = await CardDetials.find({ owner_id: new mongoose.Types.ObjectId(user_data?._id), card_type: "corporate" }).populate('company_id', "company_name access_code email")
+    const corporateCards = await CardDetials.aggregate(
+      [
+        {
+          $match: {
+            owner_id: new mongoose.Types.ObjectId(user_data?._id),
+            card_type: "corporate"
+          }
+        },
+        {
+          $lookup: {
+            from: "companies",
+            let: { id: "$company_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$_id", "$$id"]
+                  }
+                }
+              }
+            ],
+            as: "company"
+          }
+        },
+        {
+          $unwind : {
+            path : "$company",
+            preserveNullAndEmptyArrays : true
+          }
+        },
+        {
+          $addFields: {
+            company_name: "$company.company_name"
+          }
+        },
+        {
+          $project : {
+            company : 0
+          }
+        }
+      ]
+    )
     console.log("corporateCards : ", corporateCards);
 
     // let primaryCompanyCards = await Promise.all(
