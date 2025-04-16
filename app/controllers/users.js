@@ -1707,13 +1707,40 @@ exports.getSharedCardsForUser = async (req, res) => {
             localField: "card_id",
             foreignField: "_id",
             as: "cardDetails",
-            // pipeline: [
-            //   {
-            //     $project: {
-            //       _id: 0
-            //     }
-            //   }
-            // ]
+            pipeline: [
+              {
+                $lookup: {
+                  from: "companies",
+                  let: { id: "$company_id" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $eq: ["$_id", "$$id"]
+                        }
+                      }
+                    }
+                  ],
+                  as: "company"
+                }
+              },
+              {
+                $unwind: {
+                  path: "$company",
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $addFields: {
+                  company_name: "$company.company_name"
+                }
+              },
+              {
+                $project: {
+                  company: 0
+                }
+              }
+            ]
           }
         },
         {
@@ -3067,9 +3094,9 @@ exports.getCard = async (req, res) => {
           }
         },
         {
-          $unwind : {
-            path : "$company",
-            preserveNullAndEmptyArrays : true
+          $unwind: {
+            path: "$company",
+            preserveNullAndEmptyArrays: true
           }
         },
         {
@@ -3078,8 +3105,8 @@ exports.getCard = async (req, res) => {
           }
         },
         {
-          $project : {
-            company : 0
+          $project: {
+            company: 0
           }
         }
       ]
