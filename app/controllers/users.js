@@ -2302,6 +2302,10 @@ exports.matchAccessCode = async (req, res) => {
       console.log("activeSubscription : ", activeSubscription)
     }
 
+    if (!activeSubscription) {
+      return utils.handleError(res, { message: "Please buy subscription to continue accessing our services", code: 400 });
+    }
+
     if (activeSubscription) {
       const plandata = await Plan.findOne({ plan_id: activeSubscription.plan_id })
       console.log("plandata : ", plandata)
@@ -2319,12 +2323,12 @@ exports.matchAccessCode = async (req, res) => {
 
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
-    // if (checkTeamSize.length >= 1) {
-    //   return res.status(403).json({
-    //     message: "Only one Team can be created on access code",
-    //     code: 403
-    //   })
-    // }
+    if (checkTeamSize.length <= 5) {
+      return res.status(403).json({
+        message: "Contact your organisation about concern",
+        code: 403
+      })
+    }
 
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
     console.log("email_domain : ", email_domain)
