@@ -2328,7 +2328,7 @@ exports.matchAccessCode = async (req, res) => {
 
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
-    if (checkTeamSize.length <= 5) {
+    if (checkTeamSize.length < 5) {
       return utils.handleError(res, { message: "Please contact your business team admin!", code: 400 });
     }
 
