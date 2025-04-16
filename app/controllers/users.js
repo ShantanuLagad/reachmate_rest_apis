@@ -2324,10 +2324,7 @@ exports.matchAccessCode = async (req, res) => {
     const checkTeamSize = await TeamMember.find({ 'company_details.access_code': access_code })
     console.log("checkTeamSize : ", checkTeamSize)
     if (checkTeamSize.length <= 5) {
-      return res.status(403).json({
-        message: "Contact your organisation about concern",
-        code: 403
-      })
+      return utils.handleError(res, { message: "Please contact your business team admin!", code: 400 });
     }
 
     const email_domain = extractDomainFromEmail(email) || email.split('@')[1];
