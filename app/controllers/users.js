@@ -2086,6 +2086,11 @@ exports.editCardDetails = async (req, res) => {
       } else if (field === 'contact_details') {
         for (const contactField in data.contact_details) {
           existingEntity.contact_details[contactField] = data.contact_details[contactField];
+          if (companyTeammate) {
+            if (contactField === "mobile_number") {
+              companyTeammate["phone_number"] = data.contact_details[contactField];
+            }
+          }
         }
       } else if (field === 'address') {
         for (const addressField in data.address) {
