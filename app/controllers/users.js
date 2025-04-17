@@ -4476,7 +4476,7 @@ exports.webhook = async (req, res) => {
 exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
-    const plans = await Plan.find({ plan_type: "individual", individual_selected: true }).sort({ 'item.amount': 1 })
+    const plans = await Plan.find({ plan_type: "individual", individual_selected: true , plan_id : {$in : ["plan_QFL4eiL6mRRcql", "plan_QFL45PTsRn5jTu"]}}).sort({ 'item.amount': 1 })
     console.log("plans : ", plans)
     let updatedPlan = null;
 
