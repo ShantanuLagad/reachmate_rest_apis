@@ -552,4 +552,10 @@ router.patch(
   controller.changeSubscriptionTrail
 )
 
+router.get(
+  "/getUserFromCountryChartData",
+  trimRequest.all,
+  controller.getUserFromCountryChartData
+)
+
 module.exports = router

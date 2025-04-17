@@ -756,7 +756,7 @@ exports.getSingleCardHolder = async (req, res) => {
                 $expr: {
                   $and: [
                     { $eq: ["$owner_id", "$$userId"] },
-                    { $eq: ["$card_type", "personal"] }, 
+                    { $eq: ["$card_type", "personal"] },
                   ],
                 },
               },
@@ -1504,8 +1504,8 @@ exports.reply = async (req, res) => {
     user = await User.findById(support.user_id);
     if (!user) {
       user = await Company.findById(support.user_id);
-      console.log('user',user)
-    } 
+      console.log('user', user)
+    }
     // else {
     //   return utils.handleError(res, { message: "User not found", code: 404 });
     // }
@@ -6768,6 +6768,56 @@ exports.getSingleUserFeatureChartData = async (req, res) => {
       ]
     )
 
+    console.log("data : ", data)
+    return res.status(200).json({
+      message: "chart data fetched successfully",
+      data,
+      code: 200
+    })
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+exports.getUserFromCountryChartData = async (req, res) => {
+  try {
+    const data = await cardDetials.aggregate(
+      [
+        {
+          $project: {
+            owner_id: 1,
+            country: {
+              $cond: [
+                {
+                  $or: [
+                    { $eq: ["$address.country", null] },
+                    { $eq: ["$address.country", ""] },
+                    { $eq: [{ $type: "$address.country" }, "missing"] }, // handle missing field
+                    { $eq: [{ $trim: { input: "$address.country" } }, ""] } // handle whitespace-only strings
+                  ]
+                },
+                "Others",
+                "$address.country"
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              owner_id: "$owner_id",
+              country: "$country"
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$_id.country",
+            total_users: { $sum: 1 }
+          }
+        }
+      ]      
+    )
     console.log("data : ", data)
     return res.status(200).json({
       message: "chart data fetched successfully",
