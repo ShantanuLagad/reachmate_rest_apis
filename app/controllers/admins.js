@@ -6781,44 +6781,143 @@ exports.getSingleUserFeatureChartData = async (req, res) => {
 
 exports.getUserFromCountryChartData = async (req, res) => {
   try {
-    const data = await cardDetials.aggregate(
-      [
+    let data = []
+    if (req.query.country) {
+      const country = req.query.country;
+      const startDate = moment().subtract(5, 'months').startOf('month');
+      const endDate = moment();
+
+      const start = startDate.toDate();
+      const end = endDate.toDate();
+
+      const monthsInRange = [];
+      let currentMonth = moment(start);
+
+      while (currentMonth.isSameOrBefore(endDate)) {
+        monthsInRange.push({
+          month: currentMonth.month() + 1,
+          year: currentMonth.year(),
+        });
+
+        currentMonth.add(1, 'month');
+      }
+
+      const condition = {
+        createdAt: { $gte: start, $lte: end },
+      };
+
+      if (country) {
+        condition['address.country'] = country;
+      }
+
+      const userData = await cardDetials.aggregate([
+        {
+          $match: condition,
+        },
         {
           $project: {
-            owner_id: 1,
+            createdAt: 1,
             country: {
               $cond: [
                 {
                   $or: [
-                    { $eq: ["$address.country", null] },
-                    { $eq: ["$address.country", ""] },
-                    { $eq: [{ $type: "$address.country" }, "missing"] }, // handle missing field
-                    { $eq: [{ $trim: { input: "$address.country" } }, ""] } // handle whitespace-only strings
-                  ]
+                    { $eq: ['$address.country', null] },
+                    { $eq: ['$address.country', ''] },
+                    { $eq: [{ $type: '$address.country' }, 'missing'] },
+                    { $eq: [{ $trim: { input: '$address.country' } }, ''] },
+                  ],
                 },
-                "Others",
-                "$address.country"
-              ]
-            }
+                'Others',
+                '$address.country',
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            country: country // Ensures the post-projected "Others" values are handled too
           }
         },
         {
           $group: {
             _id: {
-              owner_id: "$owner_id",
-              country: "$country"
-            }
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' }
+            },
+            count: { $sum: 1 }
           }
         },
         {
-          $group: {
-            _id: "$_id.country",
-            total_users: { $sum: 1 }
+          $project: {
+            _id: 0,
+            country,
+            year: '$_id.year',
+            month: '$_id.month',
+            count: 1
+          }
+        },
+        {
+          $sort: {
+            year: 1,
+            month: 1
           }
         }
-      ]      
-    )
-    console.log("data : ", data)
+      ]);
+
+      console.log("userData : ", userData);
+      data = monthsInRange.map(monthEntry => {
+        const match = userData.find(
+          d => d.year === monthEntry.year && d.month === monthEntry.month
+        );
+        return match ? {
+          country: monthEntry.country,
+          ...match
+        } : {
+          "count": 0,
+          country,
+          ...monthEntry
+        };
+      });
+    } else {
+      data = await cardDetials.aggregate(
+        [
+          {
+            $project: {
+              owner_id: 1,
+              country: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$address.country", null] },
+                      { $eq: ["$address.country", ""] },
+                      { $eq: [{ $type: "$address.country" }, "missing"] }, // handle missing field
+                      { $eq: [{ $trim: { input: "$address.country" } }, ""] } // handle whitespace-only strings
+                    ]
+                  },
+                  "Others",
+                  "$address.country"
+                ]
+              }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                owner_id: "$owner_id",
+                country: "$country"
+              }
+            }
+          },
+          {
+            $group: {
+              _id: "$_id.country",
+              total_users: { $sum: 1 }
+            }
+          }
+        ]
+      )
+      console.log("data : ", data)
+    }
     return res.status(200).json({
       message: "chart data fetched successfully",
       data,
