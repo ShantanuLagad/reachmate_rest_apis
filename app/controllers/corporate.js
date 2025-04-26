@@ -852,6 +852,7 @@ exports.getTeamMembersByBusinessTeam = async (req, res) => {
       work_email: member.work_email,
       phone_number: member.phone_number,
       designation: member.designation,
+      country_code: member.country_code,
       user_type: member.user_type,
       status: member.status,
       company_details: member.company_details,
@@ -1168,14 +1169,14 @@ exports.updateAccount = async (req, res) => {
     if (data.business_and_logo_status) {
       const result = await CardDetials.updateMany(
         {
-          card_type : "corporate",
-          company_id : new mongoose.Types.ObjectId(company_id)
+          card_type: "corporate",
+          company_id: new mongoose.Types.ObjectId(company_id)
         },
         {
-          $set : {
-            business_and_logo_status : data.business_and_logo_status
+          $set: {
+            business_and_logo_status: data.business_and_logo_status
           }
-        },{new : true}
+        }, { new: true }
       )
       console.log("result : ", result)
     }
