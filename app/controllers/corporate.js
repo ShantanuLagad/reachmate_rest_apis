@@ -1167,7 +1167,14 @@ exports.updateAccount = async (req, res) => {
 
     const data = req.body;
 
-    await Company.findByIdAndUpdate({ _id: new mongoose.Types.ObjectId(company_id) }, { $set: data }, { new: true })
+    const filteredData = {};
+    for (const key in data) {
+      if (data[key] !== undefined && data[key] !== null) {
+        filteredData[key] = data[key];
+      }
+    }
+
+    await Company.findOneAndUpdate({ _id: new mongoose.Types.ObjectId(company_id) }, { $set: filteredData }, { new: true })
     if (data.business_and_logo_status) {
       const result = await CardDetials.updateMany(
         {
