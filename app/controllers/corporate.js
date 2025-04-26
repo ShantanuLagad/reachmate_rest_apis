@@ -1166,15 +1166,10 @@ exports.updateAccount = async (req, res) => {
     }
 
     const data = req.body;
+    console.log("data : ", data)
 
-    const filteredData = {};
-    for (const key in data) {
-      if (data[key] !== undefined && data[key] !== null) {
-        filteredData[key] = data[key];
-      }
-    }
-
-    await Company.findOneAndUpdate({ _id: new mongoose.Types.ObjectId(company_id) }, { $set: filteredData }, { new: true })
+    const result = await Company.findOneAndUpdate({ _id: new mongoose.Types.ObjectId(company_id) }, { $set: data }, { new: true })
+    console.log("result : ", result)
     if (data.business_and_logo_status) {
       const result = await CardDetials.updateMany(
         {
@@ -1190,7 +1185,7 @@ exports.updateAccount = async (req, res) => {
       console.log("result : ", result)
     }
 
-    res.json({ message: "Account updated successfully", code: 200 })
+    res.json({ message: "Account updated successfully", data: result, code: 200 })
   } catch (error) {
     utils.handleError(res, error)
   }
