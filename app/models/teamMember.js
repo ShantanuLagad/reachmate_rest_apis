@@ -18,6 +18,7 @@ const teamMemberSchema = new mongoose.Schema({
   designation: {
     type: String
   },
+  country_code: { type: String },
   phone_number: {
     type: String,
     // validate: {
