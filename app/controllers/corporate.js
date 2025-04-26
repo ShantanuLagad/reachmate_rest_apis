@@ -902,7 +902,7 @@ exports.getTeamMemberByID = async (req, res) => {
       last_name: teamMember.last_name,
       work_email: teamMember.work_email,
       phone_number: teamMember.phone_number,
-      country_code: member.country_code,
+      country_code: teamMember.country_code,
       designation: teamMember.designation,
       user_type: teamMember.user_type,
       status: teamMember.status,
