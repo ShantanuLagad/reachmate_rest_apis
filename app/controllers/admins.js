@@ -1753,7 +1753,7 @@ exports.deleteCompany = async (req, res) => {
     const result = await Company.findOneAndDelete({ _id: mongoose.Types.ObjectId(company_id) })
     const member = await teamMember.deleteMany({ "company_details.company_id": new mongoose.Types.ObjectId(company_id) })
     const deleteres = await registration.findOneAndDelete({ email: companydata?.email })
-    const response = await CardDetials.findOneAndDelete({ company_id: mongoose.Types.ObjectId(company_id) })
+    const response = await CardDetials.deleteMany({ company_id: mongoose.Types.ObjectId(company_id) })
 
     console.log("result : ", result, " response : ", response, " deleteres : ", deleteres, "member : ", member)
 
@@ -3443,8 +3443,9 @@ exports.deleteSignleUser = async (req, res) => {
     )
     console.log("result : ", result)
     const member = await teamMember.findOneAndDelete({ work_email: userdata.email })
-    const sharedcards = await sharedCards.findOneAndDelete({ user_id: id })
-    console.log("member : ", member, " sharedcards : ", sharedcards)
+    const sharedcards = await sharedCards.deleteMany({ user_id: id })
+    const deletecard = await CardDetials.deleteMany({owner_id: id })
+    console.log("member : ", member, " sharedcards : ", sharedcards, "deletecard : ", deletecard)
     return res.status(200).json({
       message: "user deleted successfully",
       data: result,
