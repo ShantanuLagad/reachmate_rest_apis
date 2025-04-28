@@ -1173,11 +1173,14 @@ exports.updateAccount = async (req, res) => {
     let toupdate = {}
     if (data.business_and_logo_status) {
       toupdate.business_and_logo_status = data.business_and_logo_status
-    } else if (data.card_color) {
+    }
+    if (data.card_color) {
       toupdate.card_color = data.card_color
-    } else if (data.text_color) {
+    }
+    if (data.text_color) {
       toupdate.text_color = data.text_color
-    } else if (Boolean(data.qr_logo)) {
+    }
+    if (Boolean(data.qr_logo)) {
       toupdate.qr_logo = data.qr_logo
     }
     console.log("toupdate : ", toupdate)
