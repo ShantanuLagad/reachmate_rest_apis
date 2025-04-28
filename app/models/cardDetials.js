@@ -59,6 +59,10 @@ const CardDetials = new mongoose.Schema(
                 type: String,
                 default: ""
             },
+            email_enabled: {
+                type: Boolean,
+                default: true
+            },
             website: {
                 type: String,
                 default: ""

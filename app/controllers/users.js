@@ -2936,7 +2936,8 @@ exports.accountPrivacy = async (req, res) => {
       x: card?.social_links?.x_enabled ?? true,
       instagram: card?.social_links?.instagram_enabled ?? true,
       youtube: card?.social_links?.youtube_enabled ?? true,
-      mobile_number: card?.contact_details?.mobile_number_enabled ?? true
+      mobile_number: card?.contact_details?.mobile_number_enabled ?? true,
+      email: card?.contact_details?.email_enabled ?? true
     }
 
     res.json({ data: data, code: 200 })
@@ -2970,6 +2971,9 @@ exports.enableOrDisableLink = async (req, res) => {
     } else if (link_type === "mobile") {
       const link_status = !(card?.contact_details?.mobile_number_enabled ?? true);
       dataToUpdate["contact_details.mobile_number_enabled"] = link_status
+    } else if (link_type === "email") {
+      const link_status = !(card?.contact_details?.email_enabled ?? true);
+      dataToUpdate["contact_details.email_enabled"] = link_status
     }
     console.log("dataToUpdate : ", dataToUpdate)
     const response = await CardDetials.updateMany({ owner_id: owner_id }, { $set: dataToUpdate });
@@ -4476,7 +4480,7 @@ exports.webhook = async (req, res) => {
 exports.plansList = async (req, res) => {
   try {
     const user_id = req.user._id;
-    const plans = await Plan.find({ plan_type: "individual", individual_selected: true , plan_id : {$nin : ["plan_QFL4eiL6mRRcql", "plan_QFL45PTsRn5jTu"]}}).sort({ 'item.amount': 1 })
+    const plans = await Plan.find({ plan_type: "individual", individual_selected: true, plan_id: { $nin: ["plan_QFL4eiL6mRRcql", "plan_QFL45PTsRn5jTu"] } }).sort({ 'item.amount': 1 })
     console.log("plans : ", plans)
     let updatedPlan = null;
 
