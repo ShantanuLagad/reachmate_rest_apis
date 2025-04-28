@@ -1180,6 +1180,7 @@ exports.updateAccount = async (req, res) => {
     } else if (Boolean(data.qr_logo)) {
       toupdate.qr_logo = data.qr_logo
     }
+    console.log("toupdate : ", toupdate)
     const newresult = await CardDetials.updateMany(
       {
         card_type: "corporate",
