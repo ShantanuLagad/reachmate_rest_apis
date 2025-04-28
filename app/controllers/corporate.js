@@ -1170,20 +1170,27 @@ exports.updateAccount = async (req, res) => {
 
     const result = await Company.findOneAndUpdate({ _id: new mongoose.Types.ObjectId(company_id) }, { $set: data }, { new: true })
     console.log("result : ", result)
+    let toupdate = {}
     if (data.business_and_logo_status) {
-      const result = await CardDetials.updateMany(
-        {
-          card_type: "corporate",
-          company_id: new mongoose.Types.ObjectId(company_id)
-        },
-        {
-          $set: {
-            business_and_logo_status: data.business_and_logo_status
-          }
-        }, { new: true }
-      )
-      console.log("result : ", result)
+      toupdate.business_and_logo_status = data.business_and_logo_status
+    } else if (data.card_color) {
+      toupdate.card_color = data.card_color
+    } else if (data.text_color) {
+      toupdate.text_color = data.text_color
+    } else if (Boolean(data.qr_logo)) {
+      toupdate.qr_logo = data.qr_logo
     }
+    const newresult = await CardDetials.updateMany(
+      {
+        card_type: "corporate",
+        company_id: new mongoose.Types.ObjectId(company_id)
+      },
+      {
+        $set: toupdate
+      }, { new: true }
+    )
+    console.log("newresult : ", newresult)
+
 
     res.json({ message: "Account updated successfully", data: result, code: 200 })
   } catch (error) {
